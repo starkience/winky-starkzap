@@ -1,0 +1,19 @@
+[sncast.default]
+url = "https://starknet-sepolia-rpc.publicnode.com"
+
+[[sncast.default.accounts]]
+name = "deployer"
+address = "0x04f10be2dcbfbe02466dff5d35228016d4d972a609893e1f86e7192af5413368"
+private_key = ""  # Set via env var or replace locally
+type = "open_zeppelin"
+active = true
+
+[sncast.devnet]
+url = "http://localhost:5050"
+
+[[sncast.devnet.accounts]]
+name = "devnet_account"
+address = "0x064b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691"
+private_key = ""  # Set via env var or replace locally
+type = "open_zeppelin"
+active = true

@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Build
+frontend/build/
+contracts/target/
+target/
+
+# Starknet accounts (may contain private keys)
+contracts/accounts.json
+contracts/.snfoundry_cache/
+
+# Local certs
+frontend/certs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Scarb lock (optional, can be committed)
+# contracts/Scarb.lock
+
+# Vercel
+.vercel/
+
+# Devnet accounts
+contracts/devnet-account.json
+
+# Snfoundry accounts (may contain private keys)
+snfoundry.toml
