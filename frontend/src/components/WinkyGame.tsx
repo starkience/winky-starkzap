@@ -55,6 +55,7 @@ export function WinkyGame() {
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
+    enabled: isConnected,
   });
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export function WinkyGame() {
       >
           {/* Left: Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/winky-logo.png" alt="Winky" style={{ height: '40px', objectFit: 'contain' }} />
+            <img src="/logo.png" alt="Wink." style={{ height: '40px', objectFit: 'contain' }} />
             {NETWORK === 'sepolia' && (
               <span
                 style={{
@@ -106,20 +107,55 @@ export function WinkyGame() {
           {/* Right: Connect / Address */}
           <div style={{ position: 'relative' }}>
             {isConnected && address ? (
-              <>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const text = `Just blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''} on-chain with @winky_blink 👁️\n\n1 blink = 1 transaction on Starknet\n\nTry it: https://winky-blink.vercel.app`;
+                    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                  }}
+                  style={{
+                    padding: '10px 32px',
+                    background: 'transparent',
+                    border: '3px solid #D23434',
+                    borderRadius: '10px',
+                    color: '#D23434',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    fontFamily: "'Manrope', sans-serif",
+                    letterSpacing: '1px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    textDecoration: 'none',
+                    textAlign: 'left' as const,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#D23434';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.borderColor = '#D23434';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#D23434';
+                    e.currentTarget.style.borderColor = '#D23434';
+                  }}
+                >
+                  Tweeeeeet it
+                </a>
                 <button
                   onClick={() => setShowWalletMenu((prev) => !prev)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                  padding: '8px 14px',
+                  padding: '10px 32px',
                   background: 'transparent',
-                  border: 'none',
+                  border: '2px solid var(--success)',
                   borderRadius: '10px',
                   color: 'var(--success)',
                     fontSize: '16px',
-                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontFamily: "'Manrope', sans-serif",
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
@@ -157,7 +193,7 @@ export function WinkyGame() {
                         padding: '12px 16px',
                         borderBottom: '1px solid rgba(0,0,0,0.06)',
                         fontSize: '11px',
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: "'Manrope', sans-serif",
                         color: '#555',
                         wordBreak: 'break-all',
                         lineHeight: 1.4,
@@ -216,38 +252,38 @@ export function WinkyGame() {
                     </button>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
-            <button
-              onClick={() => cartridgeConnector && connect({ connector: cartridgeConnector })}
-              disabled={isConnecting || !cartridgeConnector}
-              style={{
-                padding: '10px 32px',
-                background: 'transparent',
-                border: '2px solid #D23434',
-                borderRadius: '10px',
-                color: '#D23434',
-                fontSize: '16px',
-                fontWeight: 500,
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: '1px',
-                cursor: isConnecting ? 'wait' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: isConnecting ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#D23434';
-                e.currentTarget.style.color = '#fff';
-                e.currentTarget.style.borderColor = '#D23434';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#D23434';
-                e.currentTarget.style.borderColor = '#D23434';
-              }}
-            >
-              {isConnecting ? 'Connecting...' : 'Sign Up'}
-            </button>
+              <button
+                onClick={() => cartridgeConnector && connect({ connector: cartridgeConnector })}
+                disabled={isConnecting || !cartridgeConnector}
+                style={{
+                  padding: '10px 32px',
+                  background: 'transparent',
+                  border: '3px solid #D23434',
+                  borderRadius: '10px',
+                  color: '#D23434',
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  fontFamily: "'Manrope', sans-serif",
+                  letterSpacing: '1px',
+                  cursor: isConnecting ? 'wait' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: isConnecting ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#D23434';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.borderColor = '#D23434';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#D23434';
+                  e.currentTarget.style.borderColor = '#D23434';
+                }}
+              >
+                {isConnecting ? 'Connecting...' : 'Sign Up'}
+              </button>
             )}
           </div>
       </header>
@@ -299,97 +335,47 @@ export function WinkyGame() {
             }}
           />
 
-          {/* Loading overlay */}
-          {isLoading && (
-            <div className="overlay loading">
-              <div className="spinner"></div>
-              <p>{isDetectorReady ? 'Starting camera...' : 'Loading face detector...'}</p>
-            </div>
-          )}
-
-          {/* Connect prompt */}
-          {!isConnected && !isLoading && (
+          {/* Steps overlay — shown when camera is running but not connected */}
+          {!isLoading && isRunning && !isConnected && (
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 3,
               }}
             >
-              <p
+              <img
+                src="/steps.png"
+                alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
                 style={{
-                  fontSize: '18px',
-                  color: '#fff',
-                  fontWeight: 600,
-                  textShadow: 'none',
+                  maxWidth: '420px',
+                  width: '70%',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
                 }}
-              >
-                Connect wallet to start blinking
-              </p>
+              />
             </div>
           )}
 
-          {/* Stats bar pinned at bottom of camera */}
+          {/* Blink counter top-right of camera */}
           {!isLoading && isRunning && (
             <div
               style={{
                 position: 'absolute',
-                bottom: '12px',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                top: '-4px',
+                right: '20px',
                 zIndex: 5,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '6px 16px',
-                background: 'rgba(0, 0, 0, 0.45)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '8px',
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '12px',
-                color: 'rgba(255,255,255,0.7)',
+                fontFamily: "'Manrope', sans-serif",
+                fontSize: '90px',
+                fontWeight: 700,
+                color: '#D23434',
               }}
             >
-              <span>FPS <span style={{ color: '#fff', fontWeight: '500' }}>{fps}</span></span>
-              <span style={{ opacity: 0.3 }}>|</span>
-              <span>EAR <span style={{ color: '#fff', fontWeight: '500' }}>{currentEAR.toFixed(3)}</span></span>
-              <span style={{ opacity: 0.3 }}>|</span>
-              <span>Blinks <span style={{ color: '#fff', fontWeight: '600', fontSize: '14px' }}>{blinkCount}</span></span>
-              <button
-                onClick={resetDetection}
-                title="Reset counter"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '22px',
-                  height: '22px',
-                  padding: 0,
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.7)',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#fff';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10" />
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-              </button>
+              {blinkCount}
             </div>
           )}
         </div>
@@ -415,23 +401,20 @@ export function WinkyGame() {
           style={{
             flex: 1,
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
+            flexDirection: 'column-reverse',
             padding: '0 16px 40px',
-            overflow: 'hidden',
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 30%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 30%)',
+            overflowY: 'auto',
           }}
         >
         {isConnected && txLog.length > 0 ? (
-          [...txLog].reverse().map((tx) => (
+          txLog.map((tx) => (
             <TxLogItem key={tx.id} tx={tx} />
           ))
         ) : (
           <div
             style={{
               textAlign: 'center',
-              color: 'var(--text-muted)',
+              color: isConnected ? 'var(--text-muted)' : '#D23434',
               fontSize: '13px',
               padding: '16px 0',
             }}
@@ -476,7 +459,7 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '15px', fontWeight: '600' }}>
+        <div style={{ fontSize: '36px', fontWeight: '800' }}>
           Blink #{tx.blinkNumber}
         </div>
         <div style={{ marginTop: '1px' }}>
@@ -486,8 +469,9 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                fontSize: '13px',
-                fontFamily: "'Inter', sans-serif",
+                fontSize: '32px',
+                fontWeight: '800',
+                fontFamily: "'Manrope', sans-serif",
                 color: rowColor,
                 opacity: 0.7,
                 textDecoration: 'none',
@@ -500,8 +484,9 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
           ) : (
             <span
               style={{
-                fontSize: '13px',
-                fontFamily: "'Inter', sans-serif",
+                fontSize: '32px',
+                fontWeight: '800',
+                fontFamily: "'Manrope', sans-serif",
                 opacity: 0.6,
               }}
             >
@@ -512,11 +497,12 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
       </div>
       <span
         style={{
-          fontSize: '13px',
+          fontSize: '32px',
+          fontWeight: '800',
           opacity: 0.55,
           whiteSpace: 'nowrap',
           paddingTop: '2px',
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "'Manrope', sans-serif",
         }}
       >
         {timeAgo}

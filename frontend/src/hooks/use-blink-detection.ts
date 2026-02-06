@@ -61,6 +61,7 @@ interface BlinkDetectionConfig {
   earThreshold?: number;
   debounceMs?: number;
   consecutiveFrames?: number;
+  enabled?: boolean;
 }
 
 interface BlinkDetectionResult {
@@ -280,7 +281,11 @@ export function useBlinkDetection(
     earThreshold = EAR_THRESHOLD,
     debounceMs = BLINK_DEBOUNCE_MS,
     consecutiveFrames = CONSECUTIVE_FRAMES,
+    enabled = true,
   } = config;
+
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -424,8 +429,8 @@ export function useBlinkDetection(
         if (wasBlinkingRef.current) {
           const timeSinceLastBlink = now - lastBlinkTimeRef.current;
 
-          // Debounce check
-          if (timeSinceLastBlink >= debounceMs) {
+          // Debounce check — only count if enabled (user connected)
+          if (timeSinceLastBlink >= debounceMs && enabledRef.current) {
             blinkCountRef.current++;
             setBlinkCount(blinkCountRef.current);
             lastBlinkTimeRef.current = now;
