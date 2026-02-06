@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * WinkyCounter - Simple Blink Counter with Starknet Integration
+ * WinkyGame - Single-page blink counter with Starknet integration.
  *
- * Counts blinks in real-time using Cartridge Controller.
- * Transactions auto-execute via Controller session policies (no popups).
+ * Layout:
+ *   Header floats on top of the left zone
+ *   Body  – 75 % camera (full area)  |  25 % transaction log
+ *
+ * Camera feed starts immediately; blurry when wallet is not connected.
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useAccount, useDisconnect } from '@starknet-react/core';
+import { useAccount, useDisconnect, useConnect } from '@starknet-react/core';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
 import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
@@ -16,36 +19,32 @@ import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { connect, connectors, isPending: isConnecting } = useConnect();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTxLog, setShowTxLog] = useState(true);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Contract interaction - 1 blink = 1 transaction
-  const { 
-    recordBlink, 
-    txLog, 
-    clearLog, 
-    isPending, 
-    isReady: isContractReady 
+  useEffect(() => { setMounted(true); }, []);
+
+  const cartridgeConnector = mounted ? connectors[0] : undefined;
+
+  const {
+    recordBlink,
+    txLog,
+    isReady: isContractReady,
   } = useWinkyContract();
 
-  // Blink callback - transactions auto-execute via Cartridge session policies
   const handleBlink = useCallback((count: number) => {
-    console.log(`[handleBlink] #${count} | connected=${isConnected} | contractReady=${isContractReady}`);
-    
     if (isConnected && isContractReady) {
-      console.log(`[handleBlink] -> calling recordBlink(${count})`);
       recordBlink(count);
-    } else {
-      console.warn(`[handleBlink] -> SKIPPED: connected=${isConnected} ready=${isContractReady}`);
     }
   }, [isConnected, isContractReady, recordBlink]);
 
-  // Blink detection hook
   const {
     videoRef,
+    canvasRef,
     isReady: isDetectorReady,
     isRunning,
     blinkCount,
@@ -58,13 +57,10 @@ export function WinkyGame() {
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
   });
 
-  // Start camera when detector is ready
   useEffect(() => {
     if (isDetectorReady && isLoading) {
       startDetection()
-        .then(() => {
-          setIsLoading(false);
-        })
+        .then(() => setIsLoading(false))
         .catch((err) => {
           console.error('Failed to start camera:', err);
           setError('Failed to access camera. Please allow camera permissions.');
@@ -74,451 +70,457 @@ export function WinkyGame() {
   }, [isDetectorReady, isLoading, startDetection]);
 
   return (
-    <div className="winky-game">
-      {/* Wallet Address Button - Top Right */}
-      {isConnected && address && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '16px',
-            right: '16px',
-            zIndex: 1000,
-          }}
-        >
-          <button
-            onClick={() => setShowWalletMenu((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'rgba(20, 20, 25, 0.95)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              color: 'var(--text-primary)',
-              fontSize: '13px',
-              fontFamily: "'SF Mono', Monaco, monospace",
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              backdropFilter: 'blur(12px)',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.3)',
-            }}
-          >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: 'var(--success)',
-                boxShadow: '0 0 6px var(--success)',
-                flexShrink: 0,
-              }}
-            />
-            {address.slice(0, 6)}...{address.slice(-4)}
-          </button>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
-          {/* Dropdown menu */}
-          {showWalletMenu && (
+      {/* ─── Full-width Header ─── */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          flexShrink: 0,
+          padding: '16px 32px',
+        }}
+      >
+          {/* Left: Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/winky-logo.png" alt="Winky" style={{ height: '40px', objectFit: 'contain' }} />
+            {NETWORK === 'sepolia' && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: 'var(--warning)',
+                  padding: '2px 6px',
+                  border: '1px solid var(--warning)',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  background: 'rgba(245,166,35,0.1)',
+                }}
+              >
+                Sepolia
+              </span>
+            )}
+          </div>
+
+          {/* Right: Connect / Address */}
+          <div style={{ position: 'relative' }}>
+            {isConnected && address ? (
+              <>
+                <button
+                  onClick={() => setShowWalletMenu((prev) => !prev)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  padding: '8px 14px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: 'var(--success)',
+                    fontSize: '16px',
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: 'var(--success)',
+                      boxShadow: 'none',
+                      flexShrink: 0,
+                    }}
+                  />
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </button>
+
+                {showWalletMenu && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      minWidth: '220px',
+                      background: 'rgba(255, 255, 255, 0.97)',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      boxShadow: 'none',
+                      backdropFilter: 'blur(12px)',
+                      zIndex: 1000,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid rgba(0,0,0,0.06)',
+                        fontSize: '11px',
+                        fontFamily: "'Inter', sans-serif",
+                        color: '#555',
+                        wordBreak: 'break-all',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {address}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(address);
+                        setShowWalletMenu(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: '1px solid rgba(0,0,0,0.06)',
+                        color: '#111',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      Copy Address
+                    </button>
+                    <button
+                      onClick={() => {
+                        disconnect();
+                        setShowWalletMenu(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--error)',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+            <button
+              onClick={() => cartridgeConnector && connect({ connector: cartridgeConnector })}
+              disabled={isConnecting || !cartridgeConnector}
+              style={{
+                padding: '10px 32px',
+                background: 'transparent',
+                border: '2px solid #D23434',
+                borderRadius: '10px',
+                color: '#D23434',
+                fontSize: '16px',
+                fontWeight: 500,
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: '1px',
+                cursor: isConnecting ? 'wait' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: isConnecting ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#D23434';
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.borderColor = '#D23434';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#D23434';
+                e.currentTarget.style.borderColor = '#D23434';
+              }}
+            >
+              {isConnecting ? 'Connecting...' : 'Sign Up'}
+            </button>
+            )}
+          </div>
+      </header>
+
+      {/* ─── Body: 75/25 split ─── */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+
+      {/* ─── Left 75 %: Camera ─── */}
+      <div
+        style={{
+          flex: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          padding: '8px 48px 40px',
+        }}
+      >
+        {/* Camera fills remaining space */}
+        <div
+          className="video-container"
+          style={{ position: 'relative', flex: 1, minHeight: 0 }}
+        >
+          <video
+            ref={(el) => { videoRef.current = el; }}
+            autoPlay
+            playsInline
+            muted
+            className="video-feed"
+            style={{
+              filter: !isConnected ? 'blur(14px) brightness(0.6)' : 'none',
+              transition: 'filter 0.4s ease',
+            }}
+          />
+          <canvas
+            ref={(el) => { canvasRef.current = el; }}
+            width={400}
+            height={300}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              transform: 'scaleX(-1)',
+              zIndex: 2,
+              opacity: !isConnected ? 0 : 1,
+              transition: 'opacity 0.4s ease',
+            }}
+          />
+
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="overlay loading">
+              <div className="spinner"></div>
+              <p>{isDetectorReady ? 'Starting camera...' : 'Loading face detector...'}</p>
+            </div>
+          )}
+
+          {/* Connect prompt */}
+          {!isConnected && !isLoading && (
             <div
               style={{
                 position: 'absolute',
-                top: 'calc(100% + 8px)',
-                right: 0,
-                minWidth: '220px',
-                background: 'rgba(20, 20, 25, 0.98)',
-                border: '1px solid var(--border)',
-                borderRadius: '6px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(12px)',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 3,
               }}
             >
-              {/* Full address */}
-              <div
+              <p
                 style={{
-                  padding: '12px 16px',
-                  borderBottom: '1px solid var(--border)',
-                  fontSize: '11px',
-                  fontFamily: "'SF Mono', Monaco, monospace",
-                  color: 'var(--text-secondary)',
-                  wordBreak: 'break-all',
-                  lineHeight: 1.4,
+                  fontSize: '18px',
+                  color: '#fff',
+                  fontWeight: 600,
+                  textShadow: 'none',
                 }}
               >
-                {address}
-              </div>
+                Connect wallet to start blinking
+              </p>
+            </div>
+          )}
 
-              {/* Copy address */}
+          {/* Stats bar pinned at bottom of camera */}
+          {!isLoading && isRunning && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '6px 16px',
+                background: 'rgba(0, 0, 0, 0.45)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '8px',
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              <span>FPS <span style={{ color: '#fff', fontWeight: '500' }}>{fps}</span></span>
+              <span style={{ opacity: 0.3 }}>|</span>
+              <span>EAR <span style={{ color: '#fff', fontWeight: '500' }}>{currentEAR.toFixed(3)}</span></span>
+              <span style={{ opacity: 0.3 }}>|</span>
+              <span>Blinks <span style={{ color: '#fff', fontWeight: '600', fontSize: '14px' }}>{blinkCount}</span></span>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(address);
-                  setShowWalletMenu(false);
-                }}
+                onClick={resetDetection}
+                title="Reset counter"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '12px 16px',
+                  justifyContent: 'center',
+                  width: '22px',
+                  height: '22px',
+                  padding: 0,
                   background: 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  borderRadius: '6px',
                   cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s',
+                  color: 'rgba(255,255,255,0.7)',
+                  transition: 'all 0.15s',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#fff';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                }}
               >
-                Copy Address
-              </button>
-
-              {/* Disconnect */}
-              <button
-                onClick={() => {
-                  disconnect();
-                  setShowWalletMenu(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--error)',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                Disconnect
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
               </button>
             </div>
           )}
         </div>
-      )}
 
-      {/* Header */}
-      <header className="game-header">
-        <h1>Winky</h1>
-        <p>Blink Counter {NETWORK === 'sepolia' && <span style={{ fontSize: '12px', color: 'var(--warning)' }}>(Sepolia)</span>}</p>
-      </header>
-
-      {/* Video Feed */}
-      <div className="video-container">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="video-feed"
-        />
-
-        {/* Loading overlay */}
-        {isLoading && (
-          <div className="overlay loading">
-            <div className="spinner"></div>
-            <p>{isDetectorReady ? 'Starting camera...' : 'Loading face detector...'}</p>
-          </div>
-        )}
-
-        {/* Blink count overlay */}
-        {!isLoading && isRunning && (
-          <div className="overlay playing">
-            <div className="blink-counter" style={{ fontSize: '64px', fontWeight: 'bold' }}>
-              {blinkCount}
-            </div>
-            <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>
-              blinks
-            </div>
+        {error && (
+          <div className="error-banner" style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', zIndex: 10 }}>
+            {error}
           </div>
         )}
       </div>
 
-      {/* Error display */}
-      {error && (
-        <div className="error-banner">
-          {error}
-        </div>
-      )}
-
-      {/* Reset button */}
-      {isRunning && (
-        <div className="controls">
-          <button onClick={resetDetection} className="start-btn">
-            Reset Counter
-          </button>
-        </div>
-      )}
-
-      {/* Session status */}
-      {isConnected && isRunning && (
-        <div 
+      {/* ─── Right 25 %: Sign Up + Transaction log ─── */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Transaction log */}
+        <div
           style={{
-            marginTop: '16px',
-            padding: '16px 20px',
-            background: 'rgba(30, 30, 35, 0.9)',
-            borderRadius: '6px',
-            border: '1px solid var(--border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div 
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: 'var(--success)',
-                boxShadow: '0 0 8px var(--success)',
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--success)' }}>
-                Cartridge Session Active
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Transactions auto-execute via Controller policies
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Panel */}
-      {isRunning && (
-        <div className="stats-panel">
-          <div className="stat">
-            <span className="label">FPS</span>
-            <span className="value">{fps}</span>
-          </div>
-          <div className="stat">
-            <span className="label">EAR</span>
-            <span className="value">{currentEAR.toFixed(3)}</span>
-          </div>
-          <div className="stat">
-            <span className="label">Blinks</span>
-            <span className="value">{blinkCount}</span>
-          </div>
-          <div className="stat">
-            <span className="label">Mode</span>
-            <span className="value" style={{ color: 'var(--success)' }}>Auto</span>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction Log Dashboard */}
-      {isConnected && (
-        <div 
-          className="tx-log-dashboard"
-          style={{
-            position: 'fixed',
-            bottom: '16px',
-            right: '16px',
-            width: '360px',
-            maxHeight: 'calc(100vh - 32px)',
-            background: 'rgba(20, 20, 25, 0.95)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            overflow: 'hidden',
-            zIndex: 1000,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+            flex: 1,
             display: 'flex',
-            flexDirection: 'column' as const,
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            padding: '0 16px 40px',
+            overflow: 'hidden',
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 30%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 30%)',
           }}
         >
-          {/* Header */}
-          <div 
+        {isConnected && txLog.length > 0 ? (
+          [...txLog].reverse().map((tx) => (
+            <TxLogItem key={tx.id} tx={tx} />
+          ))
+        ) : (
+          <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
-              background: 'rgba(30, 30, 35, 0.9)',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontSize: '13px',
+              padding: '16px 0',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                Transaction Log
-              </span>
-              {isPending && (
-                <span 
-                  style={{
-                    padding: '2px 8px',
-                    background: 'var(--warning)',
-                    color: '#000',
-                    borderRadius: '3px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  PENDING
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {txLog.length > 0 && (
-                <button
-                  onClick={clearLog}
-                  style={{
-                    padding: '4px 8px',
-                    background: 'transparent',
-                    border: '1px solid var(--border)',
-                    borderRadius: '3px',
-                    color: 'var(--text-secondary)',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={() => setShowTxLog(!showTxLog)}
-                style={{
-                  padding: '4px 8px',
-                  background: 'transparent',
-                  border: '1px solid var(--border)',
-                  borderRadius: '3px',
-                  color: 'var(--text-secondary)',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                }}
-              >
-                {showTxLog ? '−' : '+'}
-              </button>
-            </div>
+            {isConnected ? 'Blink to record on-chain' : 'Connect to see transactions'}
           </div>
-
-          {/* Transaction List */}
-          {showTxLog && (
-            <div 
-              style={{
-                overflowY: 'auto',
-                padding: '8px',
-                flex: 1,
-              }}
-            >
-              {txLog.length === 0 ? (
-                <div 
-                  style={{
-                    padding: '24px',
-                    textAlign: 'center',
-                    color: 'var(--text-secondary)',
-                    fontSize: '13px',
-                  }}
-                >
-                  No transactions yet. Blink to record on-chain!
-                </div>
-              ) : (
-                txLog.map((tx) => (
-                  <TxLogItem key={tx.id} tx={tx} />
-                ))
-              )}
-            </div>
-          )}
+        )}
         </div>
-      )}
+      </div>
+      </div>{/* end body 75/25 */}
     </div>
   );
 }
 
-// Transaction Log Item Component
+// ─── Transaction Log Item ───
 function TxLogItem({ tx }: { tx: BlinkTransaction }) {
-  const statusIcon = tx.status === 'pending' 
-    ? '...' 
-    : tx.status === 'success' 
-      ? 'OK' 
+  const rowColor =
+    tx.status === 'success'
+      ? '#111111'
       : tx.status === 'skipped'
-        ? 'SKIP'
-        : 'ERR';
-  
-  const statusColor = tx.status === 'pending' 
-    ? 'var(--warning)' 
-    : tx.status === 'success' 
-      ? 'var(--success)' 
-      : tx.status === 'skipped'
-        ? 'var(--text-secondary)'
-        : 'var(--error)';
+        ? '#d97706'
+        : tx.status === 'error'
+          ? '#dc2626'
+          : 'rgba(0,0,0,0.3)';
 
   const timeAgo = getTimeAgo(tx.timestamp);
 
+  const displayHash = tx.hash
+    ? `${tx.hash.slice(0, 6)}…${tx.hash.slice(-4)}`
+    : tx.status === 'pending'
+      ? 'pending…'
+      : '0x0000…0000';
+
   return (
-    <div 
+    <div
       style={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: '10px',
-        padding: '10px 12px',
-        marginBottom: '6px',
-        background: 'rgba(40, 40, 45, 0.6)',
-        borderRadius: '4px',
-        borderLeft: `3px solid ${statusColor}`,
+        padding: '5px 0',
+        color: rowColor,
       }}
     >
-      <span 
-        style={{ 
-          fontSize: '10px', 
-          fontWeight: 'bold',
-          color: statusColor,
-          minWidth: '32px',
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '15px', fontWeight: '600' }}>
+          Blink #{tx.blinkNumber}
+        </div>
+        <div style={{ marginTop: '1px' }}>
+          {tx.hash && VOYAGER_TX_URL ? (
+            <a
+              href={`${VOYAGER_TX_URL}/${tx.hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: '13px',
+                fontFamily: "'Inter', sans-serif",
+                color: rowColor,
+                opacity: 0.7,
+                textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              {displayHash}
+            </a>
+          ) : (
+            <span
+              style={{
+                fontSize: '13px',
+                fontFamily: "'Inter', sans-serif",
+                opacity: 0.6,
+              }}
+            >
+              {displayHash}
+            </span>
+          )}
+        </div>
+      </div>
+      <span
+        style={{
+          fontSize: '13px',
+          opacity: 0.55,
+          whiteSpace: 'nowrap',
+          paddingTop: '2px',
+          fontFamily: "'Inter', sans-serif",
         }}
       >
-        {statusIcon}
+        {timeAgo}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', fontWeight: '500' }}>
-            Blink #{tx.blinkNumber}
-          </span>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            {timeAgo}
-          </span>
-        </div>
-        {tx.hash && (
-          <div style={{ marginTop: '4px' }}>
-            {VOYAGER_TX_URL ? (
-              <a
-                href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--primary)',
-                  textDecoration: 'none',
-                  fontFamily: 'monospace',
-                }}
-              >
-                {tx.hash.slice(0, 8)}...{tx.hash.slice(-6)}
-              </a>
-            ) : (
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                {tx.hash.slice(0, 8)}...{tx.hash.slice(-6)}
-              </span>
-            )}
-          </div>
-        )}
-        {tx.error && (
-          <div 
-            style={{
-              marginTop: '4px',
-              fontSize: '11px',
-              color: tx.status === 'skipped' ? 'var(--text-secondary)' : 'var(--error)',
-              wordBreak: 'break-word',
-              fontStyle: tx.status === 'skipped' ? 'italic' : 'normal',
-            }}
-          >
-            {tx.error}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
