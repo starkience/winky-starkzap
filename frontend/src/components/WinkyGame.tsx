@@ -24,6 +24,7 @@ export function WinkyGame() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -85,8 +86,11 @@ export function WinkyGame() {
         }}
       >
           {/* Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
             <img src="/logo.png" alt="Wink." style={{ height: '40px', objectFit: 'contain' }} />
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#D23434', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
+              Powered by Starknet
+            </span>
             {NETWORK === 'sepolia' && (
               <span
                 style={{
@@ -108,6 +112,94 @@ export function WinkyGame() {
           <div style={{ position: 'relative' }}>
             {isConnected && address ? (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {/* GitHub icon */}
+                <a
+                  href="https://github.com/starkience/winky"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    border: '3px solid #D23434',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#D23434';
+                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#D23434';
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#D23434" style={{ transition: 'fill 0.2s' }}>
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                </a>
+                {/* Info icon */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setShowInfo(true)}
+                  onMouseLeave={() => setShowInfo(false)}
+                >
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      border: '3px solid #D23434',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                      fontWeight: 800,
+                      fontFamily: "'Manrope', sans-serif",
+                      color: '#D23434',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    i
+                  </div>
+                  {showInfo && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 12px)',
+                        left: 0,
+                        width: '380px',
+                        padding: '20px',
+                        background: '#fff',
+                        borderRadius: '10px',
+                        border: '2px solid rgba(0,0,0,0.08)',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                        zIndex: 2000,
+                        fontFamily: "'Manrope', sans-serif",
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#333',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#111' }}>
+                        How does Wink work?
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <li><strong>Zero gas fees:</strong> we funded a paymaster, so you pay nothing</li>
+                        <li><strong>One session, no popups:</strong> you sign once and all blinks go through automatically</li>
+                        <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
+                        <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
+                        <li><strong>Powered by Cartridge Controller,</strong> a smart wallet that handles sessions and gas for you</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
                 <a
                   href="#"
                   onClick={(e) => {
@@ -410,18 +502,7 @@ export function WinkyGame() {
           txLog.map((tx) => (
             <TxLogItem key={tx.id} tx={tx} />
           ))
-        ) : (
-          <div
-            style={{
-              textAlign: 'center',
-              color: isConnected ? 'var(--text-muted)' : '#D23434',
-              fontSize: '13px',
-              padding: '16px 0',
-            }}
-          >
-            {isConnected ? 'Blink to record on-chain' : 'Connect to see transactions'}
-          </div>
-        )}
+        ) : null}
         </div>
       </div>
       </div>{/* end body 75/25 */}
