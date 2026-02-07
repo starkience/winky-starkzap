@@ -15,6 +15,7 @@ import { useAccount, useDisconnect, useConnect } from '@starknet-react/core';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
 import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
+import { generateBlinkCard } from '@/lib/generate-blink-card';
 
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
@@ -26,6 +27,7 @@ export function WinkyGame() {
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -200,11 +202,61 @@ export function WinkyGame() {
                     </div>
                   )}
                 </div>
+                {/* Generate Image button */}
+                <button
+                  onClick={async () => {
+                    if (isGeneratingImage) return;
+                    setIsGeneratingImage(true);
+                    try {
+                      const blob = await generateBlinkCard(blinkCount);
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `winky-${blinkCount}-blinks.png`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (err) {
+                      console.error('[WinkyGame] Failed to generate blink card:', err);
+                    } finally {
+                      setIsGeneratingImage(false);
+                    }
+                  }}
+                  disabled={isGeneratingImage}
+                  style={{
+                    padding: '10px 32px',
+                    background: 'transparent',
+                    border: '3px solid #D23434',
+                    borderRadius: '10px',
+                    color: '#D23434',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    fontFamily: "'Manrope', sans-serif",
+                    letterSpacing: '1px',
+                    cursor: isGeneratingImage ? 'wait' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: isGeneratingImage ? 0.6 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isGeneratingImage) {
+                      e.currentTarget.style.background = '#D23434';
+                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.borderColor = '#D23434';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#D23434';
+                    e.currentTarget.style.borderColor = '#D23434';
+                  }}
+                >
+                  {isGeneratingImage ? 'Generating...' : 'Generate Image'}
+                </button>
+                {/* Tweet button */}
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    const text = `Just blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''} on-chain with @winky_blink 👁️\n\n1 blink = 1 transaction on Starknet\n\nTry it: https://winky-blink.vercel.app`;
+                    const text = `I'm a Starknet Winker: blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''}, what about you? 👁️\n\nPowered by Gasless Transactions and Session Keys. All onchain.\n\nHow much can you blink: https://winky-blink.vercel.app/`;
                     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   style={{
@@ -496,6 +548,8 @@ export function WinkyGame() {
             flexDirection: 'column-reverse',
             padding: '0 16px 40px',
             overflowY: 'auto',
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
           }}
         >
         {isConnected && txLog.length > 0 ? (
