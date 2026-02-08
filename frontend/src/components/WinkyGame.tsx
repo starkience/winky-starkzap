@@ -138,6 +138,21 @@ export function WinkyGame() {
                 Starknet
               </a>
             </span>
+            {NETWORK === 'mainnet' && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: '#16a34a',
+                  padding: '2px 6px',
+                  border: '1px solid #16a34a',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  background: 'rgba(22,163,74,0.1)',
+                }}
+              >
+                Mainnet
+              </span>
+            )}
             {NETWORK === 'sepolia' && (
               <span
                 style={{
