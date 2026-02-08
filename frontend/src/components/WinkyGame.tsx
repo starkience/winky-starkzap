@@ -28,10 +28,21 @@ export function WinkyGame() {
   const [showInfo, setShowInfo] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const checkMobile = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (window.innerWidth <= 768);
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  const cartridgeConnector = mounted ? connectors[0] : undefined;
+  const cartridgeConnector = connectors[0] ?? undefined;
 
   const {
     recordBlink,
@@ -72,6 +83,30 @@ export function WinkyGame() {
         });
     }
   }, [isDetectorReady, isLoading, startDetection]);
+
+  if (isMobile && mounted) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          padding: '40px',
+          textAlign: 'center',
+          fontFamily: "'Manrope', sans-serif",
+          background: 'var(--bg-primary)',
+        }}
+      >
+        <img src="/logo.png" alt="Wink." style={{ height: '48px', objectFit: 'contain', marginBottom: '32px' }} />
+        <p style={{ fontSize: '20px', fontWeight: 600, color: '#333', lineHeight: 1.6, maxWidth: '360px' }}>
+          Wink. is not yet on mobile.<br />
+          You can wink as much as you want on desktop ;)
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -409,8 +444,20 @@ export function WinkyGame() {
               </div>
             ) : (
               <button
-                onClick={() => cartridgeConnector && connect({ connector: cartridgeConnector })}
-                disabled={isConnecting || !cartridgeConnector}
+                onClick={() => {
+                  const connector = cartridgeConnector || connectors[0];
+                  if (connector) {
+                    connect({ connector });
+                  } else {
+                    console.warn('[WinkyGame] Connector not ready, will retry in 2s...');
+                    setTimeout(() => {
+                      const c = connectors[0];
+                      if (c) connect({ connector: c });
+                      else console.error('[WinkyGame] Connector still not ready');
+                    }, 2000);
+                  }
+                }}
+                disabled={isConnecting}
                 style={{
                   padding: '10px 32px',
                   background: 'transparent',
@@ -436,7 +483,7 @@ export function WinkyGame() {
                   e.currentTarget.style.borderColor = '#D23434';
                 }}
               >
-                {isConnecting ? 'Connecting...' : 'Sign Up'}
+                {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
               </button>
             )}
           </div>
