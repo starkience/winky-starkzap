@@ -3,12 +3,12 @@ import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Winky - Blink to Earn on Starknet',
+  title: 'Winky - Blink on Starknet',
   description:
     'A playful Starknet app where each blink triggers an on-chain transaction. Gasless, session-key powered.',
   openGraph: {
-    title: 'Winky - Blink to Earn',
-    description: 'Blink your way to the blockchain! 1 blink = 1 transaction.',
+    title: 'Winky - Blink on Starknet',
+    description: 'One blink is one Starknet transaction. Powered by Session Keys and Gasless.',
   },
 };
 

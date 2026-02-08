@@ -91,7 +91,17 @@ export function WinkyGame() {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
             <img src="/logo.png" alt="Wink." style={{ height: '40px', objectFit: 'contain' }} />
             <span style={{ fontSize: '16px', fontWeight: 600, color: '#D23434', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
-              Powered by Starknet
+              Powered by{' '}
+              <a
+                href="https://x.com/Starknet"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#D23434', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                Starknet
+              </a>
             </span>
             {NETWORK === 'sepolia' && (
               <span
@@ -256,7 +266,7 @@ export function WinkyGame() {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    const text = `I'm a Starknet Winker: blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''}, what about you? 👁️\n\nPowered by Gasless Transactions and Session Keys. All onchain.\n\nHow much can you blink: https://winky-blink.vercel.app/`;
+                    const text = `I'm a Starknet Winker: blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless. All onchain.\n\nHow much can you blink: https://winky-blink.vercel.app/`;
                     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   style={{

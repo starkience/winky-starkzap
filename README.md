@@ -1,6 +1,6 @@
 # Winky
 
-**Blink to Earn on Starknet.** Every blink is a gasless on-chain transaction.
+**Blink on Starknet.** Every blink is a gasless on-chain transaction.
 
 [Contract on Voyager](https://voyager.online/contract/0x06c2cbb364d72017b16172c2429f1cf906e71c2f24c319b96d4419f94c34b146)
 

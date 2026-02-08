@@ -1,4 +1,4 @@
-# Winky - Blink to Earn on Starknet
+# Winky - Blink on Starknet
 
 A Starknet application that records eye blinks on-chain in real time. Each blink triggers a gasless transaction via the Cartridge Controller.
 
