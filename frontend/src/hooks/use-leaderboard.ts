@@ -55,7 +55,7 @@ const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
  * Without this, the RPC scans from genesis (takes ~23s instead of ~1.5s).
  */
 const EVENT_START_BLOCK: Record<string, number> = {
-  mainnet: 6_500_000,
+  mainnet: 6_709_742,
   sepolia: 0,
   devnet: 0,
 };
