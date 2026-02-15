@@ -102,6 +102,7 @@ export function Providers({ children }: ProvidersProps) {
       connectors={connectors}
       explorer={cartridge}
       defaultChainId={NETWORK === 'mainnet' ? mainnet.id : sepolia.id}
+      autoConnect
     >
       {children}
     </StarknetConfig>

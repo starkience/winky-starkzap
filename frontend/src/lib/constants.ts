@@ -51,6 +51,15 @@ export const TOKENS = {
   USDC: '0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8',
 } as const;
 
+// Cartridge RPC endpoints (no API key required)
+export const CARTRIDGE_RPC_URLS = {
+  mainnet: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9',
+  sepolia: 'https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_9',
+  devnet: 'http://localhost:5050',
+} as const;
+
+export const CARTRIDGE_RPC_URL = CARTRIDGE_RPC_URLS[NETWORK] || CARTRIDGE_RPC_URLS['sepolia'];
+
 // Game configuration
 export const GAME_CONFIG = {
   // Blink detection

@@ -42,13 +42,66 @@
   padding: 0;
 }
 
-html,
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
+  zoom: 0.85;
+}
+
+/* Shared header button style — adaptive, never squish */
+.winky-header-btn {
+  padding: 10px 24px;
+  background: transparent;
+  border: 3px solid #D23434;
+  border-radius: 10px;
+  color: #D23434;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.winky-header-btn:hover:not(:disabled) {
+  background: #D23434;
+  color: #fff;
+  border-color: #D23434;
+}
+
+.winky-header-btn-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 2px solid var(--success);
+  border-radius: 10px;
+  color: var(--success);
+  font-size: 15px;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Main container */
@@ -505,6 +558,467 @@ body {
   color: var(--error);
   font-size: 14px;
   text-align: center;
+}
+
+/* ─── Leaderboard Modal ─── */
+
+@keyframes leaderboard-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes leaderboard-slide-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.leaderboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  animation: leaderboard-fade-in 0.2s ease-out;
+}
+
+.leaderboard-modal {
+  position: relative;
+  width: 90vw;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: leaderboard-slide-up 0.25s ease-out;
+  font-family: 'Manrope', sans-serif;
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.leaderboard-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.leaderboard-subtitle {
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+.leaderboard-subtitle strong {
+  color: #D23434;
+  font-weight: 700;
+}
+
+/* Twitter connect/disconnect button in leaderboard header */
+.leaderboard-twitter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #333;
+  background: #000;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.leaderboard-twitter-btn:hover {
+  background: #222;
+  border-color: #555;
+}
+
+.leaderboard-twitter-btn--connected {
+  background: transparent;
+  color: #333;
+  border-color: rgba(0, 0, 0, 0.15);
+  padding: 4px 12px 4px 4px;
+}
+
+.leaderboard-twitter-btn--connected:hover {
+  background: rgba(220, 53, 69, 0.05);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+}
+
+.leaderboard-twitter-btn-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.leaderboard-twitter-cta-text {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  font-style: italic;
+  max-width: 220px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.leaderboard-refresh {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.leaderboard-refresh:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: #555;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.leaderboard-refresh:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.leaderboard-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.leaderboard-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #333;
+}
+
+.leaderboard-columns {
+  display: grid;
+  grid-template-columns: 60px 56px 1fr 1fr 170px;
+  padding: 12px 32px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #aaa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  align-items: center;
+}
+
+.leaderboard-col-avatar {
+  /* empty spacer for avatar column */
+}
+
+.leaderboard-col-user {
+  /* left-aligned */
+}
+
+.leaderboard-col-blinks {
+  /* left-aligned to match data */
+}
+
+.leaderboard-col-rank {
+  text-align: center;
+}
+
+.leaderboard-col-action {
+  /* empty header for generate button column */
+}
+
+.leaderboard-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.leaderboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.leaderboard-loading-status {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  text-align: center;
+}
+
+.leaderboard-loading-elapsed {
+  font-size: 24px;
+  font-weight: 700;
+  color: #D23434;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-empty {
+  text-align: center;
+  padding: 48px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.leaderboard-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 28px;
+  text-align: center;
+  color: #D23434;
+  font-size: 14px;
+}
+
+.leaderboard-retry-btn {
+  padding: 8px 24px;
+  background: transparent;
+  border: 2px solid #D23434;
+  border-radius: 8px;
+  color: #D23434;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.leaderboard-retry-btn:hover {
+  background: #D23434;
+  color: #fff;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 60px 56px 1fr 1fr 170px;
+  align-items: center;
+  padding: 16px 32px;
+  transition: background 0.15s;
+  position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.leaderboard-row:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.leaderboard-row--rank-1 {
+  background: rgba(255, 215, 0, 0.10);
+}
+
+.leaderboard-row--rank-1:hover {
+  background: rgba(255, 215, 0, 0.16);
+}
+
+.leaderboard-row--rank-2 {
+  background: rgba(192, 192, 192, 0.14);
+}
+
+.leaderboard-row--rank-2:hover {
+  background: rgba(192, 192, 192, 0.22);
+}
+
+.leaderboard-row--rank-3 {
+  background: rgba(205, 127, 50, 0.10);
+}
+
+.leaderboard-row--rank-3:hover {
+  background: rgba(205, 127, 50, 0.16);
+}
+
+.leaderboard-row--current {
+  background: rgba(210, 52, 52, 0.06);
+}
+
+.leaderboard-row--current:hover {
+  background: rgba(210, 52, 52, 0.09);
+}
+
+.leaderboard-pinned-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.leaderboard-pinned-dots {
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: #bbb;
+}
+
+.leaderboard-cell-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ddd, #c0c0c0);
+  flex-shrink: 0;
+}
+
+.leaderboard-cell-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-cell-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.leaderboard-generate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #D23434;
+  background: transparent;
+  color: #D23434;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.leaderboard-generate-btn:hover:not(:disabled) {
+  background: #D23434;
+  color: #fff;
+}
+
+.leaderboard-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.leaderboard-rank-number {
+  font-size: 16px;
+  font-weight: 700;
+  color: #666;
+}
+
+.leaderboard-cell-user {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* (leaderboard-user-info removed - simplified layout) */
+
+.leaderboard-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.leaderboard-username {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-username--link {
+  text-decoration: none;
+  color: #222;
+  transition: color 0.15s;
+}
+
+.leaderboard-username--link:hover {
+  text-decoration: underline;
+  color: #000;
+}
+
+.leaderboard-cell-blinks {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.leaderboard-blink-count {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-blink-label {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.leaderboard-you-badge {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 800;
+  color: #D23434;
+  background: rgba(210, 52, 52, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
 /* Responsive */

@@ -14,8 +14,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useDisconnect, useConnect } from '@starknet-react/core';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
+import { useTwitterAuth } from '@/hooks/use-twitter-auth';
 import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
 import { generateBlinkCard } from '@/lib/generate-blink-card';
+import { LeaderboardModal } from '@/components/Leaderboard';
 
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
@@ -29,6 +31,10 @@ export function WinkyGame() {
   const [mounted, setMounted] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  // Twitter auth - optional, enhances leaderboard with user's position
+  const twitter = useTwitterAuth(address);
 
   useEffect(() => {
     setMounted(true);
@@ -42,10 +48,26 @@ export function WinkyGame() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Auto-open leaderboard when returning from Twitter OAuth
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('twitter_connected')) {
+      setShowLeaderboard(true);
+      // Clean the URL param without reload
+      params.delete('twitter_connected');
+      const cleanUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
   const cartridgeConnector = connectors[0] ?? undefined;
 
   const {
     recordBlink,
+    getTotalBlinks,
     txLog,
     isReady: isContractReady,
   } = useWinkyContract();
@@ -109,7 +131,7 @@ export function WinkyGame() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100vh / 0.85)', overflow: 'hidden' }}>
 
       {/* ─── Full-width Header ─── */}
       <header
@@ -119,11 +141,13 @@ export function WinkyGame() {
           justifyContent: 'space-between',
           width: '100%',
           flexShrink: 0,
-          padding: '16px 32px',
+          padding: '12px 32px',
+          flexWrap: 'wrap',
+          gap: '8px',
         }}
       >
           {/* Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexShrink: 0 }}>
             <img src="/logo.png" alt="Wink." style={{ height: '40px', objectFit: 'contain' }} />
             <span style={{ fontSize: '16px', fontWeight: 600, color: '#D23434', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
               Powered by{' '}
@@ -173,7 +197,7 @@ export function WinkyGame() {
           {/* Right: Connect / Address */}
           <div style={{ position: 'relative' }}>
             {isConnected && address ? (
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {/* GitHub icon */}
                 <a
                   href="https://github.com/starkience/winky"
@@ -268,11 +292,14 @@ export function WinkyGame() {
                     if (isGeneratingImage) return;
                     setIsGeneratingImage(true);
                     try {
-                      const blob = await generateBlinkCard(blinkCount);
+                      // Fetch persistent on-chain total (not session count)
+                      const totalBlinks = await getTotalBlinks();
+                      const count = totalBlinks > 0 ? totalBlinks : blinkCount;
+                      const blob = await generateBlinkCard(count);
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `winky-${blinkCount}-blinks.png`;
+                      a.download = `winky-${count}-blinks.png`;
                       a.click();
                       URL.revokeObjectURL(url);
                     } catch (err) {
@@ -282,87 +309,64 @@ export function WinkyGame() {
                     }
                   }}
                   disabled={isGeneratingImage}
+                  className="winky-header-btn"
                   style={{
-                    padding: '10px 32px',
-                    background: 'transparent',
-                    border: '3px solid #D23434',
-                    borderRadius: '10px',
-                    color: '#D23434',
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    fontFamily: "'Manrope', sans-serif",
-                    letterSpacing: '1px',
                     cursor: isGeneratingImage ? 'wait' : 'pointer',
-                    transition: 'all 0.2s',
                     opacity: isGeneratingImage ? 0.6 : 1,
                   }}
                   onMouseEnter={(e) => {
                     if (!isGeneratingImage) {
                       e.currentTarget.style.background = '#D23434';
                       e.currentTarget.style.color = '#fff';
-                      e.currentTarget.style.borderColor = '#D23434';
                     }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#D23434';
-                    e.currentTarget.style.borderColor = '#D23434';
                   }}
                 >
                   {isGeneratingImage ? 'Generating...' : 'Generate Image'}
                 </button>
-                {/* Tweet button */}
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const text = `I'm a Starknet Winker: blinked ${blinkCount} time${blinkCount !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless. All onchain.\n\nHow much can you blink: https://winky-blink.vercel.app/`;
-                    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                  }}
-                  style={{
-                    padding: '10px 32px',
-                    background: 'transparent',
-                    border: '3px solid #D23434',
-                    borderRadius: '10px',
-                    color: '#D23434',
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    fontFamily: "'Manrope', sans-serif",
-                    letterSpacing: '1px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    textDecoration: 'none',
-                    textAlign: 'left' as const,
-                  }}
+                {/* Leaderboard button - always opens */}
+                <button
+                  onClick={() => setShowLeaderboard(true)}
+                  className="winky-header-btn"
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = '#D23434';
                     e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.borderColor = '#D23434';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#D23434';
-                    e.currentTarget.style.borderColor = '#D23434';
+                  }}
+                >
+                  Leaderboard
+                </button>
+                {/* Tweet button */}
+                <a
+                  href="#"
+                  className="winky-header-btn"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    const totalBlinks = await getTotalBlinks();
+                    const count = totalBlinks > 0 ? totalBlinks : blinkCount;
+                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
+                    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#D23434';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#D23434';
                   }}
                 >
                   Tweeeeeet it
                 </a>
                 <button
                   onClick={() => setShowWalletMenu((prev) => !prev)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  padding: '10px 32px',
-                  background: 'transparent',
-                  border: '2px solid var(--success)',
-                  borderRadius: '10px',
-                  color: 'var(--success)',
-                    fontSize: '16px',
-                    fontFamily: "'Manrope', sans-serif",
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
+                  className="winky-header-btn-wallet"
                 >
                   <span
                     style={{
@@ -473,29 +477,18 @@ export function WinkyGame() {
                   }
                 }}
                 disabled={isConnecting}
+                className="winky-header-btn"
                 style={{
-                  padding: '10px 32px',
-                  background: 'transparent',
-                  border: '3px solid #D23434',
-                  borderRadius: '10px',
-                  color: '#D23434',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  fontFamily: "'Manrope', sans-serif",
-                  letterSpacing: '1px',
                   cursor: isConnecting ? 'wait' : 'pointer',
-                  transition: 'all 0.2s',
                   opacity: isConnecting ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#D23434';
                   e.currentTarget.style.color = '#fff';
-                  e.currentTarget.style.borderColor = '#D23434';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
                   e.currentTarget.style.color = '#D23434';
-                  e.currentTarget.style.borderColor = '#D23434';
                 }}
               >
                 {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
@@ -610,6 +603,7 @@ export function WinkyGame() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          padding: '8px 0 40px',
         }}
       >
         {/* Transaction log */}
@@ -618,7 +612,7 @@ export function WinkyGame() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column-reverse',
-            padding: '0 16px 40px',
+            padding: '0 16px 0',
             overflowY: 'auto',
             maskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
@@ -632,6 +626,16 @@ export function WinkyGame() {
         </div>
       </div>
       </div>{/* end body 75/25 */}
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <LeaderboardModal
+          userAddress={address}
+          twitterProfile={twitter.profile}
+          onTwitterConnect={twitter.connect}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
     </div>
   );
 }

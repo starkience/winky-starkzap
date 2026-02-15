@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 // Set to false on Wednesday to make the site fully public.
 // When true, visitors must enter the passcode to access the app.
 // ============================================================
-const PRIVATE_MODE = true;
+const PRIVATE_MODE = false;
 const PASSCODE = 'wink005';
 // ============================================================
 

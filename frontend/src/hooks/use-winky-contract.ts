@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useState, useRef } from 'react';
-import { useAccount } from '@starknet-react/core';
+import { useAccount, useProvider } from '@starknet-react/core';
 import { WINKY_CONTRACT_ADDRESS } from '@/lib/constants';
 
 // No limit on transaction log entries
@@ -24,7 +24,8 @@ export interface BlinkTransaction {
 }
 
 export function useWinkyContract() {
-  const { isConnected, account } = useAccount();
+  const { isConnected, account, address } = useAccount();
+  const { provider } = useProvider();
   const [txLog, setTxLog] = useState<BlinkTransaction[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -140,8 +141,26 @@ export function useWinkyContract() {
     setTxLog([]);
   }, []);
 
+  /** Read the user's total on-chain blink count (view call, no gas) */
+  const getTotalBlinks = useCallback(async (): Promise<number> => {
+    if (!address || !provider) return 0;
+    try {
+      const result = await provider.callContract({
+        contractAddress: WINKY_CONTRACT_ADDRESS,
+        entrypoint: 'get_user_blinks',
+        calldata: [address],
+      });
+      // Result is an array of felt252 strings; the first element is the u64 count
+      return Number(BigInt(result[0]));
+    } catch (err) {
+      console.error('[getTotalBlinks] Failed:', err);
+      return 0;
+    }
+  }, [address, provider]);
+
   return {
     recordBlink,
+    getTotalBlinks,
     txLog,
     clearLog,
     isPending: pendingCount > 0,
