@@ -591,6 +591,8 @@ body {
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(6px);
   animation: leaderboard-fade-in 0.2s ease-out;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .leaderboard-modal {
@@ -781,6 +783,7 @@ body {
   padding: 4px 0;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .leaderboard-loading {

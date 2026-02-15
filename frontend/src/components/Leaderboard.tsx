@@ -10,7 +10,7 @@
  * users see their own position pinned above rank #1.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLeaderboard, LeaderboardEntry } from '@/hooks/use-leaderboard';
 import { TwitterProfile } from '@/hooks/use-twitter-auth';
 import { generateBlinkCard } from '@/lib/generate-blink-card';
@@ -36,6 +36,58 @@ interface StoredTwitterProfile {
 
 export function LeaderboardModal({ userAddress, twitterProfile, onTwitterConnect, onClose }: LeaderboardModalProps) {
   const { leaderboard, isLoading, loadingStatus, error, userRank, refetch } = useLeaderboard(userAddress);
+
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Prevent pull-to-refresh on mobile: block touchmove on the overlay unless
+  // it originates inside the scrollable leaderboard-body AND that body can scroll.
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const body = bodyRef.current;
+      if (!body) {
+        // No scrollable body yet (loading) — block all pull gestures
+        e.preventDefault();
+        return;
+      }
+
+      // If the touch target is inside the scrollable body, let it scroll
+      // UNLESS the body is already at the very top and the user is pulling down
+      const target = e.target as Node;
+      if (body.contains(target)) {
+        if (body.scrollTop <= 0) {
+          // At the very top — check direction
+          const touch = e.touches[0];
+          const startY = (overlay as HTMLDivElement & { _startY?: number })._startY;
+          if (startY !== undefined && touch.clientY > startY) {
+            // Pulling down from the top — block to prevent browser refresh
+            e.preventDefault();
+          }
+        }
+        // Otherwise allow normal scroll
+        return;
+      }
+
+      // Touch is outside the body (e.g. on the header, overlay bg) — block it
+      e.preventDefault();
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // Store the starting Y so we can detect pull-down direction
+      (overlay as HTMLDivElement & { _startY?: number })._startY = e.touches[0].clientY;
+    };
+
+    overlay.addEventListener('touchstart', handleTouchStart, { passive: true });
+    overlay.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      overlay.removeEventListener('touchstart', handleTouchStart);
+      overlay.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
 
   // Server-side Twitter profiles for ALL users (wallet → profile)
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
@@ -69,6 +121,7 @@ export function LeaderboardModal({ userAddress, twitterProfile, onTwitterConnect
 
   return (
     <div
+      ref={overlayRef}
       className="leaderboard-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -134,7 +187,7 @@ export function LeaderboardModal({ userAddress, twitterProfile, onTwitterConnect
         )}
 
         {/* Content */}
-        <div className="leaderboard-body">
+        <div ref={bodyRef} className="leaderboard-body">
           {isLoading ? (
             <div className="leaderboard-loading">
               <div className="spinner" />

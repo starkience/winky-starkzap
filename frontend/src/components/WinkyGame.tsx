@@ -118,7 +118,6 @@ export function WinkyGame() {
       left: 0,
       right: 0,
       bottom: 0,
-      ...(isMobile ? { touchAction: 'none' } : {}),
     }}>
 
       {/* ─── Header ─── */}
@@ -242,31 +241,46 @@ export function WinkyGame() {
                       fontFamily: "'Manrope', sans-serif",
                       color: '#D23434',
                       transition: 'all 0.2s',
+                      position: 'relative',
+                      zIndex: showInfo && isMobile ? 3001 : 'auto',
                     }}
                   >
                     i
                   </div>
+                  {showInfo && isMobile && (
+                    /* Transparent backdrop — tapping anywhere outside dismisses the card */
+                    <div
+                      onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 2999,
+                        background: 'transparent',
+                      }}
+                    />
+                  )}
                   {showInfo && (
                     <div
                       style={{
-                        position: isMobile ? 'fixed' : 'absolute',
-                        top: isMobile ? '50px' : 'calc(100% + 12px)',
-                        right: isMobile ? '8px' : 'auto',
-                        left: isMobile ? '8px' : 0,
-                        width: isMobile ? 'auto' : '380px',
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: isMobile ? '-8px' : 'auto',
+                        left: isMobile ? undefined : 0,
+                        width: isMobile ? 'calc(100vw - 16px)' : '380px',
                         maxWidth: isMobile ? 'calc(100vw - 16px)' : '380px',
                         padding: isMobile ? '14px' : '20px',
                         background: '#fff',
                         borderRadius: '10px',
                         border: '2px solid rgba(0,0,0,0.08)',
                         boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                        zIndex: 2000,
+                        zIndex: 3000,
                         fontFamily: "'Manrope', sans-serif",
                         fontSize: isMobile ? '12px' : '14px',
                         fontWeight: 500,
                         color: '#333',
                         lineHeight: 1.6,
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div style={{ fontWeight: 800, fontSize: isMobile ? '14px' : '16px', marginBottom: '12px', color: '#111' }}>
                         How does Wink work?
