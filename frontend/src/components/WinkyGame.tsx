@@ -39,8 +39,8 @@ export function WinkyGame() {
   useEffect(() => {
     setMounted(true);
     const checkMobile = () => {
-      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        || (window.innerWidth <= 768);
+      const mobile = window.innerWidth <= 768
+        || ('ontouchstart' in window && window.innerWidth <= 1024);
       setIsMobile(mobile);
     };
     checkMobile();
@@ -106,34 +106,22 @@ export function WinkyGame() {
     }
   }, [isDetectorReady, isLoading, startDetection]);
 
-  if (isMobile && mounted) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          padding: '40px',
-          textAlign: 'center',
-          fontFamily: "'Manrope', sans-serif",
-          background: 'var(--bg-primary)',
-        }}
-      >
-        <img src="/logo.png" alt="Wink." style={{ height: '48px', objectFit: 'contain', marginBottom: '32px' }} />
-        <p style={{ fontSize: '20px', fontWeight: 600, color: '#333', lineHeight: 1.6, maxWidth: '360px' }}>
-          Wink. is not yet on mobile.<br />
-          You can wink as much as you want on desktop ;)
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100vh / 0.85)', overflow: 'hidden' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      height: isMobile ? '100dvh' : 'calc(100vh / 0.85)',
+      overflow: 'hidden',
+      position: isMobile ? 'fixed' : 'relative',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      ...(isMobile ? { touchAction: 'none' } : {}),
+    }}>
 
-      {/* ─── Full-width Header ─── */}
+      {/* ─── Header ─── */}
       <header
         style={{
           display: 'flex',
@@ -141,31 +129,33 @@ export function WinkyGame() {
           justifyContent: 'space-between',
           width: '100%',
           flexShrink: 0,
-          padding: '12px 32px',
+          padding: isMobile ? '8px 12px' : '12px 32px',
           flexWrap: 'wrap',
-          gap: '8px',
+          gap: isMobile ? '6px' : '8px',
         }}
       >
           {/* Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexShrink: 0 }}>
-            <img src="/logo.png" alt="Wink." style={{ height: '40px', objectFit: 'contain' }} />
-            <span style={{ fontSize: '16px', fontWeight: 600, color: '#D23434', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
-              Powered by{' '}
-              <a
-                href="https://x.com/Starknet"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#D23434', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-              >
-                Starknet
-              </a>
-            </span>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '6px' : '10px', flexShrink: 0 }}>
+            <img src="/logo.png" alt="Wink." style={{ height: isMobile ? '28px' : '40px', objectFit: 'contain' }} />
+            {!isMobile && (
+              <span style={{ fontSize: '16px', fontWeight: 600, color: '#D23434', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
+                Powered by{' '}
+                <a
+                  href="https://x.com/Starknet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#D23434', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  Starknet
+                </a>
+              </span>
+            )}
             {NETWORK === 'mainnet' && (
               <span
                 style={{
-                  fontSize: '10px',
+                  fontSize: isMobile ? '9px' : '10px',
                   color: '#16a34a',
                   padding: '2px 6px',
                   border: '1px solid #16a34a',
@@ -180,7 +170,7 @@ export function WinkyGame() {
             {NETWORK === 'sepolia' && (
               <span
                 style={{
-                  fontSize: '10px',
+                  fontSize: isMobile ? '9px' : '10px',
                   color: 'var(--warning)',
                   padding: '2px 6px',
                   border: '1px solid var(--warning)',
@@ -197,8 +187,9 @@ export function WinkyGame() {
           {/* Right: Connect / Address */}
           <div style={{ position: 'relative' }}>
             {isConnected && address ? (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: isMobile ? '4px' : '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {/* GitHub icon */}
+                {!isMobile && (
                 <a
                   href="https://github.com/starkience/winky"
                   target="_blank"
@@ -228,23 +219,25 @@ export function WinkyGame() {
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
                   </svg>
                 </a>
-                {/* Info icon */}
+                )}
+                {/* Info icon — tap-to-toggle on mobile, hover on desktop */}
                 <div
                   style={{ position: 'relative' }}
-                  onMouseEnter={() => setShowInfo(true)}
-                  onMouseLeave={() => setShowInfo(false)}
+                  onClick={() => isMobile && setShowInfo((prev) => !prev)}
+                  onMouseEnter={() => !isMobile && setShowInfo(true)}
+                  onMouseLeave={() => !isMobile && setShowInfo(false)}
                 >
                   <div
                     style={{
-                      width: '38px',
-                      height: '38px',
+                      width: isMobile ? '32px' : '38px',
+                      height: isMobile ? '32px' : '38px',
                       borderRadius: '50%',
-                      border: '3px solid #D23434',
+                      border: isMobile ? '2px solid #D23434' : '3px solid #D23434',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      fontSize: '18px',
+                      fontSize: isMobile ? '14px' : '18px',
                       fontWeight: 800,
                       fontFamily: "'Manrope', sans-serif",
                       color: '#D23434',
@@ -256,24 +249,26 @@ export function WinkyGame() {
                   {showInfo && (
                     <div
                       style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 12px)',
-                        left: 0,
-                        width: '380px',
-                        padding: '20px',
+                        position: isMobile ? 'fixed' : 'absolute',
+                        top: isMobile ? '50px' : 'calc(100% + 12px)',
+                        right: isMobile ? '8px' : 'auto',
+                        left: isMobile ? '8px' : 0,
+                        width: isMobile ? 'auto' : '380px',
+                        maxWidth: isMobile ? 'calc(100vw - 16px)' : '380px',
+                        padding: isMobile ? '14px' : '20px',
                         background: '#fff',
                         borderRadius: '10px',
                         border: '2px solid rgba(0,0,0,0.08)',
                         boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                         zIndex: 2000,
                         fontFamily: "'Manrope', sans-serif",
-                        fontSize: '14px',
+                        fontSize: isMobile ? '12px' : '14px',
                         fontWeight: 500,
                         color: '#333',
                         lineHeight: 1.6,
                       }}
                     >
-                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#111' }}>
+                      <div style={{ fontWeight: 800, fontSize: isMobile ? '14px' : '16px', marginBottom: '12px', color: '#111' }}>
                         How does Wink work?
                       </div>
                       <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -287,6 +282,7 @@ export function WinkyGame() {
                   )}
                 </div>
                 {/* Generate Image button */}
+                {!isMobile && (
                 <button
                   onClick={async () => {
                     if (isGeneratingImage) return;
@@ -327,10 +323,11 @@ export function WinkyGame() {
                 >
                   {isGeneratingImage ? 'Generating...' : 'Generate Image'}
                 </button>
+                )}
                 {/* Leaderboard button - always opens */}
                 <button
                   onClick={() => setShowLeaderboard(true)}
-                  className="winky-header-btn"
+                  className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = '#D23434';
                     e.currentTarget.style.color = '#fff';
@@ -340,9 +337,10 @@ export function WinkyGame() {
                     e.currentTarget.style.color = '#D23434';
                   }}
                 >
-                  Leaderboard
+                  {isMobile ? 'LB' : 'Leaderboard'}
                 </button>
                 {/* Tweet button */}
+                {!isMobile && (
                 <a
                   href="#"
                   className="winky-header-btn"
@@ -364,9 +362,11 @@ export function WinkyGame() {
                 >
                   Tweeeeeet it
                 </a>
+                )}
                 <button
                   onClick={() => setShowWalletMenu((prev) => !prev)}
                   className="winky-header-btn-wallet"
+                  style={isMobile ? { padding: '6px 12px', fontSize: '12px' } : undefined}
                 >
                   <span
                     style={{
@@ -477,7 +477,7 @@ export function WinkyGame() {
                   }
                 }}
                 disabled={isConnecting}
-                className="winky-header-btn"
+                className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
                 style={{
                   cursor: isConnecting ? 'wait' : 'pointer',
                   opacity: isConnecting ? 0.6 : 1,
@@ -497,17 +497,24 @@ export function WinkyGame() {
           </div>
       </header>
 
-      {/* ─── Body: 75/25 split ─── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* ─── Body: 75/25 horizontal on desktop, stacked on mobile ─── */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+      }}>
 
-      {/* ─── Left 75 %: Camera ─── */}
+      {/* ─── Camera section ─── */}
       <div
         style={{
-          flex: 3,
+          flex: isMobile ? 'none' : 3,
+          height: isMobile ? '55vh' : 'auto',
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
-          padding: '8px 48px 40px',
+          padding: isMobile ? '4px 8px 4px' : '8px 48px 40px',
         }}
       >
         {/* Camera fills remaining space */}
@@ -575,11 +582,11 @@ export function WinkyGame() {
             <div
               style={{
                 position: 'absolute',
-                top: '-4px',
-                right: '20px',
+                top: isMobile ? '4px' : '-4px',
+                right: isMobile ? '8px' : '20px',
                 zIndex: 5,
                 fontFamily: "'Manrope', sans-serif",
-                fontSize: '90px',
+                fontSize: isMobile ? '48px' : '90px',
                 fontWeight: 700,
                 color: '#D23434',
               }}
@@ -596,33 +603,59 @@ export function WinkyGame() {
         )}
       </div>
 
-      {/* ─── Right 25 %: Sign Up + Transaction log ─── */}
+      {/* ─── TX log section ─── */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          padding: '8px 0 40px',
+          padding: isMobile ? '0 0 8px' : '8px 0 40px',
+          minHeight: 0,
         }}
       >
-        {/* Transaction log */}
+        {/* Transaction log — fixed container, no scroll, items fade upward */}
         <div
           style={{
             flex: 1,
-            display: 'flex',
-            flexDirection: 'column-reverse',
-            padding: '0 16px 0',
-            overflowY: 'auto',
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 25%)',
+            position: 'relative',
+            overflow: 'hidden',
+            padding: isMobile ? '0 12px' : '0 16px 0',
           }}
         >
-        {isConnected && txLog.length > 0 ? (
-          txLog.map((tx) => (
-            <TxLogItem key={tx.id} tx={tx} />
-          ))
-        ) : null}
+          {/* Fade-out gradient at top */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: isMobile ? '40%' : '35%',
+              background: 'linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%)',
+              zIndex: 1,
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Items pinned to bottom, overflow hidden (old ones disappear upward) */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: isMobile ? '0 12px' : '0 16px',
+              display: 'flex',
+              flexDirection: 'column-reverse',
+              overflow: 'hidden',
+              height: '100%',
+            }}
+          >
+          {isConnected && txLog.length > 0 ? (
+            txLog.map((tx) => (
+              <TxLogItem key={tx.id} tx={tx} compact={isMobile} />
+            ))
+          ) : null}
+          </div>
         </div>
       </div>
       </div>{/* end body 75/25 */}
@@ -641,7 +674,7 @@ export function WinkyGame() {
 }
 
 // ─── Transaction Log Item ───
-function TxLogItem({ tx }: { tx: BlinkTransaction }) {
+function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: boolean }) {
   const rowColor =
     tx.status === 'success'
       ? '#111111'
@@ -659,18 +692,22 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
       ? 'pending…'
       : '0x0000…0000';
 
+  const titleSize = compact ? '18px' : '36px';
+  const hashSize = compact ? '14px' : '32px';
+  const timeSize = compact ? '14px' : '32px';
+
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'flex-start',
-        gap: '10px',
-        padding: '5px 0',
+        gap: compact ? '6px' : '10px',
+        padding: compact ? '3px 0' : '5px 0',
         color: rowColor,
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '36px', fontWeight: '800' }}>
+        <div style={{ fontSize: titleSize, fontWeight: '800' }}>
           Blink #{tx.blinkNumber}
         </div>
         <div style={{ marginTop: '1px' }}>
@@ -680,7 +717,7 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                fontSize: '32px',
+                fontSize: hashSize,
                 fontWeight: '800',
                 fontFamily: "'Manrope', sans-serif",
                 color: rowColor,
@@ -695,7 +732,7 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
           ) : (
             <span
               style={{
-                fontSize: '32px',
+                fontSize: hashSize,
                 fontWeight: '800',
                 fontFamily: "'Manrope', sans-serif",
                 opacity: 0.6,
@@ -708,7 +745,7 @@ function TxLogItem({ tx }: { tx: BlinkTransaction }) {
       </div>
       <span
         style={{
-          fontSize: '32px',
+          fontSize: timeSize,
           fontWeight: '800',
           opacity: 0.55,
           whiteSpace: 'nowrap',

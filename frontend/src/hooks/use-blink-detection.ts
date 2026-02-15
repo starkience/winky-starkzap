@@ -496,12 +496,15 @@ export function useBlinkDetection(
     }
 
     try {
+      // Use lower resolution on mobile for better MediaPipe performance
+      const isMobileDevice = window.innerWidth <= 768
+        || ('ontouchstart' in window && window.innerWidth <= 1024);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: isMobileDevice ? 480 : 640 },
+          height: { ideal: isMobileDevice ? 360 : 480 },
           facingMode: 'user',
-          frameRate: { ideal: 30 },
+          frameRate: { ideal: isMobileDevice ? 24 : 30 },
         },
       });
 

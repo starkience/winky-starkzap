@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     code_challenge_method: 'S256',
   });
 
-  const authUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+  const authUrl = `https://x.com/i/oauth2/authorize?${params.toString()}`;
 
   // Store code_verifier and CSRF token in cookies for the callback
   const response = NextResponse.redirect(authUrl);
