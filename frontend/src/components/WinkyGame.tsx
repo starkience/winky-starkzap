@@ -589,26 +589,6 @@ export function WinkyGame() {
                   </div>
                 )}
               </div>
-            ) : !isMobile ? (
-              <button
-                onClick={handleConnect}
-                disabled={isConnectBusy || !cartridgeConnector}
-                className="winky-header-btn"
-                style={{
-                  cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
-                  opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#D23434';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#D23434';
-                }}
-              >
-                {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
-              </button>
             ) : null}
           </div>
       </header>
