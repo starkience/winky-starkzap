@@ -166,6 +166,15 @@ export function LeaderboardModal({ userAddress, twitterProfile, onTwitterConnect
               </button>
             ) : null}
             <button
+              className="leaderboard-refresh"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              aria-label="Refresh leaderboard"
+              title="Refresh"
+            >
+              &#x21bb;
+            </button>
+            <button
               className="leaderboard-close"
               onClick={onClose}
               aria-label="Close leaderboard"

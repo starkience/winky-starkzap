@@ -10,7 +10,7 @@
  * Camera feed starts immediately; blurry when wallet is not connected.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount, useDisconnect, useConnect } from '@starknet-react/core';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
@@ -28,8 +28,10 @@ export function WinkyGame() {
   const [error, setError] = useState<string | null>(null);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const [mounted, setMounted] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [persistentBlinks, setPersistentBlinks] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
@@ -74,9 +76,9 @@ export function WinkyGame() {
 
   const handleBlink = useCallback((count: number) => {
     if (isConnected && isContractReady) {
-      recordBlink(count);
+      recordBlink(persistentBlinks + count);
     }
-  }, [isConnected, isContractReady, recordBlink]);
+  }, [isConnected, isContractReady, recordBlink, persistentBlinks]);
 
   const {
     videoRef,
@@ -100,11 +102,23 @@ export function WinkyGame() {
         .then(() => setIsLoading(false))
         .catch((err) => {
           console.error('Failed to start camera:', err);
-          setError('Failed to access camera. Please allow camera permissions.');
+          setError('Enable camera access to be the ultimate Blink-o-nator Terminator');
           setIsLoading(false);
         });
     }
   }, [isDetectorReady, isLoading, startDetection]);
+
+  // Fetch persistent on-chain blink total when wallet connects
+  useEffect(() => {
+    if (isConnected && isContractReady) {
+      getTotalBlinks().then((total) => {
+        if (total > 0) setPersistentBlinks(total);
+      }).catch(() => { /* non-fatal */ });
+    }
+  }, [isConnected, isContractReady, getTotalBlinks]);
+
+  // Total = previous on-chain blinks + current session blinks
+  const totalBlinkCount = persistentBlinks + blinkCount;
 
   return (
     <div style={{
@@ -122,6 +136,7 @@ export function WinkyGame() {
 
       {/* ─── Header ─── */}
       <header
+        ref={headerRef}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -259,30 +274,29 @@ export function WinkyGame() {
                       }}
                     />
                   )}
-                  {showInfo && (
+                  {showInfo && !isMobile && (
                     <div
                       style={{
                         position: 'absolute',
                         top: 'calc(100% + 8px)',
-                        right: isMobile ? '-8px' : 'auto',
-                        left: isMobile ? undefined : 0,
-                        width: isMobile ? 'calc(100vw - 16px)' : '380px',
-                        maxWidth: isMobile ? 'calc(100vw - 16px)' : '380px',
-                        padding: isMobile ? '14px' : '20px',
+                        left: 0,
+                        width: '380px',
+                        maxWidth: '380px',
+                        padding: '20px',
                         background: '#fff',
                         borderRadius: '10px',
                         border: '2px solid rgba(0,0,0,0.08)',
                         boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                         zIndex: 3000,
                         fontFamily: "'Manrope', sans-serif",
-                        fontSize: isMobile ? '12px' : '14px',
+                        fontSize: '14px',
                         fontWeight: 500,
                         color: '#333',
                         lineHeight: 1.6,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: 800, fontSize: isMobile ? '14px' : '16px', marginBottom: '12px', color: '#111' }}>
+                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#111' }}>
                         How does Wink work?
                       </div>
                       <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -475,7 +489,7 @@ export function WinkyGame() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : !isMobile ? (
               <button
                 onClick={() => {
                   const connector = cartridgeConnector || connectors[0];
@@ -491,7 +505,7 @@ export function WinkyGame() {
                   }
                 }}
                 disabled={isConnecting}
-                className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
+                className="winky-header-btn"
                 style={{
                   cursor: isConnecting ? 'wait' : 'pointer',
                   opacity: isConnecting ? 0.6 : 1,
@@ -507,9 +521,44 @@ export function WinkyGame() {
               >
                 {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
               </button>
-            )}
+            ) : null}
           </div>
       </header>
+
+      {/* ─── Mobile info card — overlays content below header ─── */}
+      {showInfo && isMobile && (
+        <div
+          style={{
+            position: 'absolute',
+            top: headerRef.current ? `${headerRef.current.offsetHeight + 4}px` : '80px',
+            left: '8px',
+            right: '8px',
+            zIndex: 3000,
+            padding: '14px',
+            background: '#fff',
+            borderRadius: '10px',
+            border: '2px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: '12px',
+            fontWeight: 500,
+            color: '#333',
+            lineHeight: 1.6,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '12px', color: '#111' }}>
+            How does Wink work?
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <li><strong>Zero gas fees:</strong> we funded a paymaster, so you pay nothing</li>
+            <li><strong>One session, no popups:</strong> you sign once and all blinks go through automatically</li>
+            <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
+            <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
+            <li><strong>Powered by Cartridge Controller,</strong> a smart wallet that handles sessions and gas for you</li>
+          </ul>
+        </div>
+      )}
 
       {/* ─── Body: 75/25 horizontal on desktop, stacked on mobile ─── */}
       <div style={{
@@ -565,29 +614,65 @@ export function WinkyGame() {
             }}
           />
 
-          {/* Steps overlay — shown when camera is running but not connected */}
-          {!isLoading && isRunning && !isConnected && (
+          {/* Steps overlay — shown when not connected */}
+          {!isConnected && (
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: isMobile ? '24px' : '0',
                 zIndex: 3,
               }}
             >
-              <img
-                src="/steps.png"
-                alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
-                style={{
-                  maxWidth: '420px',
-                  width: '70%',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
-                }}
-              />
+              {!isMobile && (
+                <img
+                  src="/steps.png"
+                  alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
+                  style={{
+                    maxWidth: '420px',
+                    width: '70%',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
+                  }}
+                />
+              )}
+              {isMobile && (
+                <button
+                  onClick={() => {
+                    const connector = cartridgeConnector || connectors[0];
+                    if (connector) {
+                      connect({ connector });
+                    } else {
+                      setTimeout(() => {
+                        const c = connectors[0];
+                        if (c) connect({ connector: c });
+                      }, 2000);
+                    }
+                  }}
+                  disabled={isConnecting || !cartridgeConnector}
+                  style={{
+                    padding: '18px 48px',
+                    fontSize: '20px',
+                    fontWeight: 800,
+                    fontFamily: "'Manrope', sans-serif",
+                    background: '#D23434',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: (isConnecting || !cartridgeConnector) ? 'wait' : 'pointer',
+                    opacity: (isConnecting || !cartridgeConnector) ? 0.6 : 1,
+                    letterSpacing: '0.5px',
+                    boxShadow: '0 4px 20px rgba(210, 52, 52, 0.4)',
+                  }}
+                >
+                  {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                </button>
+              )}
             </div>
           )}
 
@@ -605,7 +690,7 @@ export function WinkyGame() {
                 color: '#D23434',
               }}
             >
-              {blinkCount}
+              {totalBlinkCount}
             </div>
           )}
         </div>

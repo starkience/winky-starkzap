@@ -107,11 +107,11 @@ async function fetchBlinkEvents(
     continuationToken = response.continuation_token;
 
     if (continuationToken) {
-      onProgress(`Scanning chain... ${totalEvents.toLocaleString()} events found`);
+      onProgress(`Scanning for all the Winker Dinkers... ${totalEvents.toLocaleString()} found`);
     }
   } while (continuationToken);
 
-  onProgress(`Processing ${totalEvents.toLocaleString()} events...`);
+  onProgress(`Ranking ${totalEvents.toLocaleString()} Winker Dinkers...`);
   return userBlinks;
 }
 
@@ -150,7 +150,7 @@ export function useLeaderboard(userAddress?: string): UseLeaderboardResult {
   const fetchLeaderboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setLoadingStatus('Connecting to Starknet...');
+    setLoadingStatus('Scanning for all the Winker Dinkers...');
 
     // Check cache first
     const now = Date.now();
@@ -169,10 +169,10 @@ export function useLeaderboard(userAddress?: string): UseLeaderboardResult {
     try {
       const provider = providerRef.current!;
 
-      setLoadingStatus('Fetching on-chain blink events...');
+      setLoadingStatus('Scanning for all the Winker Dinkers...');
       const userBlinks = await fetchBlinkEvents(provider, setLoadingStatus);
 
-      setLoadingStatus('Building leaderboard...');
+      setLoadingStatus('Ranking the Winker Dinkers...');
       const data = buildLeaderboard(userBlinks);
 
       cachedLeaderboard = data;
@@ -200,12 +200,18 @@ export function useLeaderboard(userAddress?: string): UseLeaderboardResult {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
+  const forceRefetch = useCallback(() => {
+    cachedLeaderboard = null;
+    cacheTimestamp = 0;
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
   return {
     leaderboard,
     isLoading,
     loadingStatus,
     error,
     userRank,
-    refetch: fetchLeaderboard,
+    refetch: forceRefetch,
   };
 }
