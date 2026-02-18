@@ -18,12 +18,12 @@ import { useTwitterAuth } from '@/hooks/use-twitter-auth';
 import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
 import { generateBlinkCard } from '@/lib/generate-blink-card';
 import { LeaderboardModal } from '@/components/Leaderboard';
-import { useLiveFeed, LiveBlinkEvent } from '@/hooks/use-live-feed';
+import { useLiveFeed, LiveBlinkEvent, TopBlinker } from '@/hooks/use-live-feed';
 
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
+  const { connect, connectors, isPending: isConnecting, status: connectStatus } = useConnect();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +80,6 @@ export function WinkyGame() {
     if (!connector) return;
     setConnectClicked(true);
     connect({ connector });
-    // Reset after 10s in case connect silently fails
-    setTimeout(() => setConnectClicked(false), 10000);
   }, [isConnectBusy, cartridgeConnector, connectors, connect]);
 
   const {
@@ -134,10 +132,20 @@ export function WinkyGame() {
     }
   }, [isConnected, isContractReady, getTotalBlinks]);
 
-  // Reset connect guard when wallet actually connects
+  // Reset connect guard when wallet connects, or connect fails/is canceled
   useEffect(() => {
     if (isConnected) setConnectClicked(false);
   }, [isConnected]);
+
+  const prevConnectStatusRef = useRef(connectStatus);
+  useEffect(() => {
+    const prev = prevConnectStatusRef.current;
+    prevConnectStatusRef.current = connectStatus;
+    // Reset guard when transitioning from pending back to idle (canceled) or error
+    if (connectClicked && prev === 'pending' && (connectStatus === 'idle' || connectStatus === 'error')) {
+      setConnectClicked(false);
+    }
+  }, [connectStatus, connectClicked]);
 
   // Live global blink feed
   const liveFeed = useLiveFeed();
@@ -750,6 +758,44 @@ export function WinkyGame() {
               }}
             >
               {totalBlinkCount}
+            </div>
+          )}
+
+          {/* Fastest blinker — top-left of camera */}
+          {isConnected && liveFeed.topBlinker && liveFeed.topBlinker.rpm >= 2 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: isMobile ? '6px' : '8px',
+                left: isMobile ? '8px' : '20px',
+                zIndex: 5,
+                maxWidth: isMobile ? '60%' : '50%',
+                fontFamily: "'Manrope', sans-serif",
+                fontSize: isMobile ? '10px' : '13px',
+                fontWeight: 800,
+                lineHeight: 1.3,
+                animation: 'rainbow 0.5s linear infinite',
+                textShadow: '0 0 8px rgba(255,255,255,0.4)',
+              }}
+            >
+              Fastest blinker:{' '}
+              {liveFeed.topBlinker.displayName.startsWith('@') ? (
+                <a
+                  href={`https://x.com/${liveFeed.topBlinker.displayName.slice(1)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'inherit',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                  }}
+                >
+                  {liveFeed.topBlinker.displayName}
+                </a>
+              ) : (
+                liveFeed.topBlinker.displayName
+              )}{' '}
+              at {liveFeed.topBlinker.rpm} bpm
             </div>
           )}
 

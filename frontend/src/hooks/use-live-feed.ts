@@ -6,6 +6,7 @@
  * Real-time: subscribes to Pusher WebSocket channel for instant updates.
  * Initial load: fetches recent on-chain events from /api/recent-blinks.
  * Twitter resolution: resolves usernames via /api/twitter-profiles.
+ * RPM tracking: computes blinks-per-minute over a sliding 60s window.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -20,7 +21,14 @@ export interface LiveBlinkEvent {
   twitterUsername?: string;
 }
 
+export interface TopBlinker {
+  address: string;
+  displayName: string;
+  rpm: number;
+}
+
 const MAX_EVENTS = 20;
+const RPM_WINDOW_MS = 60_000; // 60-second sliding window
 
 const PUSHER_KEY = process.env.NEXT_PUBLIC_PUSHER_KEY || '';
 const PUSHER_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';
@@ -33,8 +41,59 @@ function normalizeAddress(addr: string): string {
 export function useLiveFeed() {
   const [events, setEvents] = useState<LiveBlinkEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [topBlinker, setTopBlinker] = useState<TopBlinker | null>(null);
   const twitterCacheRef = useRef<Record<string, string | null>>({});
   const pusherRef = useRef<Pusher | null>(null);
+
+  // Track blink timestamps per user for RPM calculation
+  const blinkTimestampsRef = useRef<Record<string, number[]>>({});
+
+  /** Compute the top blinker by RPM across all tracked users. */
+  const computeTopBlinker = useCallback(() => {
+    const now = Date.now();
+    const cutoff = now - RPM_WINDOW_MS;
+    let bestAddr = '';
+    let bestRpm = 0;
+
+    for (const [addr, timestamps] of Object.entries(blinkTimestampsRef.current)) {
+      // Prune old timestamps
+      const recent = timestamps.filter((t) => t > cutoff);
+      blinkTimestampsRef.current[addr] = recent;
+
+      if (recent.length > bestRpm) {
+        bestRpm = recent.length;
+        bestAddr = addr;
+      }
+    }
+
+    if (bestRpm >= 1 && bestAddr) {
+      const norm = normalizeAddress(bestAddr);
+      const username = twitterCacheRef.current[norm];
+      const displayName = username
+        ? `@${username}`
+        : `${bestAddr.slice(0, 6)}...${bestAddr.slice(-4)}`;
+
+      setTopBlinker({ address: bestAddr, displayName, rpm: bestRpm });
+    } else {
+      setTopBlinker(null);
+    }
+  }, []);
+
+  /** Record a blink event for RPM tracking. */
+  const recordForRpm = useCallback((address: string, timestamp: number) => {
+    const norm = normalizeAddress(address);
+    if (!blinkTimestampsRef.current[norm]) {
+      blinkTimestampsRef.current[norm] = [];
+    }
+    blinkTimestampsRef.current[norm].push(timestamp);
+    computeTopBlinker();
+  }, [computeTopBlinker]);
+
+  // Periodically recompute top blinker to prune stale entries
+  useEffect(() => {
+    const interval = setInterval(computeTopBlinker, 3_000);
+    return () => clearInterval(interval);
+  }, [computeTopBlinker]);
 
   /** Resolve Twitter usernames for a batch of addresses. */
   const resolveTwitterUsernames = useCallback(async (addresses: string[]) => {
@@ -84,13 +143,22 @@ export function useLiveFeed() {
         twitterUsername: twitterCacheRef.current[normalizeAddress(e.address)] ?? undefined,
       }));
 
+      // Seed RPM tracking with recent events
+      const now = Date.now();
+      const cutoff = now - RPM_WINDOW_MS;
+      for (const ev of initial) {
+        if (ev.timestamp > cutoff) {
+          recordForRpm(ev.address, ev.timestamp);
+        }
+      }
+
       setEvents(initial.slice(0, MAX_EVENTS));
       setIsLoading(false);
     } catch (err) {
       console.error('[useLiveFeed] initial fetch error:', err);
       setIsLoading(false);
     }
-  }, [resolveTwitterUsernames]);
+  }, [resolveTwitterUsernames, recordForRpm]);
 
   useEffect(() => {
     // Load initial events from on-chain data
@@ -129,6 +197,9 @@ export function useLiveFeed() {
         twitterUsername,
       };
 
+      // Track for RPM
+      recordForRpm(newEvent.address, newEvent.timestamp);
+
       setEvents((prev) => {
         // Deduplicate by txHash
         const filtered = prev.filter((e) => e.id !== newEvent.id);
@@ -142,7 +213,7 @@ export function useLiveFeed() {
       pusher.disconnect();
       pusherRef.current = null;
     };
-  }, [fetchInitial, resolveTwitterUsernames]);
+  }, [fetchInitial, resolveTwitterUsernames, recordForRpm]);
 
-  return { events, isLoading };
+  return { events, isLoading, topBlinker };
 }

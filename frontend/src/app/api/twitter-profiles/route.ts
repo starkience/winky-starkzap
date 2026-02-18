@@ -105,8 +105,8 @@ export async function POST(request: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('[twitter-profiles] Edge Config upsert failed:', errText);
-      return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 });
+      console.error('[twitter-profiles] Edge Config upsert failed:', res.status, errText);
+      return NextResponse.json({ error: 'Failed to save profile', detail: errText }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
