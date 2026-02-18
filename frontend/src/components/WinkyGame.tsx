@@ -23,7 +23,7 @@ import { useLiveFeed, LiveBlinkEvent, TopBlinker } from '@/hooks/use-live-feed';
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { connect, connectors, isPending: isConnecting, status: connectStatus } = useConnect();
+  const { connect, connectAsync, connectors, isPending: isConnecting, status: connectStatus } = useConnect();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,8 +79,11 @@ export function WinkyGame() {
     const connector = cartridgeConnector || connectors[0];
     if (!connector) return;
     setConnectClicked(true);
-    connect({ connector });
-  }, [isConnectBusy, cartridgeConnector, connectors, connect]);
+    connectAsync({ connector }).catch(() => {
+      // Reset immediately if connect fails (e.g. "Not ready to connect")
+      setConnectClicked(false);
+    });
+  }, [isConnectBusy, cartridgeConnector, connectors, connectAsync]);
 
   const {
     recordBlink,
@@ -91,9 +94,9 @@ export function WinkyGame() {
 
   const handleBlink = useCallback((count: number) => {
     if (isConnected && isContractReady) {
-      recordBlink(persistentBlinks + count);
+      recordBlink(persistentBlinks + count, twitter.profile?.username);
     }
-  }, [isConnected, isContractReady, recordBlink, persistentBlinks]);
+  }, [isConnected, isContractReady, recordBlink, persistentBlinks, twitter.profile?.username]);
 
   const {
     videoRef,
@@ -771,14 +774,15 @@ export function WinkyGame() {
                 zIndex: 5,
                 maxWidth: isMobile ? '60%' : '50%',
                 fontFamily: "'Manrope', sans-serif",
-                fontSize: isMobile ? '10px' : '13px',
+                fontSize: isMobile ? '20px' : '66px',
                 fontWeight: 800,
-                lineHeight: 1.3,
+                lineHeight: 1.2,
                 animation: 'rainbow 0.5s linear infinite',
                 textShadow: '0 0 8px rgba(255,255,255,0.4)',
               }}
             >
-              Fastest blinker:{' '}
+              Fastest blinker:
+              <br />
               {liveFeed.topBlinker.displayName.startsWith('@') ? (
                 <a
                   href={`https://x.com/${liveFeed.topBlinker.displayName.slice(1)}`}
@@ -786,9 +790,10 @@ export function WinkyGame() {
                   rel="noopener noreferrer"
                   style={{
                     color: 'inherit',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
+                    textDecoration: 'none',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
                   {liveFeed.topBlinker.displayName}
                 </a>
@@ -1095,8 +1100,9 @@ function getTimeAgo(timestamp: number): string {
 
 // ─── Live Feed Ticker ───
 function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobile: boolean }) {
+  const maxVisible = isMobile ? 5 : 10;
   // Show the most recent events — newest at the bottom, oldest at the top (scrolls up)
-  const visible = events.slice(0, isMobile ? 3 : 5).reverse();
+  const visible = events.slice(0, maxVisible).reverse();
 
   return (
     <div
@@ -1107,12 +1113,14 @@ function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobi
         pointerEvents: 'auto',
       }}
     >
-      {visible.map((ev) => {
+      {visible.map((ev, idx) => {
         const displayName = ev.twitterUsername
           ? `@${ev.twitterUsername}`
           : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`;
         const txShort = `${ev.txHash.slice(0, 6)}...${ev.txHash.slice(-4)}`;
         const ago = getTimeAgo(ev.timestamp);
+        // Fade out the topmost (oldest) item when we have a full list
+        const isTopFading = idx === 0 && visible.length >= maxVisible;
 
         return (
           <div
@@ -1126,6 +1134,8 @@ function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobi
               fontWeight: 600,
               color: 'rgba(255,255,255,0.9)',
               lineHeight: 1.3,
+              opacity: isTopFading ? 0.3 : 1,
+              transition: 'opacity 0.5s ease-out',
             }}
           >
             <span style={{ color: '#D23434', fontSize: isMobile ? '6px' : '8px' }}>&#9679;</span>
@@ -1144,7 +1154,7 @@ function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobi
             >
               {txShort}
             </a>
-            <span style={{ opacity: 0.5, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{ago}</span>
+            <span style={{ opacity: 0.5, whiteSpace: 'nowrap' }}>{ago}</span>
           </div>
         );
       })}

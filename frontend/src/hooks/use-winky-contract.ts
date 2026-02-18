@@ -48,7 +48,7 @@ export function useWinkyContract() {
   }, []);
 
   // Record a blink on-chain using account.execute() directly
-  const recordBlink = useCallback(async (blinkNumber: number): Promise<BlinkTransaction> => {
+  const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
 
     if (!isConnected || !account) {
@@ -125,6 +125,7 @@ export function useWinkyContract() {
           address: account.address,
           txHash,
           userTotal: blinkNumber,
+          twitterUsername: twitterUsername || undefined,
         }),
       }).catch(() => { /* non-fatal */ });
 

@@ -178,13 +178,18 @@ export function useLiveFeed() {
     const channel = pusher.subscribe('blinks');
 
     channel.bind('new-blink', async (data: any) => {
-      // Resolve Twitter username if not provided
-      let twitterUsername = data.twitterUsername;
-      if (!twitterUsername && data.address) {
-        const norm = normalizeAddress(data.address);
-        if (twitterCacheRef.current[norm] === undefined) {
-          await resolveTwitterUsernames([data.address]);
-        }
+      // Use Twitter username from the event if provided, otherwise try to resolve
+      let twitterUsername = data.twitterUsername || undefined;
+      const norm = normalizeAddress(data.address);
+
+      if (twitterUsername) {
+        // Cache the username so RPM notification and future events use it
+        twitterCacheRef.current[norm] = twitterUsername;
+      } else if (twitterCacheRef.current[norm] === undefined) {
+        // Try to resolve from server
+        await resolveTwitterUsernames([data.address]);
+        twitterUsername = twitterCacheRef.current[norm] ?? undefined;
+      } else {
         twitterUsername = twitterCacheRef.current[norm] ?? undefined;
       }
 
