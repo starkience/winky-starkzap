@@ -79,10 +79,17 @@ export function WinkyGame() {
     const connector = cartridgeConnector || connectors[0];
     if (!connector) return;
     setConnectClicked(true);
-    connectAsync({ connector }).catch(() => {
-      // Reset immediately if connect fails (e.g. "Not ready to connect")
-      setConnectClicked(false);
-    });
+
+    const tryConnect = (attempts: number) => {
+      connectAsync({ connector }).catch(() => {
+        if (attempts > 0) {
+          setTimeout(() => tryConnect(attempts - 1), 1500);
+        } else {
+          setConnectClicked(false);
+        }
+      });
+    };
+    tryConnect(5);
   }, [isConnectBusy, cartridgeConnector, connectors, connectAsync]);
 
   const {
