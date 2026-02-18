@@ -117,6 +117,17 @@ export function useWinkyContract() {
       isProcessingRef.current = false;
       setIsProcessing(false);
 
+      // Broadcast to live feed via Pusher (fire-and-forget)
+      fetch('/api/blink-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: account.address,
+          txHash,
+          userTotal: blinkNumber,
+        }),
+      }).catch(() => { /* non-fatal */ });
+
       return { ...pendingTx, status: 'success', hash: txHash };
     } catch (err: any) {
       const errorMsg = err.message || 'Transaction failed';

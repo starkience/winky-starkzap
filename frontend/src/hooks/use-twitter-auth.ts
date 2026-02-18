@@ -101,19 +101,35 @@ export function useTwitterAuth(walletAddress?: string) {
     }
 
     // Helper: sync profile to server so other users see it in the leaderboard
-    const syncToServer = (p: TwitterProfile) => {
+    const syncToServer = (p: TwitterProfile, retries = 2) => {
       const addr = p.wallet || walletAddress;
-      if (!addr) return;
-      fetch('/api/twitter-profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: addr,
-          username: p.username,
-          name: p.name,
-          profileImageUrl: p.profileImageUrl,
-        }),
-      }).catch(() => { /* non-fatal */ });
+      if (!addr) {
+        console.warn('[TwitterAuth] syncToServer: no address available, skipping');
+        return;
+      }
+      const doSync = (attempt: number) => {
+        fetch('/api/twitter-profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: addr,
+            username: p.username,
+            name: p.name,
+            profileImageUrl: p.profileImageUrl,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            console.log(`[TwitterAuth] synced @${p.username} for ${addr} to server`);
+          })
+          .catch((err) => {
+            console.warn(`[TwitterAuth] syncToServer attempt ${attempt} failed:`, err);
+            if (attempt < retries) {
+              setTimeout(() => doSync(attempt + 1), 2000 * attempt);
+            }
+          });
+      };
+      doSync(1);
     };
 
     // 1. Check if we just came back from OAuth (cookie set by callback)

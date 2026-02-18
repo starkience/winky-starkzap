@@ -1065,19 +1065,19 @@ body {
   }
 
   .leaderboard-columns {
-    grid-template-columns: 40px 40px 1fr 1fr;
+    grid-template-columns: 40px 40px 1fr 1fr 90px;
     padding: 10px 12px;
     font-size: 9px;
   }
 
   .leaderboard-row {
-    grid-template-columns: 40px 40px 1fr 1fr;
+    grid-template-columns: 40px 40px 1fr 1fr 90px;
     padding: 10px 12px;
   }
 
-  .leaderboard-col-action,
-  .leaderboard-cell-action {
-    display: none;
+  .leaderboard-generate-btn {
+    padding: 4px 8px;
+    font-size: 10px;
   }
 
   .leaderboard-header {

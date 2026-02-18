@@ -124,8 +124,9 @@ function drawEyeTracking(
     ctx.fillRect(0, 0, width, height);
   }
 
+  // Flip x so landmarks match the CSS-mirrored video (canvas is NOT CSS-mirrored)
   const toPixel = (lm: { x: number; y: number }) => ({
-    x: lm.x * width,
+    x: (1 - lm.x) * width,
     y: lm.y * height,
   });
 

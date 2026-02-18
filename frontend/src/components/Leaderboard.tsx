@@ -102,10 +102,29 @@ export function LeaderboardModal({ userAddress, twitterProfile, onTwitterConnect
       .then((data) => {
         if (data.profiles) {
           setAllTwitterProfiles(data.profiles);
+
+          // Safety net: if the current user has a Twitter profile client-side
+          // but it's not on the server, sync it now
+          if (twitterProfile && userAddress) {
+            const norm = normalizeAddress(userAddress);
+            if (!data.profiles[norm]) {
+              console.log('[Leaderboard] Current user profile missing from server, syncing...');
+              fetch('/api/twitter-profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  address: userAddress,
+                  username: twitterProfile.username,
+                  name: twitterProfile.name,
+                  profileImageUrl: twitterProfile.profileImageUrl,
+                }),
+              }).catch(() => { /* non-fatal */ });
+            }
+          }
         }
       })
       .catch((err) => console.error('[Leaderboard] Failed to fetch Twitter profiles:', err));
-  }, [isLoading, leaderboard]);
+  }, [isLoading, leaderboard, twitterProfile, userAddress]);
 
   // Elapsed timer while loading
   const [elapsed, setElapsed] = useState(0);

@@ -18,6 +18,7 @@ import { useTwitterAuth } from '@/hooks/use-twitter-auth';
 import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
 import { generateBlinkCard } from '@/lib/generate-blink-card';
 import { LeaderboardModal } from '@/components/Leaderboard';
+import { useLiveFeed, LiveBlinkEvent } from '@/hooks/use-live-feed';
 
 export function WinkyGame() {
   const { address, isConnected } = useAccount();
@@ -34,6 +35,11 @@ export function WinkyGame() {
   const [persistentBlinks, setPersistentBlinks] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showMilestone, setShowMilestone] = useState(false);
+  const [connectClicked, setConnectClicked] = useState(false);
+  const milestoneShownRef = useRef(
+    typeof window !== 'undefined' && localStorage.getItem('winky_milestone_100') === '1'
+  );
 
   // Twitter auth - optional, enhances leaderboard with user's position
   const twitter = useTwitterAuth(address);
@@ -66,6 +72,17 @@ export function WinkyGame() {
   }, []);
 
   const cartridgeConnector = connectors[0] ?? undefined;
+  const isConnectBusy = isConnecting || connectClicked;
+
+  const handleConnect = useCallback(() => {
+    if (isConnectBusy) return;
+    const connector = cartridgeConnector || connectors[0];
+    if (!connector) return;
+    setConnectClicked(true);
+    connect({ connector });
+    // Reset after 10s in case connect silently fails
+    setTimeout(() => setConnectClicked(false), 10000);
+  }, [isConnectBusy, cartridgeConnector, connectors, connect]);
 
   const {
     recordBlink,
@@ -117,8 +134,31 @@ export function WinkyGame() {
     }
   }, [isConnected, isContractReady, getTotalBlinks]);
 
+  // Reset connect guard when wallet actually connects
+  useEffect(() => {
+    if (isConnected) setConnectClicked(false);
+  }, [isConnected]);
+
+  // Live global blink feed
+  const liveFeed = useLiveFeed();
+
   // Total = previous on-chain blinks + current session blinks
   const totalBlinkCount = persistentBlinks + blinkCount;
+
+  // Milestone popup at 100 blinks — only fires once ever (persisted in localStorage).
+  // Only triggers when the count crosses 100 during this session, not if the user
+  // already had 100+ persistent blinks when they loaded the page.
+  useEffect(() => {
+    if (
+      totalBlinkCount >= 100 &&
+      persistentBlinks < 100 &&
+      !milestoneShownRef.current
+    ) {
+      milestoneShownRef.current = true;
+      localStorage.setItem('winky_milestone_100', '1');
+      setShowMilestone(true);
+    }
+  }, [totalBlinkCount, persistentBlinks]);
 
   return (
     <div style={{
@@ -367,6 +407,48 @@ export function WinkyGame() {
                 >
                   {isMobile ? 'LB' : 'Leaderboard'}
                 </button>
+                {/* Get Image button on mobile */}
+                {isMobile && (
+                  <button
+                    onClick={async () => {
+                      if (isGeneratingImage) return;
+                      setIsGeneratingImage(true);
+                      try {
+                        const totalBlinks = await getTotalBlinks();
+                        const count = totalBlinks > 0 ? totalBlinks : blinkCount;
+                        const blob = await generateBlinkCard(count);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `winky-${count}-blinks.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error('[WinkyGame] Failed to generate blink card:', err);
+                      } finally {
+                        setIsGeneratingImage(false);
+                      }
+                    }}
+                    disabled={isGeneratingImage}
+                    className="winky-header-btn winky-header-btn--mobile"
+                    style={{
+                      cursor: isGeneratingImage ? 'wait' : 'pointer',
+                      opacity: isGeneratingImage ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isGeneratingImage) {
+                        e.currentTarget.style.background = '#D23434';
+                        e.currentTarget.style.color = '#fff';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#D23434';
+                    }}
+                  >
+                    {isGeneratingImage ? '...' : 'Get image'}
+                  </button>
+                )}
                 {/* Tweet button */}
                 {!isMobile && (
                 <a
@@ -376,7 +458,7 @@ export function WinkyGame() {
                     e.preventDefault();
                     const totalBlinks = await getTotalBlinks();
                     const count = totalBlinks > 0 ? totalBlinks : blinkCount;
-                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
+                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless transactions. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
                     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   onMouseEnter={(e) => {
@@ -491,24 +573,12 @@ export function WinkyGame() {
               </div>
             ) : !isMobile ? (
               <button
-                onClick={() => {
-                  const connector = cartridgeConnector || connectors[0];
-                  if (connector) {
-                    connect({ connector });
-                  } else {
-                    console.warn('[WinkyGame] Connector not ready, will retry in 2s...');
-                    setTimeout(() => {
-                      const c = connectors[0];
-                      if (c) connect({ connector: c });
-                      else console.error('[WinkyGame] Connector still not ready');
-                    }, 2000);
-                  }
-                }}
-                disabled={isConnecting}
+                onClick={handleConnect}
+                disabled={isConnectBusy || !cartridgeConnector}
                 className="winky-header-btn"
                 style={{
-                  cursor: isConnecting ? 'wait' : 'pointer',
-                  opacity: isConnecting ? 0.6 : 1,
+                  cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
+                  opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#D23434';
@@ -519,7 +589,7 @@ export function WinkyGame() {
                   e.currentTarget.style.color = '#D23434';
                 }}
               >
-                {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
               </button>
             ) : null}
           </div>
@@ -607,7 +677,6 @@ export function WinkyGame() {
               width: '100%',
               height: '100%',
               pointerEvents: 'none',
-              transform: 'scaleX(-1)',
               zIndex: 2,
               opacity: !isConnected ? 0 : 1,
               transition: 'opacity 0.4s ease',
@@ -643,18 +712,8 @@ export function WinkyGame() {
               )}
               {isMobile && (
                 <button
-                  onClick={() => {
-                    const connector = cartridgeConnector || connectors[0];
-                    if (connector) {
-                      connect({ connector });
-                    } else {
-                      setTimeout(() => {
-                        const c = connectors[0];
-                        if (c) connect({ connector: c });
-                      }, 2000);
-                    }
-                  }}
-                  disabled={isConnecting || !cartridgeConnector}
+                  onClick={handleConnect}
+                  disabled={isConnectBusy || !cartridgeConnector}
                   style={{
                     padding: '18px 48px',
                     fontSize: '20px',
@@ -664,13 +723,13 @@ export function WinkyGame() {
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: (isConnecting || !cartridgeConnector) ? 'wait' : 'pointer',
-                    opacity: (isConnecting || !cartridgeConnector) ? 0.6 : 1,
+                    cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
+                    opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
                     letterSpacing: '0.5px',
                     boxShadow: '0 4px 20px rgba(210, 52, 52, 0.4)',
                   }}
                 >
-                  {isConnecting ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                  {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
                 </button>
               )}
             </div>
@@ -691,6 +750,26 @@ export function WinkyGame() {
               }}
             >
               {totalBlinkCount}
+            </div>
+          )}
+
+          {/* Live global blink feed ticker — only when signed in */}
+          {isConnected && liveFeed.events.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 4,
+                overflow: 'hidden',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)',
+                padding: isMobile ? '16px 10px 10px' : '20px 20px 14px',
+                borderRadius: isMobile ? '0 0 12px 12px' : '0 0 20px 20px',
+                pointerEvents: 'none',
+              }}
+            >
+              <LiveFeedTicker events={liveFeed.events} isMobile={isMobile} />
             </div>
           )}
         </div>
@@ -758,6 +837,106 @@ export function WinkyGame() {
         </div>
       </div>
       </div>{/* end body 75/25 */}
+
+      {/* Milestone Popup — 100 blinks */}
+      {showMilestone && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(6px)',
+          }}
+          onClick={() => setShowMilestone(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '20px',
+              padding: isMobile ? '32px 24px' : '48px 56px',
+              maxWidth: '440px',
+              width: '90vw',
+              textAlign: 'center',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+              fontFamily: "'Manrope', sans-serif",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: '56px', marginBottom: '12px' }}>
+              👁️
+            </div>
+            <h2 style={{
+              fontSize: isMobile ? '22px' : '28px',
+              fontWeight: 900,
+              color: '#111',
+              margin: '0 0 8px',
+            }}>
+              100 Blinks!
+            </h2>
+            <p style={{
+              fontSize: isMobile ? '14px' : '16px',
+              color: '#555',
+              margin: '0 0 28px',
+              lineHeight: 1.5,
+            }}>
+              You just hit <strong>100 onchain blinks</strong> on Starknet. Tell the world you're in the Blink-ster crew.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  const text = `I just hit 100 blinks on Starknet! Each blink is a real transaction. Powered by Session Keys and Gasless transactions. All onchain.\n\nCan you out-blink me? 👁️\nhttps://wink-on-starknet.com/`;
+                  window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                  setShowMilestone(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  padding: '14px 32px',
+                  fontSize: '16px',
+                  fontWeight: 800,
+                  fontFamily: "'Manrope', sans-serif",
+                  background: '#000',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  maxWidth: '280px',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Share on X
+              </button>
+              <button
+                onClick={() => setShowMilestone(false)}
+                style={{
+                  padding: '10px 24px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  fontFamily: "'Manrope', sans-serif",
+                  background: 'transparent',
+                  color: '#888',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Keep blinking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leaderboard Modal */}
       {showLeaderboard && (
@@ -866,4 +1045,63 @@ function getTimeAgo(timestamp: number): string {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+}
+
+// ─── Live Feed Ticker ───
+function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobile: boolean }) {
+  // Show the most recent events — newest at the bottom, oldest at the top (scrolls up)
+  const visible = events.slice(0, isMobile ? 3 : 5).reverse();
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? '2px' : '3px',
+        pointerEvents: 'auto',
+      }}
+    >
+      {visible.map((ev) => {
+        const displayName = ev.twitterUsername
+          ? `@${ev.twitterUsername}`
+          : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`;
+        const txShort = `${ev.txHash.slice(0, 6)}...${ev.txHash.slice(-4)}`;
+        const ago = getTimeAgo(ev.timestamp);
+
+        return (
+          <div
+            key={ev.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isMobile ? '6px' : '8px',
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: isMobile ? '10px' : '13px',
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.9)',
+              lineHeight: 1.3,
+            }}
+          >
+            <span style={{ color: '#D23434', fontSize: isMobile ? '6px' : '8px' }}>&#9679;</span>
+            <span style={{ fontWeight: 800 }}>{displayName}</span>
+            <span style={{ opacity: 0.7 }}>blinked</span>
+            <a
+              href={`https://voyager.online/tx/${ev.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'rgba(255,255,255,0.6)',
+                textDecoration: 'none',
+                fontFamily: "'SF Mono', Monaco, monospace",
+                fontSize: isMobile ? '9px' : '11px',
+              }}
+            >
+              {txShort}
+            </a>
+            <span style={{ opacity: 0.5, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{ago}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
