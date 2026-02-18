@@ -716,17 +716,49 @@ export function WinkyGame() {
               }}
             >
               {!isMobile && (
-                <img
-                  src="/steps.png"
-                  alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
-                  style={{
-                    maxWidth: '420px',
-                    width: '70%',
-                    height: 'auto',
-                    objectFit: 'contain',
-                    filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
-                  }}
-                />
+                <>
+                  <img
+                    src="/steps.png"
+                    alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
+                    style={{
+                      maxWidth: '420px',
+                      width: '70%',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
+                    }}
+                  />
+                  <button
+                    onClick={handleConnect}
+                    disabled={isConnectBusy || !cartridgeConnector}
+                    style={{
+                      marginTop: '32px',
+                      padding: '18px 64px',
+                      fontSize: '22px',
+                      fontWeight: 800,
+                      fontFamily: "'Manrope', sans-serif",
+                      background: '#D23434',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
+                      opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
+                      letterSpacing: '0.5px',
+                      boxShadow: '0 4px 24px rgba(210, 52, 52, 0.5)',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 6px 32px rgba(210, 52, 52, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 24px rgba(210, 52, 52, 0.5)';
+                    }}
+                  >
+                    {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                  </button>
+                </>
               )}
               {isMobile && (
                 <button
