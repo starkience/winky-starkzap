@@ -17,7 +17,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { WINKY_CONTRACT_ADDRESS, CARTRIDGE_RPC_URL, NETWORK } from '@/lib/constants';
+import { WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
+
+const LEADERBOARD_RPC_URLS: Record<string, string> = {
+  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
+  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
+  devnet: 'http://localhost:5050',
+};
+const LEADERBOARD_RPC_URL = LEADERBOARD_RPC_URLS[NETWORK] || LEADERBOARD_RPC_URLS.sepolia;
 
 export interface LeaderboardEntry {
   address: string;
@@ -144,7 +151,7 @@ export function useLeaderboard(userAddress?: string): UseLeaderboardResult {
   const providerRef = useRef<RpcProvider | null>(null);
 
   if (!providerRef.current) {
-    providerRef.current = new RpcProvider({ nodeUrl: CARTRIDGE_RPC_URL });
+    providerRef.current = new RpcProvider({ nodeUrl: LEADERBOARD_RPC_URL });
   }
 
   const fetchLeaderboard = useCallback(async () => {

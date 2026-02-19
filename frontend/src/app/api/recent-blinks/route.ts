@@ -19,9 +19,9 @@ export const dynamic = 'force-dynamic';
 
 const NETWORK = (process.env.NEXT_PUBLIC_NETWORK || 'sepolia') as 'mainnet' | 'sepolia' | 'devnet';
 
-const CARTRIDGE_RPC_URLS: Record<string, string> = {
-  mainnet: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9',
-  sepolia: 'https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_9',
+const RPC_URLS_MAP: Record<string, string> = {
+  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
+  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
   devnet: 'http://localhost:5050',
 };
 
@@ -35,7 +35,7 @@ const CONTRACT_ADDRESS = (
   process.env.NEXT_PUBLIC_WINKY_CONTRACT_ADDRESS || WINKY_CONTRACT_ADDRESSES[NETWORK] || WINKY_CONTRACT_ADDRESSES['sepolia']
 ).trim();
 
-const RPC_URL = CARTRIDGE_RPC_URLS[NETWORK] || CARTRIDGE_RPC_URLS['sepolia'];
+const RPC_URL = RPC_URLS_MAP[NETWORK] || RPC_URLS_MAP['sepolia'];
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
 
 // In-memory cache (per serverless instance)

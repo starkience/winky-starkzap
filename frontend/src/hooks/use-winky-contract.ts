@@ -1,17 +1,15 @@
 'use client';
 
 /**
- * Hook to interact with the WinkyBlink contract
- * 1 blink = 1 transaction via Cartridge Controller (auto-approved by session policies)
+ * Hook to interact with the WinkyBlink contract via the backend API.
  *
- * Uses account.execute() directly instead of useSendTransaction,
- * which hangs with the Cartridge Controller connector.
+ * 1 blink = 1 transaction via Privy + AVNU paymaster (auto-signed, zero gas).
+ * The backend handles signing via Privy Wallet API and paymaster submission.
  */
 
 import { useCallback, useState, useRef } from 'react';
-import { useAccount, useProvider } from '@starknet-react/core';
-import { hash } from 'starknet';
-import { WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
+import { RpcProvider, hash } from 'starknet';
+import { API_URL, WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
 
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
 const EVENT_START_BLOCK: Record<string, number> = {
@@ -20,7 +18,15 @@ const EVENT_START_BLOCK: Record<string, number> = {
   devnet: 0,
 };
 
-// No limit on transaction log entries
+const RPC_URLS: Record<string, string> = {
+  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
+  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
+  devnet: 'http://localhost:5050',
+};
+
+function getReadProvider(): RpcProvider {
+  return new RpcProvider({ nodeUrl: RPC_URLS[NETWORK] || RPC_URLS.sepolia });
+}
 
 export interface BlinkTransaction {
   id: string;
@@ -31,40 +37,41 @@ export interface BlinkTransaction {
   timestamp: number;
 }
 
-export function useWinkyContract() {
-  const { isConnected, account, address } = useAccount();
-  const { provider } = useProvider();
+interface UseWinkyContractOpts {
+  walletId: string | null;
+  walletAddress: string | null;
+  getAccessToken: () => Promise<string | null>;
+  isAuthenticated: boolean;
+}
+
+export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAuthenticated }: UseWinkyContractOpts) {
   const [txLog, setTxLog] = useState<BlinkTransaction[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Use a ref for the processing lock - refs update instantly, state doesn't
   const isProcessingRef = useRef(false);
 
-  // Add transaction to log
   const addToLog = useCallback((tx: BlinkTransaction) => {
     setTxLog((prev) => {
       return [tx, ...prev.filter(t => t.id !== tx.id)];
     });
   }, []);
 
-  // Update transaction in log
   const updateInLog = useCallback((id: string, updates: Partial<BlinkTransaction>) => {
     setTxLog((prev) =>
       prev.map(tx => tx.id === id ? { ...tx, ...updates } : tx)
     );
   }, []);
 
-  // Record a blink on-chain using account.execute() directly
   const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
 
-    if (!isConnected || !account) {
-      console.warn(`[recordBlink] Not connected or no account`);
+    if (!isAuthenticated || !walletId) {
+      console.warn(`[recordBlink] Not authenticated or no walletId`);
       const tx: BlinkTransaction = {
         id: txId,
         status: 'error',
-        error: 'Wallet not connected',
+        error: 'Not logged in or wallet not created',
         blinkNumber,
         timestamp: Date.now(),
       };
@@ -72,7 +79,6 @@ export function useWinkyContract() {
       return tx;
     }
 
-    // If already processing, skip this blink to avoid nonce issues
     if (isProcessingRef.current) {
       const skippedTx: BlinkTransaction = {
         id: txId,
@@ -99,25 +105,23 @@ export function useWinkyContract() {
 
     try {
       console.log(`[recordBlink] Executing TX for blink #${blinkNumber}...`);
-      console.log(`[recordBlink] Account address: ${account.address}`);
-      console.log(`[recordBlink] Account chainId: ${(account as any).chainId || 'unknown'}`);
-      console.log(`[recordBlink] Account channel: ${(account as any).channel?.nodeUrl || (account as any).provider?.channel?.nodeUrl || 'unknown'}`);
-      console.log(`[recordBlink] Contract address: ${WINKY_CONTRACT_ADDRESS}`);
 
-      // Use account.execute() directly - works with Cartridge Controller
-      // Session policies auto-approve this call (no popup)
-      const response = await account.execute([
-        {
-          contractAddress: WINKY_CONTRACT_ADDRESS,
-          entrypoint: 'record_blink',
-          calldata: [],
+      const userJwt = await getAccessToken();
+      if (!userJwt) throw new Error('Unable to get auth token. Please re-login.');
+
+      const resp = await fetch(`${API_URL}/privy/record-blink`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userJwt}`,
         },
-      ]);
+        body: JSON.stringify({ walletId, wait: false }),
+      });
 
-      const txHash = typeof response === 'object' && 'transaction_hash' in response
-        ? response.transaction_hash
-        : String(response);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
 
+      const txHash = data?.transactionHash;
       console.log(`[recordBlink] SUCCESS #${blinkNumber}: ${txHash}`);
 
       updateInLog(txId, { status: 'success', hash: txHash });
@@ -125,25 +129,21 @@ export function useWinkyContract() {
       isProcessingRef.current = false;
       setIsProcessing(false);
 
-      // Broadcast to live feed via Pusher (fire-and-forget)
       fetch('/api/blink-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: account.address,
+          address: walletAddress,
           txHash,
           userTotal: blinkNumber,
           twitterUsername: twitterUsername || undefined,
         }),
-      }).catch(() => { /* non-fatal */ });
+      }).catch(() => {});
 
       return { ...pendingTx, status: 'success', hash: txHash };
     } catch (err: any) {
       const errorMsg = err.message || 'Transaction failed';
       console.error(`[recordBlink] FAIL #${blinkNumber}:`, errorMsg);
-      console.error(`[recordBlink] Full error:`, JSON.stringify(err, Object.getOwnPropertyNames(err)));
-      console.error(`[recordBlink] Error code:`, err.code);
-      console.error(`[recordBlink] Error data:`, err.data);
 
       const shortError = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
       updateInLog(txId, { status: 'error', error: shortError });
@@ -154,17 +154,16 @@ export function useWinkyContract() {
 
       return { ...pendingTx, status: 'error', error: errorMsg };
     }
-  }, [isConnected, account, addToLog, updateInLog]);
+  }, [isAuthenticated, walletId, walletAddress, getAccessToken, addToLog, updateInLog]);
 
-  // Clear transaction log
   const clearLog = useCallback(() => {
     setTxLog([]);
   }, []);
 
-  /** Read the user's blink count from events since the launch block */
   const getTotalBlinks = useCallback(async (): Promise<number> => {
-    if (!address || !provider) return 0;
+    if (!walletAddress) return 0;
     try {
+      const provider = getReadProvider();
       const startBlock = EVENT_START_BLOCK[NETWORK] ?? 0;
       let total = 0;
       let continuationToken: string | undefined = undefined;
@@ -172,7 +171,7 @@ export function useWinkyContract() {
       do {
         const params: any = {
           address: WINKY_CONTRACT_ADDRESS,
-          keys: [[BLINK_EVENT_KEY], [address]],
+          keys: [[BLINK_EVENT_KEY], [walletAddress]],
           chunk_size: 1000,
         };
         if (startBlock > 0) {
@@ -197,7 +196,7 @@ export function useWinkyContract() {
       console.error('[getTotalBlinks] Failed:', err);
       return 0;
     }
-  }, [address, provider]);
+  }, [walletAddress]);
 
   return {
     recordBlink,
@@ -207,6 +206,6 @@ export function useWinkyContract() {
     isPending: pendingCount > 0,
     isProcessing,
     pendingCount,
-    isReady: isConnected && !!account,
+    isReady: isAuthenticated && !!walletId,
   };
 }

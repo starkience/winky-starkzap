@@ -7,23 +7,28 @@
  *   Header floats on top of the left zone
  *   Body  – 75 % camera (full area)  |  25 % transaction log
  *
- * Camera feed starts immediately; blurry when wallet is not connected.
+ * Camera feed starts immediately; blurry when wallet is not ready.
+ * Uses Privy for social login and backend API for wallet operations.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useAccount, useDisconnect, useConnect } from '@starknet-react/core';
+import { usePrivy } from '@privy-io/react-auth';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
 import { useTwitterAuth } from '@/hooks/use-twitter-auth';
-import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK } from '@/lib/constants';
+import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK, API_URL, STORAGE_KEYS } from '@/lib/constants';
 import { generateBlinkCard } from '@/lib/generate-blink-card';
 import { LeaderboardModal } from '@/components/Leaderboard';
 import { useLiveFeed, LiveBlinkEvent, TopBlinker } from '@/hooks/use-live-feed';
 
+function formatAddress(addr: string | null | undefined): string {
+  if (!addr) return '';
+  if (!addr.startsWith('0x')) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export function WinkyGame() {
-  const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
-  const { connect, connectAsync, connectors, isPending: isConnecting, status: connectStatus } = useConnect();
+  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +41,21 @@ export function WinkyGame() {
   const [isMobile, setIsMobile] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showMilestone, setShowMilestone] = useState(false);
-  const [connectClicked, setConnectClicked] = useState(false);
   const milestoneShownRef = useRef(
     typeof window !== 'undefined' && localStorage.getItem('winky_milestone_100') === '1'
   );
 
-  // Twitter auth - optional, enhances leaderboard with user's position
-  const twitter = useTwitterAuth(address);
+  // Wallet state managed via backend API + localStorage
+  const [walletId, setWalletId] = useState<string | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [deployed, setDeployed] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const isConnected = authenticated && !!walletId && deployed;
+
+  // Twitter auth - optional, enhances leaderboard
+  const twitter = useTwitterAuth(walletAddress || undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -62,7 +75,6 @@ export function WinkyGame() {
     const params = new URLSearchParams(window.location.search);
     if (params.has('twitter_connected')) {
       setShowLeaderboard(true);
-      // Clean the URL param without reload
       params.delete('twitter_connected');
       const cleanUrl = params.toString()
         ? `${window.location.pathname}?${params.toString()}`
@@ -71,43 +83,157 @@ export function WinkyGame() {
     }
   }, []);
 
-  const cartridgeConnector = connectors[0] ?? undefined;
-  const isConnectBusy = isConnecting || connectClicked;
-
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleConnect = useCallback(() => {
-    if (isConnectBusy) return;
-    const connector = cartridgeConnector || connectors[0];
-    if (!connector) return;
-    setConnectClicked(true);
-
-    const tryConnect = (attempts: number) => {
-      connectAsync({ connector }).catch((err) => {
-        const isNotReady = String(err?.message || err).toLowerCase().includes('not ready');
-        if (isNotReady && attempts > 0) {
-          retryTimerRef.current = setTimeout(() => tryConnect(attempts - 1), 2000);
-        } else {
-          setConnectClicked(false);
-        }
-      });
-    };
-    tryConnect(20);
-  }, [isConnectBusy, cartridgeConnector, connectors, connectAsync]);
-
+  // Restore wallet state from localStorage when Privy auth is ready
   useEffect(() => {
-    if (isConnected && retryTimerRef.current) {
-      clearTimeout(retryTimerRef.current);
-      retryTimerRef.current = null;
-    }
-  }, [isConnected]);
+    if (!ready || !authenticated || !user?.id) return;
+    try {
+      const storedUser = window.localStorage.getItem(STORAGE_KEYS.userId);
+      if (storedUser && storedUser !== user.id) {
+        window.localStorage.removeItem(STORAGE_KEYS.walletId);
+        window.localStorage.removeItem(STORAGE_KEYS.walletAddress);
+        window.localStorage.removeItem(STORAGE_KEYS.publicKey);
+        window.localStorage.removeItem(STORAGE_KEYS.deployedWalletId);
+        setWalletId(null);
+        setWalletAddress(null);
+        setPublicKey(null);
+        setDeployed(false);
+      }
+      window.localStorage.setItem(STORAGE_KEYS.userId, user.id);
+      const lsId = window.localStorage.getItem(STORAGE_KEYS.walletId);
+      const lsAddr = window.localStorage.getItem(STORAGE_KEYS.walletAddress);
+      const lsPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
+      if (lsId) setWalletId(lsId);
+      if (lsAddr) setWalletAddress(lsAddr);
+      if (lsPk) setPublicKey(lsPk);
+      const lsDeployed = window.localStorage.getItem(STORAGE_KEYS.deployedWalletId);
+      if (lsId && lsDeployed === lsId) setDeployed(true);
+    } catch {}
+  }, [ready, authenticated, user?.id]);
+
+  // Persist wallet state
+  useEffect(() => { try { if (walletId) window.localStorage.setItem(STORAGE_KEYS.walletId, walletId); } catch {} }, [walletId]);
+  useEffect(() => { try { if (walletAddress) window.localStorage.setItem(STORAGE_KEYS.walletAddress, walletAddress); } catch {} }, [walletAddress]);
+  useEffect(() => { try { if (publicKey) window.localStorage.setItem(STORAGE_KEYS.publicKey, publicKey); } catch {} }, [publicKey]);
+
+  // Fetch existing wallets from backend when authenticated
+  useEffect(() => {
+    if (!ready || !authenticated || !user?.id) return;
+    if (walletId || walletAddress) return;
+
+    const fetchWallets = async () => {
+      try {
+        const resp = await fetch(
+          `${API_URL}/privy/user-wallets?userId=${encodeURIComponent(user.id)}&t=${Date.now()}`
+        );
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) return;
+        const list = Array.isArray(data.wallets) ? data.wallets : [];
+        if (list.length > 0) {
+          const w = list.find((v: any) => v?.publicKey) || list[0];
+          if (w.id) setWalletId(w.id);
+          if (w.address) setWalletAddress(w.address);
+          if (w.publicKey) setPublicKey(w.publicKey);
+        }
+      } catch {}
+    };
+    fetchWallets();
+  }, [ready, authenticated, user?.id, walletId, walletAddress]);
+
+  // Auto-create + auto-deploy wallet after login
+  useEffect(() => {
+    if (!ready || !authenticated || !user?.id || walletLoading) return;
+    if (walletId && deployed) return;
+
+    const setupWallet = async () => {
+      setWalletLoading(true);
+      try {
+        const userJwt = await getAccessToken();
+        if (!userJwt) { setWalletLoading(false); return; }
+
+        let wId = walletId;
+        let wAddr = walletAddress;
+
+        // Create wallet if needed
+        if (!wId) {
+          const resp = await fetch(`${API_URL}/privy/create-wallet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ownerId: user.id, chainType: 'starknet' }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');
+          const w = data.wallet || {};
+          wId = w.id || null;
+          wAddr = w.address || null;
+          const pk = w.public_key || w.publicKey || null;
+          if (wId) setWalletId(wId);
+          if (wAddr) setWalletAddress(wAddr);
+          if (pk) setPublicKey(pk);
+        }
+
+        // Deploy wallet if not yet deployed
+        if (wId && !deployed) {
+          const lsDeployed = window.localStorage.getItem(STORAGE_KEYS.deployedWalletId);
+          if (lsDeployed === wId) {
+            setDeployed(true);
+            setWalletLoading(false);
+            return;
+          }
+
+          const resp = await fetch(`${API_URL}/privy/deploy-wallet`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${userJwt}`,
+            },
+            body: JSON.stringify({ walletId: wId }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(data?.error || 'Deploy failed');
+          if (data.address) setWalletAddress(data.address);
+          if (data.publicKey) setPublicKey(data.publicKey);
+          window.localStorage.setItem(STORAGE_KEYS.deployedWalletId, wId);
+          setDeployed(true);
+        }
+      } catch (err: any) {
+        console.error('[setupWallet] Error:', err.message);
+        setError(err.message || 'Wallet setup failed');
+      } finally {
+        setWalletLoading(false);
+      }
+    };
+    setupWallet();
+  }, [ready, authenticated, user?.id, walletId, deployed, walletLoading, getAccessToken, walletAddress]);
+
+  const handleLogin = useCallback(() => {
+    login();
+  }, [login]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      Object.values(STORAGE_KEYS).forEach(k => {
+        try { window.localStorage.removeItem(k); } catch {}
+      });
+    } catch {}
+    setWalletId(null);
+    setWalletAddress(null);
+    setPublicKey(null);
+    setDeployed(false);
+    setShowWalletMenu(false);
+    try { await logout(); } catch {}
+  }, [logout]);
 
   const {
     recordBlink,
     getTotalBlinks,
     txLog,
     isReady: isContractReady,
-  } = useWinkyContract();
+  } = useWinkyContract({
+    walletId,
+    walletAddress,
+    getAccessToken,
+    isAuthenticated: authenticated,
+  });
 
   const handleBlink = useCallback((count: number) => {
     if (isConnected && isContractReady) {
@@ -143,39 +269,21 @@ export function WinkyGame() {
     }
   }, [isDetectorReady, isLoading, startDetection]);
 
-  // Fetch persistent on-chain blink total when wallet connects
+  // Fetch persistent on-chain blink total when wallet is ready
   useEffect(() => {
     if (isConnected && isContractReady) {
       getTotalBlinks().then((total) => {
         if (total > 0) setPersistentBlinks(total);
-      }).catch(() => { /* non-fatal */ });
+      }).catch(() => {});
     }
   }, [isConnected, isContractReady, getTotalBlinks]);
-
-  // Reset connect guard when wallet connects, or connect fails/is canceled
-  useEffect(() => {
-    if (isConnected) setConnectClicked(false);
-  }, [isConnected]);
-
-  const prevConnectStatusRef = useRef(connectStatus);
-  useEffect(() => {
-    const prev = prevConnectStatusRef.current;
-    prevConnectStatusRef.current = connectStatus;
-    // Reset guard when transitioning from pending back to idle (canceled) or error
-    if (connectClicked && prev === 'pending' && (connectStatus === 'idle' || connectStatus === 'error')) {
-      setConnectClicked(false);
-    }
-  }, [connectStatus, connectClicked]);
 
   // Live global blink feed
   const liveFeed = useLiveFeed();
 
-  // Total = previous on-chain blinks + current session blinks
   const totalBlinkCount = persistentBlinks + blinkCount;
 
-  // Milestone popup at 100 blinks — only fires once ever (persisted in localStorage).
-  // Only triggers when the count crosses 100 during this session, not if the user
-  // already had 100+ persistent blinks when they loaded the page.
+  // Milestone popup at 100 blinks
   useEffect(() => {
     if (
       totalBlinkCount >= 100 &&
@@ -187,6 +295,10 @@ export function WinkyGame() {
       setShowMilestone(true);
     }
   }, [totalBlinkCount, persistentBlinks]);
+
+  const loginBusy = !ready || walletLoading;
+  const displayAddress = walletAddress || '';
+  const displayName = user?.email?.address || formatAddress(walletAddress) || user?.id || '';
 
   return (
     <div style={{
@@ -266,14 +378,14 @@ export function WinkyGame() {
             )}
           </div>
 
-          {/* Right: Connect / Address */}
+          {/* Right: User menu */}
           <div style={{ position: 'relative' }}>
-            {isConnected && address ? (
+            {isConnected && displayAddress ? (
               <div style={{ display: 'flex', gap: isMobile ? '4px' : '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {/* GitHub icon */}
                 {!isMobile && (
                 <a
-                  href="https://github.com/starkience/winky"
+                  href="https://github.com/starkience/winky-starkzap"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -302,7 +414,7 @@ export function WinkyGame() {
                   </svg>
                 </a>
                 )}
-                {/* Info icon — tap-to-toggle on mobile, hover on desktop */}
+                {/* Info icon */}
                 <div
                   style={{ position: 'relative' }}
                   onClick={() => isMobile && setShowInfo((prev) => !prev)}
@@ -331,7 +443,6 @@ export function WinkyGame() {
                     i
                   </div>
                   {showInfo && isMobile && (
-                    /* Transparent backdrop — tapping anywhere outside dismisses the card */
                     <div
                       onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
                       style={{
@@ -368,11 +479,11 @@ export function WinkyGame() {
                         How does Wink work?
                       </div>
                       <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <li><strong>Zero gas fees:</strong> we funded a paymaster, so you pay nothing</li>
-                        <li><strong>One session, no popups:</strong> you sign once and all blinks go through automatically</li>
+                        <li><strong>Zero gas fees:</strong> powered by AVNU paymaster, so you pay nothing</li>
+                        <li><strong>Social login, no popups:</strong> sign in once via Privy and all blinks go through automatically</li>
                         <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
                         <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
-                        <li><strong>Powered by Cartridge Controller,</strong> a smart wallet that handles sessions and gas for you</li>
+                        <li><strong>Powered by Privy + Starkzap,</strong> bringing Web3 to any app with social login</li>
                       </ul>
                     </div>
                   )}
@@ -384,7 +495,6 @@ export function WinkyGame() {
                     if (isGeneratingImage) return;
                     setIsGeneratingImage(true);
                     try {
-                      // Fetch persistent on-chain total (not session count)
                       const totalBlinks = await getTotalBlinks();
                       const count = totalBlinks > 0 ? totalBlinks : blinkCount;
                       const blob = await generateBlinkCard(count);
@@ -420,7 +530,7 @@ export function WinkyGame() {
                   {isGeneratingImage ? 'Generating...' : 'Generate Image'}
                 </button>
                 )}
-                {/* Leaderboard button - always opens */}
+                {/* Leaderboard button */}
                 <button
                   onClick={() => setShowLeaderboard(true)}
                   className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
@@ -486,7 +596,7 @@ export function WinkyGame() {
                     e.preventDefault();
                     const totalBlinks = await getTotalBlinks();
                     const count = totalBlinks > 0 ? totalBlinks : blinkCount;
-                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Session Keys and Gasless transactions. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
+                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Privy social login and Gasless transactions. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
                     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   onMouseEnter={(e) => {
@@ -516,7 +626,7 @@ export function WinkyGame() {
                       flexShrink: 0,
                     }}
                   />
-                  {address.slice(0, 6)}...{address.slice(-4)}
+                  {formatAddress(displayAddress) || displayName}
                 </button>
 
                 {showWalletMenu && (
@@ -545,11 +655,12 @@ export function WinkyGame() {
                         lineHeight: 1.4,
                       }}
                     >
-                      {address}
+                      {displayAddress || displayName}
                     </div>
+                    {displayAddress && (
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(address);
+                        navigator.clipboard.writeText(displayAddress);
                         setShowWalletMenu(false);
                       }}
                       style={{
@@ -572,11 +683,9 @@ export function WinkyGame() {
                     >
                       Copy Address
                     </button>
+                    )}
                     <button
-                      onClick={() => {
-                        disconnect();
-                        setShowWalletMenu(false);
-                      }}
+                      onClick={handleLogout}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -594,7 +703,7 @@ export function WinkyGame() {
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      Disconnect
+                      Logout
                     </button>
                   </div>
                 )}
@@ -603,7 +712,7 @@ export function WinkyGame() {
           </div>
       </header>
 
-      {/* ─── Mobile info card — overlays content below header ─── */}
+      {/* ─── Mobile info card ─── */}
       {showInfo && isMobile && (
         <div
           style={{
@@ -629,11 +738,11 @@ export function WinkyGame() {
             How does Wink work?
           </div>
           <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <li><strong>Zero gas fees:</strong> we funded a paymaster, so you pay nothing</li>
-            <li><strong>One session, no popups:</strong> you sign once and all blinks go through automatically</li>
+            <li><strong>Zero gas fees:</strong> powered by AVNU paymaster, so you pay nothing</li>
+            <li><strong>Social login, no popups:</strong> sign in once via Privy and all blinks go through automatically</li>
             <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
             <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
-            <li><strong>Powered by Cartridge Controller,</strong> a smart wallet that handles sessions and gas for you</li>
+            <li><strong>Powered by Privy + Starkzap,</strong> bringing Web3 to any app with social login</li>
           </ul>
         </div>
       )}
@@ -658,7 +767,6 @@ export function WinkyGame() {
           padding: isMobile ? '4px 8px 4px' : '8px 48px 40px',
         }}
       >
-        {/* Camera fills remaining space */}
         <div
           className="video-container"
           style={{ position: 'relative', flex: 1, minHeight: 0 }}
@@ -691,7 +799,7 @@ export function WinkyGame() {
             }}
           />
 
-          {/* Steps overlay — shown when not connected */}
+          {/* Overlay — shown when not connected */}
           {!isConnected && (
             <div
               style={{
@@ -719,20 +827,20 @@ export function WinkyGame() {
                     }}
                   />
                   <button
-                    onClick={handleConnect}
-                    disabled={isConnectBusy || !cartridgeConnector}
+                    onClick={handleLogin}
+                    disabled={loginBusy}
                     style={{
                       marginTop: '32px',
                       padding: '18px 64px',
                       fontSize: '22px',
                       fontWeight: 800,
                       fontFamily: "'Manrope', sans-serif",
-                      background: '#D23434',
+                      background: walletLoading ? '#6366f1' : '#D23434',
                       color: '#fff',
                       border: 'none',
                       borderRadius: '10px',
-                      cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
-                      opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
+                      cursor: loginBusy ? 'wait' : 'pointer',
+                      opacity: loginBusy ? 0.6 : 1,
                       letterSpacing: '0.5px',
                       boxShadow: '0 4px 24px rgba(210, 52, 52, 0.5)',
                       transition: 'transform 0.15s, box-shadow 0.15s',
@@ -746,36 +854,36 @@ export function WinkyGame() {
                       e.currentTarget.style.boxShadow = '0 4px 24px rgba(210, 52, 52, 0.5)';
                     }}
                   >
-                    {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                    {walletLoading ? 'Setting up wallet...' : !ready ? 'Loading...' : 'Sign Up'}
                   </button>
                 </>
               )}
               {isMobile && (
                 <button
-                  onClick={handleConnect}
-                  disabled={isConnectBusy || !cartridgeConnector}
+                  onClick={handleLogin}
+                  disabled={loginBusy}
                   style={{
                     padding: '18px 48px',
                     fontSize: '20px',
                     fontWeight: 800,
                     fontFamily: "'Manrope', sans-serif",
-                    background: '#D23434',
+                    background: walletLoading ? '#6366f1' : '#D23434',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: (isConnectBusy || !cartridgeConnector) ? 'wait' : 'pointer',
-                    opacity: (isConnectBusy || !cartridgeConnector) ? 0.6 : 1,
+                    cursor: loginBusy ? 'wait' : 'pointer',
+                    opacity: loginBusy ? 0.6 : 1,
                     letterSpacing: '0.5px',
                     boxShadow: '0 4px 20px rgba(210, 52, 52, 0.4)',
                   }}
                 >
-                  {isConnectBusy ? 'Connecting...' : !cartridgeConnector ? 'Loading...' : 'Sign Up'}
+                  {walletLoading ? 'Setting up...' : !ready ? 'Loading...' : 'Sign Up'}
                 </button>
               )}
             </div>
           )}
 
-          {/* Blink counter top-right of camera */}
+          {/* Blink counter */}
           {!isLoading && isRunning && (
             <div
               style={{
@@ -793,7 +901,7 @@ export function WinkyGame() {
             </div>
           )}
 
-          {/* Fastest blinker — top-left of camera */}
+          {/* Fastest blinker */}
           {isConnected && liveFeed.topBlinker && liveFeed.topBlinker.rpm >= 2 && (
             <div
               style={{
@@ -817,10 +925,7 @@ export function WinkyGame() {
                   href={`https://x.com/${liveFeed.topBlinker.displayName.slice(1)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    color: 'inherit',
-                    textDecoration: 'none',
-                  }}
+                  style={{ color: 'inherit', textDecoration: 'none' }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
@@ -833,7 +938,7 @@ export function WinkyGame() {
             </div>
           )}
 
-          {/* Live global blink feed ticker — only when signed in */}
+          {/* Live feed ticker */}
           {isConnected && liveFeed.events.length > 0 && (
             <div
               style={{
@@ -872,7 +977,6 @@ export function WinkyGame() {
           minHeight: 0,
         }}
       >
-        {/* Transaction log — fixed container, no scroll, items fade upward */}
         <div
           style={{
             flex: 1,
@@ -881,7 +985,6 @@ export function WinkyGame() {
             padding: isMobile ? '0 12px' : '0 16px 0',
           }}
         >
-          {/* Fade-out gradient at top */}
           <div
             style={{
               position: 'absolute',
@@ -894,7 +997,6 @@ export function WinkyGame() {
               pointerEvents: 'none',
             }}
           />
-          {/* Items pinned to bottom, overflow hidden (old ones disappear upward) */}
           <div
             style={{
               position: 'absolute',
@@ -916,7 +1018,7 @@ export function WinkyGame() {
           </div>
         </div>
       </div>
-      </div>{/* end body 75/25 */}
+      </div>
 
       {/* Milestone Popup — 100 blinks */}
       {showMilestone && (
@@ -963,12 +1065,12 @@ export function WinkyGame() {
               margin: '0 0 28px',
               lineHeight: 1.5,
             }}>
-              You just hit <strong>100 onchain blinks</strong> on Starknet. Tell the world you're in the Blink-ster crew.
+              You just hit <strong>100 onchain blinks</strong> on Starknet. Tell the world you&apos;re in the Blink-ster crew.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
               <button
                 onClick={() => {
-                  const text = `I just hit 100 blinks on Starknet! Each blink is a real transaction. Powered by Session Keys and Gasless transactions. All onchain.\n\nCan you out-blink me? 👁️\nhttps://wink-on-starknet.com/`;
+                  const text = `I just hit 100 blinks on Starknet! Each blink is a real transaction. Powered by Privy social login and Gasless transactions. All onchain.\n\nCan you out-blink me? 👁️\nhttps://wink-on-starknet.com/`;
                   window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   setShowMilestone(false);
                 }}
@@ -1021,7 +1123,7 @@ export function WinkyGame() {
       {/* Leaderboard Modal */}
       {showLeaderboard && (
         <LeaderboardModal
-          userAddress={address}
+          userAddress={walletAddress || undefined}
           twitterProfile={twitter.profile}
           onTwitterConnect={twitter.connect}
           onClose={() => setShowLeaderboard(false)}
@@ -1130,7 +1232,6 @@ function getTimeAgo(timestamp: number): string {
 // ─── Live Feed Ticker ───
 function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobile: boolean }) {
   const maxVisible = isMobile ? 5 : 10;
-  // Show the most recent events — newest at the bottom, oldest at the top (scrolls up)
   const visible = events.slice(0, maxVisible).reverse();
 
   return (
@@ -1148,7 +1249,6 @@ function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobi
           : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`;
         const txShort = `${ev.txHash.slice(0, 6)}...${ev.txHash.slice(-4)}`;
         const ago = getTimeAgo(ev.timestamp);
-        // Fade out the topmost (oldest) item when we have a full list
         const isTopFading = idx === 0 && visible.length >= maxVisible;
 
         return (

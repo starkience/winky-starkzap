@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
-import { Providers } from './providers';
+import dynamic from 'next/dynamic';
 import './globals.css';
+
+const Providers = dynamic(() => import('./providers').then(m => ({ default: m.Providers })), {
+  ssr: false,
+});
 
 export const metadata: Metadata = {
   title: 'Winky - Blink on Starknet',
   description:
-    'A playful Starknet app where each blink triggers an on-chain transaction. Gasless, session-key powered.',
+    'A playful Starknet app where each blink triggers an on-chain transaction. Gasless, Privy-powered.',
   openGraph: {
     title: 'Winky - Blink on Starknet',
-    description: 'One blink is one Starknet transaction. Powered by Session Keys and Gasless.',
+    description: 'One blink is one Starknet transaction. Powered by Privy social login and Gasless transactions.',
   },
 };
 

@@ -1,0 +1,29 @@
+{
+  "name": "winky-api",
+  "version": "1.0.0",
+  "description": "Express API for Winky – Privy wallet operations and AVNU paymaster on Starknet",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p ."
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@privy-io/server-auth": "^1.32.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "starknet": "^8.9.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.6",
+    "tsx": "^4.19.1",
+    "typescript": "^5.7.2"
+  }
+}

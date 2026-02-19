@@ -3,37 +3,40 @@
 /**
  * WalletConnect Component
  *
- * Provides wallet connection UI using Cartridge Controller.
- * Uses starknet-react for connection management.
+ * Provides wallet connection UI using Privy social login.
  */
 
 import { useState, useEffect } from 'react';
-import { useConnect, useDisconnect, useAccount } from '@starknet-react/core';
+import { usePrivy } from '@privy-io/react-auth';
 
 export function WalletConnect() {
-  const { connect, connectors, isPending, error } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { address, isConnected } = useAccount();
-  
+  const { login, logout, ready, authenticated, user } = usePrivy();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Get the Cartridge connector
-  const cartridgeConnector = mounted ? connectors[0] : undefined;
+  if (!mounted || !ready) {
+    return (
+      <div className="main">
+        <div className="connect-screen">
+          <div className="description"><p>Loading...</p></div>
+        </div>
+      </div>
+    );
+  }
 
-  if (isConnected && address) {
+  if (authenticated && user) {
     return (
       <div className="main">
         <div className="connect-screen">
           <div className="wallet-connected">
             <div className="wallet-address">
-              {address.slice(0, 6)}...{address.slice(-4)}
+              {user.email?.address || user.id}
             </div>
-            <button onClick={() => disconnect()} className="disconnect-btn">
-              Disconnect
+            <button onClick={() => logout()} className="disconnect-btn">
+              Logout
             </button>
           </div>
         </div>
@@ -53,52 +56,34 @@ export function WalletConnect() {
         </p>
 
         <p className="hint" style={{ marginTop: '24px' }}>
-          Connect to start
+          Sign up to start
         </p>
 
-        {error && (
-          <div className="error-banner" style={{ marginBottom: '16px' }}>
-            {error.message}
-          </div>
-        )}
-
         <div className="wallet-connectors">
-          {!mounted ? (
-            <div className="description">
-              <p>Loading...</p>
-            </div>
-          ) : (
-            <>
-              {cartridgeConnector && (
-                <button
-                  onClick={() => connect({ connector: cartridgeConnector })}
-                  disabled={isPending}
-                  className="connect-btn"
-                  style={{
-                    background: 'linear-gradient(135deg, #F5A623, #F76B1C)',
-                    border: 'none',
-                  }}
-                >
-                  {isPending ? 'Connecting...' : 'Connect with Cartridge'}
-                </button>
-              )}
+          <button
+            onClick={() => login()}
+            className="connect-btn"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              border: 'none',
+            }}
+          >
+            Sign Up with Privy
+          </button>
 
-              <div style={{ 
-                fontSize: '11px', 
-                color: 'var(--text-secondary)', 
-                textAlign: 'center',
-                marginTop: '12px',
-                opacity: 0.7,
-              }}>
-                Built-in session keys - no popups per transaction
-              </div>
-
-            </>
-          )}
+          <div style={{
+            fontSize: '11px',
+            color: 'var(--text-secondary)',
+            textAlign: 'center',
+            marginTop: '12px',
+            opacity: 0.7,
+          }}>
+            Email, Google, Twitter &mdash; no wallet needed
+          </div>
         </div>
 
         <p className="hint" style={{ marginTop: '32px', fontSize: '12px' }}>
-          Powered by Starknet
+          Powered by Starknet &amp; Privy
         </p>
       </div>
     </div>
