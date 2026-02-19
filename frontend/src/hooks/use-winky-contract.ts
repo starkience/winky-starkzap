@@ -10,7 +10,15 @@
 
 import { useCallback, useState, useRef } from 'react';
 import { useAccount, useProvider } from '@starknet-react/core';
-import { WINKY_CONTRACT_ADDRESS } from '@/lib/constants';
+import { hash } from 'starknet';
+import { WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
+
+const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
+const EVENT_START_BLOCK: Record<string, number> = {
+  mainnet: 6_938_534,
+  sepolia: 0,
+  devnet: 0,
+};
 
 // No limit on transaction log entries
 
@@ -153,17 +161,38 @@ export function useWinkyContract() {
     setTxLog([]);
   }, []);
 
-  /** Read the user's total on-chain blink count (view call, no gas) */
+  /** Read the user's blink count from events since the launch block */
   const getTotalBlinks = useCallback(async (): Promise<number> => {
     if (!address || !provider) return 0;
     try {
-      const result = await provider.callContract({
-        contractAddress: WINKY_CONTRACT_ADDRESS,
-        entrypoint: 'get_user_blinks',
-        calldata: [address],
-      });
-      // Result is an array of felt252 strings; the first element is the u64 count
-      return Number(BigInt(result[0]));
+      const startBlock = EVENT_START_BLOCK[NETWORK] ?? 0;
+      let total = 0;
+      let continuationToken: string | undefined = undefined;
+
+      do {
+        const params: any = {
+          address: WINKY_CONTRACT_ADDRESS,
+          keys: [[BLINK_EVENT_KEY], [address]],
+          chunk_size: 1000,
+        };
+        if (startBlock > 0) {
+          params.from_block = { block_number: startBlock };
+        }
+        if (continuationToken) {
+          params.continuation_token = continuationToken;
+        }
+
+        const response = await provider.getEvents(params);
+
+        for (const event of response.events) {
+          const userTotal = Number(BigInt(event.data[1]));
+          if (userTotal > total) total = userTotal;
+        }
+
+        continuationToken = response.continuation_token;
+      } while (continuationToken);
+
+      return total;
     } catch (err) {
       console.error('[getTotalBlinks] Failed:', err);
       return 0;
