@@ -74,6 +74,8 @@ export function WinkyGame() {
   const cartridgeConnector = connectors[0] ?? undefined;
   const isConnectBusy = isConnecting || connectClicked;
 
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleConnect = useCallback(() => {
     if (isConnectBusy) return;
     const connector = cartridgeConnector || connectors[0];
@@ -81,16 +83,24 @@ export function WinkyGame() {
     setConnectClicked(true);
 
     const tryConnect = (attempts: number) => {
-      connectAsync({ connector }).catch(() => {
-        if (attempts > 0) {
-          setTimeout(() => tryConnect(attempts - 1), 1500);
+      connectAsync({ connector }).catch((err) => {
+        const isNotReady = String(err?.message || err).toLowerCase().includes('not ready');
+        if (isNotReady && attempts > 0) {
+          retryTimerRef.current = setTimeout(() => tryConnect(attempts - 1), 2000);
         } else {
           setConnectClicked(false);
         }
       });
     };
-    tryConnect(5);
+    tryConnect(20);
   }, [isConnectBusy, cartridgeConnector, connectors, connectAsync]);
+
+  useEffect(() => {
+    if (isConnected && retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, [isConnected]);
 
   const {
     recordBlink,
