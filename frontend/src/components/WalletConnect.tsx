@@ -83,7 +83,7 @@ export function WalletConnect() {
         </div>
 
         <p className="hint" style={{ marginTop: '32px', fontSize: '12px' }}>
-          Powered by Starknet &amp; Privy
+          Powered by the Starkzap SDK
         </p>
       </div>
     </div>

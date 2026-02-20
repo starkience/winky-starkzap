@@ -333,16 +333,16 @@ export function WinkyGame() {
             <img src="/logo.png" alt="Wink." style={{ height: isMobile ? '28px' : '40px', objectFit: 'contain' }} />
             {!isMobile && (
               <span style={{ fontSize: '16px', fontWeight: 600, color: '#C0B4DA', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
-                Powered by{' '}
+                Powered by the{' '}
                 <a
-                  href="https://x.com/Starknet"
+                  href="https://github.com/starknet-edu/starknet-privy-demo"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#C0B4DA', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  Starknet
+                  Starkzap SDK
                 </a>
               </span>
             )}
