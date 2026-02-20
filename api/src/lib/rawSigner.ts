@@ -26,7 +26,7 @@ export class RawSigner {
       details.cairoVersion
     );
     let msgHash: string;
-    if (Object.values(RPC.ETransactionVersion2).includes(details.version)) {
+    if (Object.values((RPC as any).ETransactionVersion2).includes(details.version)) {
       msgHash = hash.calculateInvokeTransactionHash({
         ...details,
         senderAddress: details.walletAddress,
@@ -34,7 +34,7 @@ export class RawSigner {
         version: details.version,
       });
     } else if (
-      Object.values(RPC.ETransactionVersion3).includes(details.version)
+      Object.values((RPC as any).ETransactionVersion3).includes(details.version)
     ) {
       msgHash = hash.calculateInvokeTransactionHash({
         ...details,
@@ -57,7 +57,7 @@ export class RawSigner {
       details.constructorCalldata
     );
     let msgHash: string;
-    if (Object.values(RPC.ETransactionVersion2).includes(details.version)) {
+    if (Object.values((RPC as any).ETransactionVersion2).includes(details.version)) {
       msgHash = hash.calculateDeployAccountTransactionHash({
         ...details,
         salt: details.addressSalt,
@@ -65,7 +65,7 @@ export class RawSigner {
         version: details.version,
       });
     } else if (
-      Object.values(RPC.ETransactionVersion3).includes(details.version)
+      Object.values((RPC as any).ETransactionVersion3).includes(details.version)
     ) {
       msgHash = hash.calculateDeployAccountTransactionHash({
         ...details,
@@ -87,13 +87,13 @@ export class RawSigner {
 
   async signDeclareTransaction(details: any): Promise<[string, string]> {
     let msgHash: string;
-    if (Object.values(RPC.ETransactionVersion2).includes(details.version)) {
+    if (Object.values((RPC as any).ETransactionVersion2).includes(details.version)) {
       msgHash = hash.calculateDeclareTransactionHash({
         ...details,
         version: details.version,
       });
     } else if (
-      Object.values(RPC.ETransactionVersion3).includes(details.version)
+      Object.values((RPC as any).ETransactionVersion3).includes(details.version)
     ) {
       msgHash = hash.calculateDeclareTransactionHash({
         ...details,
