@@ -70,7 +70,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
             padding: '12px 20px',
             fontSize: '16px',
             fontFamily: "'Manrope', sans-serif",
-            border: `2px solid ${error ? '#D23434' : '#ccc'}`,
+            border: `2px solid ${error ? '#F0E526' : '#ccc'}`,
             borderRadius: '10px',
             outline: 'none',
             width: '240px',
@@ -84,7 +84,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
           type="submit"
           style={{
             padding: '10px 32px',
-            background: '#D23434',
+            background: '#F0E526',
             border: 'none',
             borderRadius: '10px',
             color: '#fff',
@@ -103,7 +103,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
       </form>
 
       {error && (
-        <p style={{ color: '#D23434', fontSize: '13px', marginTop: '12px', fontWeight: 600 }}>
+        <p style={{ color: '#F0E526', fontSize: '13px', marginTop: '12px', fontWeight: 600 }}>
           Incorrect code
         </p>
       )}
