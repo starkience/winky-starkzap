@@ -2,7 +2,7 @@
 
 **A blinking app on Starknet.** Every blink is a gasless on-chain transaction.
 
-Winky uses your webcam to detect eye blinks in real time. Each blink fires a transaction to a smart contract on Starknet. Gas fees are fully sponsored -- users pay nothing. No wallet extension, no seed phrase, no crypto knowledge required.
+Winky uses your webcam to detect eye blinks in real time. Each blink fires a transaction to a smart contract on Starknet. Gas fees are fully sponsored, users pay nothing. No wallet extension, no seed phrase, no crypto knowledge required.
 
 ---
 
@@ -10,7 +10,7 @@ Winky uses your webcam to detect eye blinks in real time. Each blink fires a tra
 
 This project is a step-by-step example of how to take an existing web app and add Web3 features using the [Starkzap SDK](https://github.com/starknet-edu/starknet-privy-demo).
 
-**The starting point:** a simple Next.js blinking app. The camera detects blinks, and a counter goes up. That's it -- pure Web2.
+**The starting point:** a simple Next.js blinking app. The camera detects blinks, and a counter goes up. That's it, pure Web2.
 
 **The end result:** the same app, but every blink is now a real transaction on Starknet. Users log in with their email (no wallet needed), gas is paid for them, and everything happens seamlessly in the background.
 
@@ -46,13 +46,13 @@ The backend exists because it holds secrets (Privy App Secret, AVNU Paymaster AP
 
 ## Step 2: Add Social Login with Privy
 
-[Privy](https://www.privy.io/) lets users log in with email, SMS, Google, or Twitter -- no wallet extension needed. Behind the scenes, Privy creates a Starknet keypair for the user and manages it securely.
+[Privy](https://www.privy.io/) lets users log in with email, SMS, Google, or Twitter, no wallet extension needed. Behind the scenes, Privy creates a Starknet keypair for the user and manages it securely.
 
-**Why Privy?** Your users don't need to know what a wallet is. They sign up with their email, and they have a Starknet account.
+**Why Privy?** Your users don't need to know what a wallet is. They sign up with their email, and a Starknet account is automatically created for them in the background. Frictionless onboarding, onchain account.
 
 ### What changed in the frontend
 
-We replaced the wallet connector with Privy's provider in [`frontend/src/app/providers.tsx`](frontend/src/app/providers.tsx):
+To go from Web2 to Web3, we added Privy as the login method. This is what gives the app frictionless onboarding while creating an onchain account for each user. We wrapped the app with Privy's provider in [`frontend/src/app/providers.tsx`](frontend/src/app/providers.tsx):
 
 ```tsx
 import { PrivyProvider } from '@privy-io/react-auth';
@@ -66,7 +66,7 @@ export function Providers({ children }) {
 }
 ```
 
-And swapped the wallet connect button for a Privy login call in the game component:
+And added a Privy login call in the game component:
 
 ```tsx
 import { usePrivy } from '@privy-io/react-auth';
@@ -82,15 +82,15 @@ That's it on the frontend. One provider, one hook.
 
 ## Step 3: Smart Accounts (Why You Need a Backend)
 
-On Starknet, there are no simple keypair accounts like on Ethereum. Every account is a **smart contract**. When Privy generates a keypair for a user, that keypair still needs a smart account contract deployed on-chain to actually execute transactions.
+On Starknet, there are no simple keypair accounts like on Ethereum. Every account is a **smart contract**. A smart account is a programmable onchain account that can validate transactions, enforce security rules, and support features like gas sponsorship. When Privy generates a keypair for a user, that keypair still needs a smart account contract deployed on-chain to actually execute transactions.
 
 We use **Argent Ready** (formerly Argent) as the smart account. It's the most battle-tested account contract on Starknet, securing over 90% of the network's value.
 
 The backend handles this automatically:
 
-1. **Create wallet** -- Privy generates a Starknet keypair for the user
-2. **Deploy account** -- the backend deploys an Argent Ready smart account tied to that keypair
-3. **Execute transactions** -- the backend signs calls using Privy's Wallet API and submits them
+1. **Create wallet**: Privy generates a Starknet keypair for the user
+2. **Deploy account**: the backend deploys an Argent Ready smart account tied to that keypair
+3. **Execute transactions**: the backend signs calls using Privy's Wallet API and submits them
 
 The key backend files from the Starkzap SDK:
 
@@ -126,7 +126,7 @@ const result = await account.executePaymasterTransaction(
 );
 ```
 
-The API key stays server-side -- never exposed to the frontend.
+The API key stays server-side, never exposed to the frontend.
 
 ---
 
@@ -156,7 +156,7 @@ The backend verifies the JWT, signs the transaction via Privy, and submits it th
 
 ## Step 6: Get an RPC URL
 
-To talk to Starknet, your backend needs an RPC endpoint. We used [Alchemy](https://www.alchemy.com/), but you can use any Starknet RPC provider (Blast, Nethermind, Lava, etc.).
+To talk to Starknet, your backend needs an RPC endpoint. We used [Alchemy](https://www.alchemy.com/), but you can use any Starknet RPC provider (Nethermind, Lava, etc.).
 
 Sign up at your provider, create a Starknet app, and add the URL to `api/.env`:
 
@@ -177,18 +177,22 @@ RPC_URL=https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_K
 | **Wallet** | None | Argent Ready smart account (auto-created) |
 | **Backend** | None | Express API (Starkzap pattern) |
 
+### Result
+
+In just a few plug-and-play integrations, we added full Web3 functionality without adding end-user friction or forcing anyone to download a wallet extension or acquire tokens. With this integration, your app is now interoperable with Starknet's and Ethereum's blockchain ecosystem: Bitcoin assets, DeFi, stablecoins, onchain gaming, consumer apps, and more.
+
 ### Files that were added or changed
 
 **New (backend):**
-- `api/` -- entire Express server following the Starkzap SDK pattern
+- `api/`, entire Express server following the Starkzap SDK pattern
 
 **Modified (frontend):**
-- `providers.tsx` -- Privy replaces the previous wallet connector
-- `WinkyGame.tsx` -- uses `usePrivy()` instead of wallet hooks
-- `use-winky-contract.ts` -- calls backend API instead of signing directly
-- `WalletConnect.tsx` -- Privy login button
-- `constants.ts` -- API URL, removed old wallet-specific config
-- `package.json` -- swapped wallet packages for `@privy-io/react-auth`
+- `providers.tsx`, added Privy as the login and wallet provider
+- `WinkyGame.tsx`, uses `usePrivy()` instead of wallet hooks
+- `use-winky-contract.ts`, calls backend API instead of signing directly
+- `WalletConnect.tsx`, Privy login button
+- `constants.ts`, API URL, removed old wallet-specific config
+- `package.json`, added `@privy-io/react-auth`
 
 ---
 
@@ -199,7 +203,7 @@ RPC_URL=https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_K
 - Node.js 18+
 - A [Privy](https://console.privy.io) app (App ID + Secret)
 - An [AVNU Paymaster](https://portal.avnu.fi) API key
-- A Starknet RPC URL ([Alchemy](https://www.alchemy.com/), Blast, etc.)
+- A Starknet RPC URL ([Alchemy](https://www.alchemy.com/), Nethermind, etc.)
 
 ### Run Locally
 
@@ -243,11 +247,11 @@ The `WinkyBlink` Cairo smart contract exposes these functions:
 
 ## Learn More
 
-- [Starkzap SDK (starknet-privy-demo)](https://github.com/starknet-edu/starknet-privy-demo) -- the reference implementation this project is based on
-- [Privy Docs](https://docs.privy.io/) -- embedded wallets and social login
-- [AVNU Paymaster](https://docs.avnu.fi/) -- gasless and sponsored transactions
-- [Starknet.js Paymaster Guide](https://starknetjs.com/docs/guides/account/paymaster) -- starknet.js paymaster integration
-- [Argent Ready](https://www.ready.co/developers) -- smart account contracts on Starknet
+- [Starkzap SDK (starknet-privy-demo)](https://github.com/starknet-edu/starknet-privy-demo), the reference implementation this project is based on
+- [Privy Docs](https://docs.privy.io/), embedded wallets and social login
+- [AVNU Paymaster](https://docs.avnu.fi/), gasless and sponsored transactions
+- [Starknet.js Paymaster Guide](https://starknetjs.com/docs/guides/account/paymaster), starknet.js paymaster integration
+- [Argent Ready](https://www.ready.co/developers), smart account contracts on Starknet
 
 ## License
 
