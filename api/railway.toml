@@ -1,5 +1,5 @@
 [build]
-buildCommand = "npm install && npx tsc"
+buildCommand = "rm -rf dist && npm install && npx tsc"
 
 [deploy]
 startCommand = "node dist/server.js"

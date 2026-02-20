@@ -9,6 +9,7 @@ frontend/out/
 frontend/build/
 contracts/target/
 target/
+api/dist/
 
 # Starknet accounts (may contain private keys)
 contracts/accounts.json
