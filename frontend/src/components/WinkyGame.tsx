@@ -161,7 +161,7 @@ export function WinkyGame() {
           const resp = await fetch(`${API_URL}/privy/create-wallet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ownerId: user.id, chainType: 'starknet' }),
+            body: JSON.stringify({ chainType: 'starknet' }),
           });
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');

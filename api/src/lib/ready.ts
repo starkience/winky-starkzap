@@ -1,11 +1,6 @@
 import { Account, CallData, CairoOption, CairoOptionVariant, CairoCustomEnum, hash, num } from "starknet";
 import { getRpcProvider, setupPaymaster } from "./provider";
 import { RawSigner } from "./rawSigner";
-import {
-  buildAuthorizationSignature,
-  getUserAuthorizationKey,
-} from "./authorization";
-import { type WalletApiRequestSignatureInput } from "@privy-io/server-auth";
 
 function buildReadyConstructor(publicKey: string) {
   const signerEnum = new CairoCustomEnum({ Starknet: { pubkey: publicKey } });
@@ -79,33 +74,11 @@ export async function rawSign(
   const url = `https://api.privy.io/v1/wallets/${walletId}/raw_sign`;
   const body = { params: { hash: messageHash } };
 
-  const authorizationKey = await getUserAuthorizationKey({
-    userJwt: opts.userJwt,
-    userId: opts.userId,
-  });
-
-  const sigInput: WalletApiRequestSignatureInput = {
-    version: 1,
-    method: "POST",
-    url,
-    body,
-    headers: {
-      "privy-app-id": appId,
-    },
-  };
-  const signature = buildAuthorizationSignature({
-    input: sigInput,
-    authorizationKey,
-  });
-
   const headers: Record<string, string> = {
     "privy-app-id": appId,
-    "privy-authorization-signature": signature,
+    "Authorization": `Basic ${Buffer.from(`${appId}:${appSecret}`).toString("base64")}`,
     "Content-Type": "application/json",
   };
-  headers["Authorization"] = `Basic ${Buffer.from(
-    `${appId}:${appSecret}`
-  ).toString("base64")}`;
 
   if (opts.origin) headers["Origin"] = opts.origin;
   const resp = await fetch(url, {

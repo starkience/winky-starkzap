@@ -8,16 +8,11 @@ const router = Router();
 
 router.post("/create-wallet", async (req: Request, res: Response) => {
   try {
-    const authUserId = (req as any).auth?.userId as string | undefined;
-    const { chainType, ownerId } = (req.body || {}) as any;
+    const { chainType } = (req.body || {}) as any;
     const privy = getPrivyClient();
-    const payload: any = {
+    const result = await privy.walletApi.createWallet({
       chainType: chainType || "starknet",
-      ...(ownerId || authUserId
-        ? { owner: { userId: ownerId || authUserId } }
-        : {}),
-    };
-    const result = await privy.walletApi.createWallet(payload);
+    });
     return res.status(200).json({ wallet: result });
   } catch (error: any) {
     console.error("Error creating Privy wallet:", error);

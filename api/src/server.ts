@@ -47,6 +47,6 @@ const { authMiddleware } = require('./middleware/auth')
 app.use('/privy', authMiddleware, require('./routes/privy').default || require('./routes/privy'))
 
 app.listen(PORT, () => {
-  console.log(`Winky API v1.1.0`)
+  console.log(`Winky API v1.2.0`)
   console.log(`Server running on http://localhost:${PORT}`)
 })
