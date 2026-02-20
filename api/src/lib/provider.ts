@@ -30,8 +30,39 @@ export async function setupPaymaster(): Promise<{ paymasterRpc: PaymasterRpc; is
     throw new Error("PAYMASTER_API_KEY is required when PAYMASTER_MODE is 'sponsored'")
   }
   const paymasterRpc = getPaymasterRpc()
-  const available = await paymasterRpc.isAvailable()
+
+  // Probe the paymaster URL to diagnose connectivity/format issues
+  const probeUrl = process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi'
+  try {
+    const probeResp = await fetch(probeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.PAYMASTER_API_KEY
+          ? { 'x-paymaster-api-key': process.env.PAYMASTER_API_KEY }
+          : {}),
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'paymaster_isAvailable',
+        params: {},
+        id: 1,
+      }),
+    })
+    const probeText = await probeResp.text()
+    console.log(`[setupPaymaster] probe status=${probeResp.status} body=${probeText.slice(0, 500)}`)
+  } catch (probeErr: any) {
+    console.error('[setupPaymaster] probe fetch error:', probeErr.message)
+  }
+
+  let available = true
+  try {
+    available = await paymasterRpc.isAvailable()
+  } catch (err: any) {
+    console.warn('[setupPaymaster] isAvailable() threw, assuming available:', err.message)
+  }
   if (!available) throw new Error('Paymaster service is not available')
+
   let gasToken: string | undefined
   if (!isSponsored) {
     const supported = await paymasterRpc.getSupportedTokens()
