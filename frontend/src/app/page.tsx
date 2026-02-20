@@ -46,7 +46,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
         padding: '40px',
         textAlign: 'center',
         fontFamily: "'Manrope', sans-serif",
-        background: '#EDEEEC',
+        background: '#0A0A0A',
       }}
     >
       <img
@@ -55,7 +55,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
         style={{ height: '48px', objectFit: 'contain', marginBottom: '32px' }}
       />
 
-      <p style={{ fontSize: '18px', fontWeight: 600, color: '#333', marginBottom: '24px' }}>
+      <p style={{ fontSize: '18px', fontWeight: 600, color: '#A6A4A7', marginBottom: '24px' }}>
         Enter access code
       </p>
 
@@ -70,7 +70,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
             padding: '12px 20px',
             fontSize: '16px',
             fontFamily: "'Manrope', sans-serif",
-            border: `2px solid ${error ? '#F0E526' : '#ccc'}`,
+            border: `2px solid ${error ? '#C0B4DA' : '#ccc'}`,
             borderRadius: '10px',
             outline: 'none',
             width: '240px',
@@ -84,7 +84,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
           type="submit"
           style={{
             padding: '10px 32px',
-            background: '#F0E526',
+            background: '#C0B4DA',
             border: 'none',
             borderRadius: '10px',
             color: '#fff',
@@ -103,7 +103,7 @@ function PasscodeGate({ onUnlock }: { onUnlock: () => void }) {
       </form>
 
       {error && (
-        <p style={{ color: '#F0E526', fontSize: '13px', marginTop: '12px', fontWeight: 600 }}>
+        <p style={{ color: '#C0B4DA', fontSize: '13px', marginTop: '12px', fontWeight: 600 }}>
           Incorrect code
         </p>
       )}

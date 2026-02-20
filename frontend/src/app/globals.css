@@ -69,18 +69,18 @@
 }
 
 :root {
-  --bg-primary: #EDEEEC;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #eeeeee;
-  --text-primary: #111111;
-  --text-secondary: rgba(0, 0, 0, 0.55);
-  --text-muted: rgba(0, 0, 0, 0.35);
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1a1a1a;
+  --text-primary: #A6A4A7;
+  --text-secondary: rgba(166, 164, 167, 0.7);
+  --text-muted: rgba(166, 164, 167, 0.45);
+  --accent: #C0B4DA;
+  --accent-hover: #a89cc7;
   --success: #22c55e;
   --error: #ef4444;
   --warning: #f59e0b;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: rgba(255, 255, 255, 0.08);
   --radius: 6px;
   --radius-sm: 4px;
 }
@@ -122,9 +122,9 @@ body {
 .winky-header-btn {
   padding: 10px 24px;
   background: transparent;
-  border: 3px solid #F0E526;
+  border: 3px solid #C0B4DA;
   border-radius: 10px;
-  color: #F0E526;
+  color: #C0B4DA;
   font-size: 15px;
   font-weight: 700;
   font-family: 'Manrope', sans-serif;
@@ -140,9 +140,9 @@ body {
 }
 
 .winky-header-btn:hover:not(:disabled) {
-  background: #F0E526;
+  background: #C0B4DA;
   color: #fff;
-  border-color: #F0E526;
+  border-color: #C0B4DA;
 }
 
 .winky-header-btn-wallet {
@@ -651,9 +651,9 @@ body {
   height: 90vh;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: #141414;
   border-radius: 16px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   overscroll-behavior: contain;
   animation: leaderboard-slide-up 0.25s ease-out;
@@ -665,7 +665,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 24px 28px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .leaderboard-title-group {
@@ -677,18 +677,18 @@ body {
 .leaderboard-title {
   font-size: 22px;
   font-weight: 800;
-  color: #111;
+  color: #A6A4A7;
   margin: 0;
 }
 
 .leaderboard-subtitle {
   font-size: 13px;
-  color: #888;
+  color: #A6A4A7;
   font-weight: 500;
 }
 
 .leaderboard-subtitle strong {
-  color: #F0E526;
+  color: #C0B4DA;
   font-weight: 700;
 }
 
@@ -717,15 +717,15 @@ body {
 
 .leaderboard-twitter-btn--connected {
   background: transparent;
-  color: #333;
-  border-color: rgba(0, 0, 0, 0.15);
+  color: #A6A4A7;
+  border-color: rgba(255, 255, 255, 0.15);
   padding: 4px 12px 4px 4px;
 }
 
 .leaderboard-twitter-btn--connected:hover {
-  background: rgba(240, 229, 38, 0.05);
-  border-color: rgba(240, 229, 38, 0.3);
-  color: #F0E526;
+  background: rgba(192, 180, 218, 0.05);
+  border-color: rgba(192, 180, 218, 0.3);
+  color: #C0B4DA;
 }
 
 .leaderboard-twitter-btn-avatar {
@@ -737,7 +737,7 @@ body {
 
 .leaderboard-twitter-cta-text {
   font-size: 12px;
-  color: #888;
+  color: #A6A4A7;
   font-weight: 500;
   font-style: italic;
   max-width: 220px;
@@ -752,19 +752,19 @@ body {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   font-size: 18px;
-  color: #999;
+  color: #A6A4A7;
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
 }
 
 .leaderboard-refresh:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.04);
-  color: #555;
-  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: #C0B4DA;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .leaderboard-refresh:disabled {
@@ -782,15 +782,15 @@ body {
   border: none;
   border-radius: 8px;
   font-size: 24px;
-  color: #999;
+  color: #A6A4A7;
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
 }
 
 .leaderboard-close:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #333;
+  background: rgba(255, 255, 255, 0.06);
+  color: #C0B4DA;
 }
 
 .leaderboard-columns {
@@ -801,8 +801,8 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: #aaa;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #A6A4A7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   align-items: center;
 }
 
@@ -842,28 +842,28 @@ body {
   justify-content: center;
   gap: 12px;
   padding: 48px 0;
-  color: #999;
+  color: #A6A4A7;
   font-size: 14px;
 }
 
 .leaderboard-loading-status {
   font-size: 14px;
   font-weight: 500;
-  color: #666;
+  color: #A6A4A7;
   text-align: center;
 }
 
 .leaderboard-loading-elapsed {
   font-size: 24px;
   font-weight: 700;
-  color: #F0E526;
+  color: #C0B4DA;
   font-variant-numeric: tabular-nums;
 }
 
 .leaderboard-empty {
   text-align: center;
   padding: 48px 0;
-  color: #999;
+  color: #A6A4A7;
   font-size: 14px;
 }
 
@@ -875,16 +875,16 @@ body {
   gap: 16px;
   padding: 48px 28px;
   text-align: center;
-  color: #F0E526;
+  color: #C0B4DA;
   font-size: 14px;
 }
 
 .leaderboard-retry-btn {
   padding: 8px 24px;
   background: transparent;
-  border: 2px solid #F0E526;
+  border: 2px solid #C0B4DA;
   border-radius: 8px;
-  color: #F0E526;
+  color: #C0B4DA;
   font-size: 13px;
   font-weight: 600;
   font-family: 'Manrope', sans-serif;
@@ -893,7 +893,7 @@ body {
 }
 
 .leaderboard-retry-btn:hover {
-  background: #F0E526;
+  background: #C0B4DA;
   color: #fff;
 }
 
@@ -904,11 +904,11 @@ body {
   padding: 16px 32px;
   transition: background 0.15s;
   position: relative;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .leaderboard-row:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .leaderboard-row--rank-1 {
@@ -936,11 +936,11 @@ body {
 }
 
 .leaderboard-row--current {
-  background: rgba(240, 229, 38, 0.06);
+  background: rgba(192, 180, 218, 0.06);
 }
 
 .leaderboard-row--current:hover {
-  background: rgba(240, 229, 38, 0.09);
+  background: rgba(192, 180, 218, 0.09);
 }
 
 .leaderboard-pinned-separator {
@@ -948,13 +948,13 @@ body {
   align-items: center;
   justify-content: center;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .leaderboard-pinned-dots {
   font-size: 14px;
   letter-spacing: 4px;
-  color: #bbb;
+  color: #555;
 }
 
 .leaderboard-cell-avatar {
@@ -967,7 +967,7 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ddd, #c0c0c0);
+  background: linear-gradient(135deg, #333, #444);
   flex-shrink: 0;
 }
 
@@ -989,9 +989,9 @@ body {
   gap: 6px;
   padding: 6px 14px;
   border-radius: 8px;
-  border: 1.5px solid #F0E526;
+  border: 1.5px solid #C0B4DA;
   background: transparent;
-  color: #F0E526;
+  color: #C0B4DA;
   font-size: 12px;
   font-weight: 700;
   font-family: 'Manrope', sans-serif;
@@ -1001,7 +1001,7 @@ body {
 }
 
 .leaderboard-generate-btn:hover:not(:disabled) {
-  background: #F0E526;
+  background: #C0B4DA;
   color: #fff;
 }
 
@@ -1013,7 +1013,7 @@ body {
 .leaderboard-rank-number {
   font-size: 16px;
   font-weight: 700;
-  color: #666;
+  color: #A6A4A7;
 }
 
 .leaderboard-cell-user {
@@ -1035,7 +1035,7 @@ body {
 .leaderboard-username {
   font-size: 15px;
   font-weight: 600;
-  color: #222;
+  color: #A6A4A7;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1043,13 +1043,13 @@ body {
 
 .leaderboard-username--link {
   text-decoration: none;
-  color: #222;
+  color: #A6A4A7;
   transition: color 0.15s;
 }
 
 .leaderboard-username--link:hover {
   text-decoration: underline;
-  color: #000;
+  color: #C0B4DA;
 }
 
 .leaderboard-cell-blinks {
@@ -1061,13 +1061,13 @@ body {
 .leaderboard-blink-count {
   font-size: 18px;
   font-weight: 800;
-  color: #111;
+  color: #A6A4A7;
   font-variant-numeric: tabular-nums;
 }
 
 .leaderboard-blink-label {
   font-size: 11px;
-  color: #aaa;
+  color: #A6A4A7;
   font-weight: 500;
 }
 
@@ -1078,8 +1078,8 @@ body {
   transform: translateY(-50%);
   font-size: 9px;
   font-weight: 800;
-  color: #F0E526;
-  background: rgba(240, 229, 38, 0.1);
+  color: #C0B4DA;
+  background: rgba(192, 180, 218, 0.1);
   padding: 2px 6px;
   border-radius: 4px;
   letter-spacing: 0.5px;

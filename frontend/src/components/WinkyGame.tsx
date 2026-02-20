@@ -332,13 +332,13 @@ export function WinkyGame() {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '6px' : '10px', flexShrink: 0 }}>
             <img src="/logo.png" alt="Wink." style={{ height: isMobile ? '28px' : '40px', objectFit: 'contain' }} />
             {!isMobile && (
-              <span style={{ fontSize: '16px', fontWeight: 600, color: '#F0E526', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
+              <span style={{ fontSize: '16px', fontWeight: 600, color: '#C0B4DA', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
                 Powered by{' '}
                 <a
                   href="https://x.com/Starknet"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: '#F0E526', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
+                  style={{ color: '#C0B4DA', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
@@ -392,7 +392,7 @@ export function WinkyGame() {
                     width: '38px',
                     height: '38px',
                     borderRadius: '50%',
-                    border: '3px solid #F0E526',
+                    border: '3px solid #C0B4DA',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -401,15 +401,15 @@ export function WinkyGame() {
                     textDecoration: 'none',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#F0E526';
+                    e.currentTarget.style.background = '#C0B4DA';
                     (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#fff';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
-                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#F0E526';
+                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#C0B4DA';
                   }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#F0E526" style={{ transition: 'fill 0.2s' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#C0B4DA" style={{ transition: 'fill 0.2s' }}>
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
                   </svg>
                 </a>
@@ -426,7 +426,7 @@ export function WinkyGame() {
                       width: isMobile ? '32px' : '38px',
                       height: isMobile ? '32px' : '38px',
                       borderRadius: '50%',
-                      border: isMobile ? '2px solid #F0E526' : '3px solid #F0E526',
+                      border: isMobile ? '2px solid #C0B4DA' : '3px solid #C0B4DA',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -434,7 +434,7 @@ export function WinkyGame() {
                       fontSize: isMobile ? '14px' : '18px',
                       fontWeight: 800,
                       fontFamily: "'Manrope', sans-serif",
-                      color: '#F0E526',
+                      color: '#C0B4DA',
                       transition: 'all 0.2s',
                       position: 'relative',
                       zIndex: showInfo && isMobile ? 3001 : 'auto',
@@ -462,20 +462,20 @@ export function WinkyGame() {
                         width: '380px',
                         maxWidth: '380px',
                         padding: '20px',
-                        background: '#fff',
+                        background: '#1a1a1a',
                         borderRadius: '10px',
-                        border: '2px solid rgba(0,0,0,0.08)',
-                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                        border: '2px solid rgba(255,255,255,0.08)',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
                         zIndex: 3000,
                         fontFamily: "'Manrope', sans-serif",
                         fontSize: '14px',
                         fontWeight: 500,
-                        color: '#333',
+                        color: '#A6A4A7',
                         lineHeight: 1.6,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#111' }}>
+                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#C0B4DA' }}>
                         How does Wink work?
                       </div>
                       <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -518,13 +518,13 @@ export function WinkyGame() {
                   }}
                   onMouseEnter={(e) => {
                     if (!isGeneratingImage) {
-                      e.currentTarget.style.background = '#F0E526';
+                      e.currentTarget.style.background = '#C0B4DA';
                       e.currentTarget.style.color = '#fff';
                     }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#F0E526';
+                    e.currentTarget.style.color = '#C0B4DA';
                   }}
                 >
                   {isGeneratingImage ? 'Generating...' : 'Generate Image'}
@@ -535,12 +535,12 @@ export function WinkyGame() {
                   onClick={() => setShowLeaderboard(true)}
                   className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#F0E526';
+                    e.currentTarget.style.background = '#C0B4DA';
                     e.currentTarget.style.color = '#fff';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#F0E526';
+                    e.currentTarget.style.color = '#C0B4DA';
                   }}
                 >
                   {isMobile ? 'LB' : 'Leaderboard'}
@@ -575,13 +575,13 @@ export function WinkyGame() {
                     }}
                     onMouseEnter={(e) => {
                       if (!isGeneratingImage) {
-                        e.currentTarget.style.background = '#F0E526';
+                        e.currentTarget.style.background = '#C0B4DA';
                         e.currentTarget.style.color = '#fff';
                       }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#F0E526';
+                      e.currentTarget.style.color = '#C0B4DA';
                     }}
                   >
                     {isGeneratingImage ? '...' : 'Get image'}
@@ -600,12 +600,12 @@ export function WinkyGame() {
                     window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#F0E526';
+                    e.currentTarget.style.background = '#C0B4DA';
                     e.currentTarget.style.color = '#fff';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#F0E526';
+                    e.currentTarget.style.color = '#C0B4DA';
                   }}
                 >
                   Tweeeeeet it
@@ -636,10 +636,10 @@ export function WinkyGame() {
                       top: 'calc(100% + 8px)',
                       right: 0,
                       minWidth: '220px',
-                      background: 'rgba(255, 255, 255, 0.97)',
+                      background: 'rgba(26, 26, 26, 0.97)',
                       borderRadius: '6px',
                       overflow: 'hidden',
-                      boxShadow: 'none',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
                       backdropFilter: 'blur(12px)',
                       zIndex: 1000,
                     }}
@@ -647,10 +647,10 @@ export function WinkyGame() {
                     <div
                       style={{
                         padding: '12px 16px',
-                        borderBottom: '1px solid rgba(0,0,0,0.06)',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
                         fontSize: '11px',
                         fontFamily: "'Manrope', sans-serif",
-                        color: '#555',
+                        color: '#A6A4A7',
                         wordBreak: 'break-all',
                         lineHeight: 1.4,
                       }}
@@ -671,14 +671,14 @@ export function WinkyGame() {
                         padding: '12px 16px',
                         background: 'transparent',
                         border: 'none',
-                        borderBottom: '1px solid rgba(0,0,0,0.06)',
-                        color: '#111',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        color: '#A6A4A7',
                         fontSize: '13px',
                         cursor: 'pointer',
                         textAlign: 'left',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       Copy Address
@@ -700,7 +700,7 @@ export function WinkyGame() {
                         textAlign: 'left',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       Logout
@@ -722,19 +722,19 @@ export function WinkyGame() {
             right: '8px',
             zIndex: 3000,
             padding: '14px',
-            background: '#fff',
+            background: '#1a1a1a',
             borderRadius: '10px',
-            border: '2px solid rgba(0,0,0,0.08)',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            border: '2px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
             fontFamily: "'Manrope', sans-serif",
             fontSize: '12px',
             fontWeight: 500,
-            color: '#333',
+            color: '#A6A4A7',
             lineHeight: 1.6,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '12px', color: '#111' }}>
+          <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '12px', color: '#C0B4DA' }}>
             How does Wink work?
           </div>
           <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -815,17 +815,6 @@ export function WinkyGame() {
             >
               {!isMobile && (
                 <>
-                  <img
-                    src="/steps.png"
-                    alt="Steps: Sign up, Create a session, One blink one transaction, Share on X"
-                    style={{
-                      maxWidth: '420px',
-                      width: '70%',
-                      height: 'auto',
-                      objectFit: 'contain',
-                      filter: 'drop-shadow(0 0 40px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 140px rgba(255, 255, 255, 0.2))',
-                    }}
-                  />
                   <button
                     onClick={handleLogin}
                     disabled={loginBusy}
@@ -835,23 +824,23 @@ export function WinkyGame() {
                       fontSize: '22px',
                       fontWeight: 800,
                       fontFamily: "'Manrope', sans-serif",
-                      background: walletLoading ? '#6366f1' : '#F0E526',
+                      background: walletLoading ? '#6366f1' : '#C0B4DA',
                       color: '#fff',
                       border: 'none',
                       borderRadius: '10px',
                       cursor: loginBusy ? 'wait' : 'pointer',
                       opacity: loginBusy ? 0.6 : 1,
                       letterSpacing: '0.5px',
-                      boxShadow: '0 4px 24px rgba(240, 229, 38, 0.5)',
+                      boxShadow: '0 4px 24px rgba(192, 180, 218, 0.5)',
                       transition: 'transform 0.15s, box-shadow 0.15s',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 6px 32px rgba(240, 229, 38, 0.6)';
+                      e.currentTarget.style.boxShadow = '0 6px 32px rgba(192, 180, 218, 0.6)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 24px rgba(240, 229, 38, 0.5)';
+                      e.currentTarget.style.boxShadow = '0 4px 24px rgba(192, 180, 218, 0.5)';
                     }}
                   >
                     {walletLoading ? 'Setting up wallet...' : !ready ? 'Loading...' : 'Sign Up'}
@@ -867,14 +856,14 @@ export function WinkyGame() {
                     fontSize: '20px',
                     fontWeight: 800,
                     fontFamily: "'Manrope', sans-serif",
-                    background: walletLoading ? '#6366f1' : '#F0E526',
+                    background: walletLoading ? '#6366f1' : '#C0B4DA',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: loginBusy ? 'wait' : 'pointer',
                     opacity: loginBusy ? 0.6 : 1,
                     letterSpacing: '0.5px',
-                    boxShadow: '0 4px 20px rgba(240, 229, 38, 0.4)',
+                    boxShadow: '0 4px 20px rgba(192, 180, 218, 0.4)',
                   }}
                 >
                   {walletLoading ? 'Setting up...' : !ready ? 'Loading...' : 'Sign Up'}
@@ -894,7 +883,7 @@ export function WinkyGame() {
                 fontFamily: "'Manrope', sans-serif",
                 fontSize: isMobile ? '48px' : '90px',
                 fontWeight: 700,
-                color: '#F0E526',
+                color: '#C0B4DA',
               }}
             >
               {totalBlinkCount}
@@ -992,7 +981,7 @@ export function WinkyGame() {
               left: 0,
               right: 0,
               height: isMobile ? '40%' : '35%',
-              background: 'linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%)',
+              background: 'linear-gradient(to bottom, #0A0A0A 0%, transparent 100%)',
               zIndex: 1,
               pointerEvents: 'none',
             }}
@@ -1037,13 +1026,13 @@ export function WinkyGame() {
         >
           <div
             style={{
-              background: '#fff',
+              background: '#1a1a1a',
               borderRadius: '20px',
               padding: isMobile ? '32px 24px' : '48px 56px',
               maxWidth: '440px',
               width: '90vw',
               textAlign: 'center',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
               fontFamily: "'Manrope', sans-serif",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -1054,14 +1043,14 @@ export function WinkyGame() {
             <h2 style={{
               fontSize: isMobile ? '22px' : '28px',
               fontWeight: 900,
-              color: '#111',
+              color: '#C0B4DA',
               margin: '0 0 8px',
             }}>
               100 Blinks!
             </h2>
             <p style={{
               fontSize: isMobile ? '14px' : '16px',
-              color: '#555',
+              color: '#A6A4A7',
               margin: '0 0 28px',
               lineHeight: 1.5,
             }}>
@@ -1137,12 +1126,12 @@ export function WinkyGame() {
 function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: boolean }) {
   const rowColor =
     tx.status === 'success'
-      ? '#111111'
+      ? '#C0B4DA'
       : tx.status === 'skipped'
-        ? '#d97706'
+        ? '#E96D25'
         : tx.status === 'error'
-          ? '#F0E526'
-          : 'rgba(0,0,0,0.3)';
+          ? '#ef4444'
+          : 'rgba(255,255,255,0.3)';
 
   const timeAgo = getTimeAgo(tx.timestamp);
 
@@ -1167,7 +1156,7 @@ function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: bo
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: titleSize, fontWeight: '800' }}>
+        <div style={{ fontSize: titleSize, fontWeight: '800', color: rowColor }}>
           Blink #{tx.blinkNumber}
         </div>
         <div style={{ marginTop: '1px' }}>
@@ -1180,7 +1169,7 @@ function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: bo
                 fontSize: hashSize,
                 fontWeight: '800',
                 fontFamily: "'Manrope', sans-serif",
-                color: rowColor,
+                color: '#DEE2C7',
                 opacity: 0.7,
                 textDecoration: 'none',
               }}
@@ -1195,6 +1184,7 @@ function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: bo
                 fontSize: hashSize,
                 fontWeight: '800',
                 fontFamily: "'Manrope', sans-serif",
+                color: '#DEE2C7',
                 opacity: 0.6,
               }}
             >
@@ -1207,6 +1197,7 @@ function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: bo
         style={{
           fontSize: timeSize,
           fontWeight: '800',
+          color: '#DEE2C7',
           opacity: 0.55,
           whiteSpace: 'nowrap',
           paddingTop: '2px',
@@ -1267,7 +1258,7 @@ function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobi
               transition: 'opacity 0.5s ease-out',
             }}
           >
-            <span style={{ color: '#F0E526', fontSize: isMobile ? '6px' : '8px' }}>&#9679;</span>
+            <span style={{ color: '#C0B4DA', fontSize: isMobile ? '6px' : '8px' }}>&#9679;</span>
             <span style={{ fontWeight: 800 }}>{displayName}</span>
             <span style={{ opacity: 0.7 }}>blinked</span>
             <a
