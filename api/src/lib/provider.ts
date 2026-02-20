@@ -17,8 +17,9 @@ export function getRpcProvider(opts?: { blockIdentifier?: 'pre_confirmed' | 'lat
 export function getPaymasterRpc(): PaymasterRpc {
   if (cachedPaymaster) return cachedPaymaster
   const url = process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi'
-  const headers: Record<string, string> | undefined = process.env.PAYMASTER_API_KEY
-    ? { 'x-paymaster-api-key': process.env.PAYMASTER_API_KEY as string }
+  const apiKey = (process.env.PAYMASTER_API_KEY || '').trim()
+  const headers: Record<string, string> | undefined = apiKey
+    ? { 'x-paymaster-api-key': apiKey }
     : undefined
   cachedPaymaster = new PaymasterRpc(headers ? { nodeUrl: url, headers } : { nodeUrl: url })
   return cachedPaymaster

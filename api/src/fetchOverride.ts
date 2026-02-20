@@ -19,11 +19,13 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise
   const reqHeaders: Record<string, string> = {}
   if (init?.headers) {
     if (init.headers instanceof Headers) {
-      init.headers.forEach((v, k) => { reqHeaders[k] = v })
+      init.headers.forEach((v, k) => { reqHeaders[k] = v.trim() })
     } else if (Array.isArray(init.headers)) {
-      init.headers.forEach(([k, v]) => { reqHeaders[k] = v })
+      init.headers.forEach(([k, v]) => { reqHeaders[k] = v.trim() })
     } else {
-      Object.assign(reqHeaders, init.headers)
+      for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+        reqHeaders[k] = v.trim()
+      }
     }
   }
 
