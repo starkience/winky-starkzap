@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "winky"
+name = "winky_starkzap"
 version = "0.1.0"
 dependencies = [
  "snforge_std",

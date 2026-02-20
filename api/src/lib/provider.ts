@@ -25,7 +25,15 @@ export function getPaymasterRpc(): PaymasterRpc {
   return cachedPaymaster
 }
 
+let cachedPaymasterSetup: { paymasterRpc: PaymasterRpc; isSponsored: boolean; gasToken?: string } | null = null
+let paymasterSetupTime = 0
+const PAYMASTER_CACHE_TTL_MS = 60_000
+
 export async function setupPaymaster(): Promise<{ paymasterRpc: PaymasterRpc; isSponsored: boolean; gasToken?: string }> {
+  if (cachedPaymasterSetup && Date.now() - paymasterSetupTime < PAYMASTER_CACHE_TTL_MS) {
+    return cachedPaymasterSetup
+  }
+
   const isSponsored = (process.env.PAYMASTER_MODE || 'sponsored').toLowerCase() === 'sponsored'
   if (isSponsored && !process.env.PAYMASTER_API_KEY) {
     throw new Error("PAYMASTER_API_KEY is required when PAYMASTER_MODE is 'sponsored'")
@@ -35,7 +43,6 @@ export async function setupPaymaster(): Promise<{ paymasterRpc: PaymasterRpc; is
   let available = true
   try {
     available = await paymasterRpc.isAvailable()
-    console.log('[setupPaymaster] isAvailable:', available)
   } catch (err: any) {
     console.warn('[setupPaymaster] isAvailable() threw, assuming available:', err.message)
   }
@@ -47,5 +54,8 @@ export async function setupPaymaster(): Promise<{ paymasterRpc: PaymasterRpc; is
     gasToken = (process.env.GAS_TOKEN_ADDRESS as string) || supported[0]?.token_address
     if (!gasToken) throw new Error('No supported gas tokens available (and GAS_TOKEN_ADDRESS not set)')
   }
-  return { paymasterRpc, isSponsored, gasToken }
+
+  cachedPaymasterSetup = { paymasterRpc, isSponsored, gasToken }
+  paymasterSetupTime = Date.now()
+  return cachedPaymasterSetup
 }

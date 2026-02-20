@@ -17,14 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
-
-const LEADERBOARD_RPC_URLS: Record<string, string> = {
-  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
-  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
-  devnet: 'http://localhost:5050',
-};
-const LEADERBOARD_RPC_URL = LEADERBOARD_RPC_URLS[NETWORK] || LEADERBOARD_RPC_URLS.sepolia;
+import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
 
 export interface LeaderboardEntry {
   address: string;
@@ -62,7 +55,7 @@ const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
  * Without this, the RPC scans from genesis (takes ~23s instead of ~1.5s).
  */
 const EVENT_START_BLOCK: Record<string, number> = {
-  mainnet: 6_938_534,
+  mainnet: 6_976_636,
   sepolia: 0,
   devnet: 0,
 };
@@ -151,7 +144,7 @@ export function useLeaderboard(userAddress?: string): UseLeaderboardResult {
   const providerRef = useRef<RpcProvider | null>(null);
 
   if (!providerRef.current) {
-    providerRef.current = new RpcProvider({ nodeUrl: LEADERBOARD_RPC_URL });
+    providerRef.current = new RpcProvider({ nodeUrl: RPC_URL });
   }
 
   const fetchLeaderboard = useCallback(async () => {

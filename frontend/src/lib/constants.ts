@@ -8,6 +8,11 @@ export const NETWORK = (process.env.NEXT_PUBLIC_NETWORK || 'sepolia') as
   | 'sepolia'
   | 'devnet';
 
+// Starknet RPC URL (configurable via env, defaults to Alchemy)
+export const RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL ||
+  'https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/yR5Pmn0DMRTd2lhPE-sh3';
+
 // Backend API URL
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
@@ -21,9 +26,9 @@ export const EXPLORER_URLS = {
 export const VOYAGER_URL = EXPLORER_URLS[NETWORK];
 export const VOYAGER_TX_URL = VOYAGER_URL ? `${VOYAGER_URL}/tx` : '';
 
-// Deployed WinkyBlink contract address
+// Deployed WinkyStarkzap contract address
 export const WINKY_CONTRACT_ADDRESSES = {
-  mainnet: '0x06c2cbb364d72017b16172c2429f1cf906e71c2f24c319b96d4419f94c34b146',
+  mainnet: '0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f',
   sepolia: '0x05d1dfe0ae2b796ac73bf995901c0987b15e8af6f2cb414189a4749feba8666b',
   devnet: '0x048a3823f3e8fd09dbd779855c5cb02a23542de272ad9edcd502230e14e20377',
 } as const;

@@ -76,7 +76,7 @@ A Starknet application that records eye blinks on-chain in real time. Each blink
 ├──────────────────────────────────────────────────────────────┤
 │                                                               │
 │  WinkyBlink Contract                                          │
-│  0x06c2cbb364d72017b16172c2429f1cf906e71c2f24c319b96d4419f94c34b146
+│  0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f
 │                                                               │
 │  Storage:                                                     │
 │  ├─ user_blinks: Map<ContractAddress, u64>                   │
@@ -213,7 +213,7 @@ npx vercel --prod
 | Variable | Value |
 |----------|-------|
 | `NEXT_PUBLIC_NETWORK` | `mainnet` |
-| `NEXT_PUBLIC_WINKY_CONTRACT_ADDRESS` | `0x06c2cbb364d72017b16172c2429f1cf906e71c2f24c319b96d4419f94c34b146` |
+| `NEXT_PUBLIC_WINKY_CONTRACT_ADDRESS` | `0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f` |
 
 ### Paymaster Management
 

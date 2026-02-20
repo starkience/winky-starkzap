@@ -4,12 +4,12 @@ use snforge_std::{
     EventSpyAssertionsTrait,
 };
 use starknet::ContractAddress;
-use winky::IWinkyBlinkDispatcher;
-use winky::IWinkyBlinkDispatcherTrait;
-use winky::WinkyBlink;
+use winky_starkzap::IWinkyStarkzapDispatcher;
+use winky_starkzap::IWinkyStarkzapDispatcherTrait;
+use winky_starkzap::WinkyStarkzap;
 
 fn deploy_contract() -> ContractAddress {
-    let contract = declare("WinkyBlink").unwrap().contract_class();
+    let contract = declare("WinkyStarkzap").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@array![]).unwrap();
     contract_address
 }
@@ -22,14 +22,10 @@ fn USER2() -> ContractAddress {
     'user2'.try_into().unwrap()
 }
 
-// ============================================
-// Basic Tests
-// ============================================
-
 #[test]
 fn test_record_single_blink() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
     start_cheat_caller_address(contract_address, USER1());
 
@@ -42,11 +38,10 @@ fn test_record_single_blink() {
 #[test]
 fn test_record_multiple_blinks() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
     start_cheat_caller_address(contract_address, USER1());
 
-    // Record 5 blinks
     dispatcher.record_blink();
     dispatcher.record_blink();
     dispatcher.record_blink();
@@ -60,16 +55,14 @@ fn test_record_multiple_blinks() {
 #[test]
 fn test_multiple_users() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
-    // User 1 blinks 3 times
     start_cheat_caller_address(contract_address, USER1());
     dispatcher.record_blink();
     dispatcher.record_blink();
     dispatcher.record_blink();
     stop_cheat_caller_address(contract_address);
 
-    // User 2 blinks 2 times
     start_cheat_caller_address(contract_address, USER2());
     dispatcher.record_blink();
     dispatcher.record_blink();
@@ -83,20 +76,16 @@ fn test_multiple_users() {
 #[test]
 fn test_initial_state() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
     assert!(dispatcher.get_user_blinks(USER1()) == 0, "Initial user blinks should be 0");
     assert!(dispatcher.get_total_blinks() == 0, "Initial total blinks should be 0");
 }
 
-// ============================================
-// Event Tests
-// ============================================
-
 #[test]
 fn test_blink_event_emitted() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
     let mut spy = spy_events();
 
@@ -110,8 +99,8 @@ fn test_blink_event_emitted() {
             @array![
                 (
                     contract_address,
-                    WinkyBlink::Event::Blink(
-                        WinkyBlink::Blink {
+                    WinkyStarkzap::Event::Blink(
+                        WinkyStarkzap::Blink {
                             user: USER1(),
                             timestamp: 1234567890,
                             user_total: 1,
@@ -126,27 +115,23 @@ fn test_blink_event_emitted() {
 #[test]
 fn test_blink_event_increments() {
     let contract_address = deploy_contract();
-    let dispatcher = IWinkyBlinkDispatcher { contract_address };
+    let dispatcher = IWinkyStarkzapDispatcher { contract_address };
 
     let mut spy = spy_events();
 
     start_cheat_caller_address(contract_address, USER1());
     start_cheat_block_timestamp(contract_address, 1000);
 
-    // First blink
+    dispatcher.record_blink();
     dispatcher.record_blink();
 
-    // Second blink
-    dispatcher.record_blink();
-
-    // Check second event has correct totals
     spy
         .assert_emitted(
             @array![
                 (
                     contract_address,
-                    WinkyBlink::Event::Blink(
-                        WinkyBlink::Blink {
+                    WinkyStarkzap::Event::Blink(
+                        WinkyStarkzap::Blink {
                             user: USER1(),
                             timestamp: 1000,
                             user_total: 2,

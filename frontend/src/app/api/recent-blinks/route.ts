@@ -19,14 +19,8 @@ export const dynamic = 'force-dynamic';
 
 const NETWORK = (process.env.NEXT_PUBLIC_NETWORK || 'sepolia') as 'mainnet' | 'sepolia' | 'devnet';
 
-const RPC_URLS_MAP: Record<string, string> = {
-  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
-  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
-  devnet: 'http://localhost:5050',
-};
-
 const WINKY_CONTRACT_ADDRESSES: Record<string, string> = {
-  mainnet: '0x06c2cbb364d72017b16172c2429f1cf906e71c2f24c319b96d4419f94c34b146',
+  mainnet: '0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f',
   sepolia: '0x05d1dfe0ae2b796ac73bf995901c0987b15e8af6f2cb414189a4749feba8666b',
   devnet: '0x048a3823f3e8fd09dbd779855c5cb02a23542de272ad9edcd502230e14e20377',
 };
@@ -35,8 +29,16 @@ const CONTRACT_ADDRESS = (
   process.env.NEXT_PUBLIC_WINKY_CONTRACT_ADDRESS || WINKY_CONTRACT_ADDRESSES[NETWORK] || WINKY_CONTRACT_ADDRESSES['sepolia']
 ).trim();
 
-const RPC_URL = RPC_URLS_MAP[NETWORK] || RPC_URLS_MAP['sepolia'];
+const RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL ||
+  'https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/yR5Pmn0DMRTd2lhPE-sh3';
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
+
+const EVENT_START_BLOCK: Record<string, number> = {
+  mainnet: 6_976_636,
+  sepolia: 0,
+  devnet: 0,
+};
 
 // In-memory cache (per serverless instance)
 let cachedEvents: RecentBlink[] = [];
@@ -65,30 +67,44 @@ export async function GET() {
 
     const provider = new RpcProvider({ nodeUrl: RPC_URL });
 
-    // Get latest block number to scan only the last ~50 blocks (~10 minutes on mainnet)
-    const latestBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, latestBlock - 50);
+    const startBlock = EVENT_START_BLOCK[NETWORK] ?? 0;
+    const allEvents: RecentBlink[] = [];
+    let continuationToken: string | undefined = undefined;
 
-    const response = await provider.getEvents({
-      address: CONTRACT_ADDRESS,
-      keys: [[BLINK_EVENT_KEY]],
-      from_block: { block_number: fromBlock },
-      to_block: { block_number: latestBlock },
-      chunk_size: 100,
-    });
+    do {
+      const params: any = {
+        address: CONTRACT_ADDRESS,
+        keys: [[BLINK_EVENT_KEY]],
+        chunk_size: 1000,
+      };
 
-    const events: RecentBlink[] = response.events.map((event) => ({
-      address: event.keys[1],
-      txHash: event.transaction_hash,
-      timestamp: Number(BigInt(event.data[0])) * 1000,
-      userTotal: Number(BigInt(event.data[1])),
-      globalTotal: Number(BigInt(event.data[2])),
-      blockNumber: event.block_number ?? latestBlock,
-    }));
+      if (startBlock > 0) {
+        params.from_block = { block_number: startBlock };
+      }
+
+      if (continuationToken) {
+        params.continuation_token = continuationToken;
+      }
+
+      const response = await provider.getEvents(params);
+
+      for (const event of response.events) {
+        allEvents.push({
+          address: event.keys[1],
+          txHash: event.transaction_hash,
+          timestamp: Number(BigInt(event.data[0])) * 1000,
+          userTotal: Number(BigInt(event.data[1])),
+          globalTotal: Number(BigInt(event.data[2])),
+          blockNumber: event.block_number ?? 0,
+        });
+      }
+
+      continuationToken = response.continuation_token;
+    } while (continuationToken);
 
     // Sort by timestamp descending (most recent first), take last 20
-    events.sort((a, b) => b.timestamp - a.timestamp);
-    const recentEvents = events.slice(0, 20);
+    allEvents.sort((a, b) => b.timestamp - a.timestamp);
+    const recentEvents = allEvents.slice(0, 20);
 
     // Update cache
     cachedEvents = recentEvents;

@@ -3,7 +3,7 @@
 /**
  * Privy + React Query Providers
  *
- * Uses Privy for social login (email, Google, Twitter, etc.).
+ * Uses Privy for social login (email, Google, etc.).
  * All wallet operations happen via the Express backend API.
  */
 
@@ -30,7 +30,7 @@ export function Providers({ children }: ProvidersProps) {
   const loginMethods = (process.env.NEXT_PUBLIC_PRIVY_LOGIN_METHODS || 'email')
     .split(',')
     .map((s) => s.trim())
-    .filter(Boolean) as any;
+    .filter((s) => s && s !== 'twitter') as any;
 
   return (
     <PrivyProvider

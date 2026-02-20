@@ -78,7 +78,7 @@ export function WalletConnect() {
             marginTop: '12px',
             opacity: 0.7,
           }}>
-            Email, Google, Twitter &mdash; no wallet needed
+            Email or Google &mdash; no wallet needed
           </div>
         </div>
 

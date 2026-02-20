@@ -1,6 +1,8 @@
-# Winky
+# Winky Starkzap
 
 **A blinking app on Starknet.** Every blink is a gasless on-chain transaction.
+
+> **Contract address (mainnet):** [`0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f`](https://voyager.online/contract/0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f)
 
 Winky uses your webcam to detect eye blinks in real time. Each blink fires a transaction to a smart contract on Starknet. Gas fees are fully sponsored, users pay nothing. No wallet extension, no seed phrase, no crypto knowledge required.
 
@@ -235,7 +237,9 @@ scarb test
 
 ## Contract
 
-The `WinkyBlink` Cairo smart contract exposes these functions:
+Deployed on Starknet mainnet at [`0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f`](https://voyager.online/contract/0x004918f613695bbd6ad40b853564b1fc6ab7e1630ecbc2c7db7705cdb937983f).
+
+The `WinkyStarkzap` Cairo smart contract exposes these functions:
 
 | Function | Type | Description |
 |----------|------|-------------|

@@ -1117,7 +1117,6 @@ export function WinkyGame() {
         <LeaderboardModal
           userAddress={walletAddress || undefined}
           twitterProfile={twitter.profile}
-          onTwitterConnect={twitter.connect}
           onClose={() => setShowLeaderboard(false)}
         />
       )}

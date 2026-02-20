@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait IWinkyBlink<TContractState> {
+pub trait IWinkyStarkzap<TContractState> {
     /// Record a blink for the caller
     fn record_blink(ref self: TContractState);
 
@@ -16,7 +16,7 @@ pub trait IWinkyBlink<TContractState> {
 }
 
 #[starknet::contract]
-pub mod WinkyBlink {
+pub mod WinkyStarkzap {
     use starknet::ContractAddress;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -24,14 +24,11 @@ pub mod WinkyBlink {
     use starknet::get_caller_address;
     use starknet::get_block_timestamp;
 
-    /// Contract version for deployment tracking
-    const VERSION: felt252 = 2;
+    const VERSION: felt252 = 1;
 
     #[storage]
     struct Storage {
-        /// Total blinks per user (all-time)
         user_blinks: Map<ContractAddress, u64>,
-        /// Global total blinks counter
         total_blinks: u64,
     }
 
@@ -41,7 +38,6 @@ pub mod WinkyBlink {
         Blink: Blink,
     }
 
-    /// Emitted for each blink recorded
     #[derive(Drop, starknet::Event)]
     pub struct Blink {
         #[key]
@@ -52,23 +48,19 @@ pub mod WinkyBlink {
     }
 
     #[abi(embed_v0)]
-    impl WinkyBlinkImpl of super::IWinkyBlink<ContractState> {
-        /// Record a blink for the caller
+    impl WinkyStarkzapImpl of super::IWinkyStarkzap<ContractState> {
         fn record_blink(ref self: ContractState) {
             let caller = get_caller_address();
             let timestamp = get_block_timestamp();
 
-            // Update user total (+1)
             let current_user_total = self.user_blinks.entry(caller).read();
             let new_user_total = current_user_total + 1;
             self.user_blinks.entry(caller).write(new_user_total);
 
-            // Update global total (+1)
             let current_global = self.total_blinks.read();
             let new_global = current_global + 1;
             self.total_blinks.write(new_global);
 
-            // Emit blink event
             self
                 .emit(
                     Blink {

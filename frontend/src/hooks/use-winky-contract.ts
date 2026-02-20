@@ -9,23 +9,17 @@
 
 import { useCallback, useState, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { API_URL, WINKY_CONTRACT_ADDRESS, NETWORK } from '@/lib/constants';
+import { API_URL, WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
 
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
 const EVENT_START_BLOCK: Record<string, number> = {
-  mainnet: 6_938_534,
+  mainnet: 6_976_636,
   sepolia: 0,
   devnet: 0,
 };
 
-const RPC_URLS: Record<string, string> = {
-  mainnet: 'https://free-rpc.nethermind.io/mainnet-juno/rpc/v0_7',
-  sepolia: 'https://free-rpc.nethermind.io/sepolia-juno/rpc/v0_7',
-  devnet: 'http://localhost:5050',
-};
-
 function getReadProvider(): RpcProvider {
-  return new RpcProvider({ nodeUrl: RPC_URLS[NETWORK] || RPC_URLS.sepolia });
+  return new RpcProvider({ nodeUrl: RPC_URL });
 }
 
 export interface BlinkTransaction {
@@ -44,12 +38,16 @@ interface UseWinkyContractOpts {
   isAuthenticated: boolean;
 }
 
+const TX_TIMEOUT_MS = 20_000;
+const MAX_CONCURRENT_TXS = 3;
+
 export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAuthenticated }: UseWinkyContractOpts) {
   const [txLog, setTxLog] = useState<BlinkTransaction[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const isProcessingRef = useRef(false);
+  const inflightRef = useRef(0);
+  const cachedJwtRef = useRef<{ token: string; expires: number } | null>(null);
 
   const addToLog = useCallback((tx: BlinkTransaction) => {
     setTxLog((prev) => {
@@ -63,36 +61,20 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
     );
   }, []);
 
-  const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
+  const getCachedToken = useCallback(async (): Promise<string | null> => {
+    const now = Date.now();
+    if (cachedJwtRef.current && cachedJwtRef.current.expires > now) {
+      return cachedJwtRef.current.token;
+    }
+    const token = await getAccessToken();
+    if (token) {
+      cachedJwtRef.current = { token, expires: now + 55_000 };
+    }
+    return token;
+  }, [getAccessToken]);
+
+  const executeBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
-
-    if (!isAuthenticated || !walletId) {
-      console.warn(`[recordBlink] Not authenticated or no walletId`);
-      const tx: BlinkTransaction = {
-        id: txId,
-        status: 'error',
-        error: 'Not logged in or wallet not created',
-        blinkNumber,
-        timestamp: Date.now(),
-      };
-      addToLog(tx);
-      return tx;
-    }
-
-    if (isProcessingRef.current) {
-      const skippedTx: BlinkTransaction = {
-        id: txId,
-        status: 'skipped',
-        error: 'Previous TX still processing',
-        blinkNumber,
-        timestamp: Date.now(),
-      };
-      addToLog(skippedTx);
-      return skippedTx;
-    }
-
-    isProcessingRef.current = true;
-    setIsProcessing(true);
 
     const pendingTx: BlinkTransaction = {
       id: txId,
@@ -104,10 +86,11 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
     setPendingCount((c) => c + 1);
 
     try {
-      console.log(`[recordBlink] Executing TX for blink #${blinkNumber}...`);
-
-      const userJwt = await getAccessToken();
+      const userJwt = await getCachedToken();
       if (!userJwt) throw new Error('Unable to get auth token. Please re-login.');
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TX_TIMEOUT_MS);
 
       const resp = await fetch(`${API_URL}/privy/record-blink`, {
         method: 'POST',
@@ -116,18 +99,17 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
           'Authorization': `Bearer ${userJwt}`,
         },
         body: JSON.stringify({ walletId, wait: false }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
 
       const txHash = data?.transactionHash;
-      console.log(`[recordBlink] SUCCESS #${blinkNumber}: ${txHash}`);
 
       updateInLog(txId, { status: 'success', hash: txHash });
       setPendingCount((c) => Math.max(0, c - 1));
-      isProcessingRef.current = false;
-      setIsProcessing(false);
 
       fetch('/api/blink-event', {
         method: 'POST',
@@ -142,19 +124,56 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
 
       return { ...pendingTx, status: 'success', hash: txHash };
     } catch (err: any) {
-      const errorMsg = err.message || 'Transaction failed';
+      const errorMsg = err.name === 'AbortError'
+        ? 'Transaction timed out'
+        : (err.message || 'Transaction failed');
       console.error(`[recordBlink] FAIL #${blinkNumber}:`, errorMsg);
 
       const shortError = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
       updateInLog(txId, { status: 'error', error: shortError });
-
       setPendingCount((c) => Math.max(0, c - 1));
-      isProcessingRef.current = false;
-      setIsProcessing(false);
 
       return { ...pendingTx, status: 'error', error: errorMsg };
     }
-  }, [isAuthenticated, walletId, walletAddress, getAccessToken, addToLog, updateInLog]);
+  }, [walletId, walletAddress, getCachedToken, addToLog, updateInLog]);
+
+  const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
+    const txId = `blink-${blinkNumber}-${Date.now()}`;
+
+    if (!isAuthenticated || !walletId) {
+      const tx: BlinkTransaction = {
+        id: txId,
+        status: 'error',
+        error: 'Not logged in or wallet not created',
+        blinkNumber,
+        timestamp: Date.now(),
+      };
+      addToLog(tx);
+      return tx;
+    }
+
+    if (inflightRef.current >= MAX_CONCURRENT_TXS) {
+      const skippedTx: BlinkTransaction = {
+        id: txId,
+        status: 'skipped',
+        error: `${MAX_CONCURRENT_TXS} TXs in flight`,
+        blinkNumber,
+        timestamp: Date.now(),
+      };
+      addToLog(skippedTx);
+      return skippedTx;
+    }
+
+    inflightRef.current++;
+    setIsProcessing(true);
+
+    const result = await executeBlink(blinkNumber, twitterUsername);
+
+    inflightRef.current--;
+    if (inflightRef.current === 0) setIsProcessing(false);
+
+    return result;
+  }, [isAuthenticated, walletId, addToLog, executeBlink]);
 
   const clearLog = useCallback(() => {
     setTxLog([]);
