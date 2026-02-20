@@ -1,8 +1,8 @@
 [build]
-buildCommand = "cd api && npm install && npx tsc"
+buildCommand = "npm install && npx tsc"
 
 [deploy]
-startCommand = "cd api && node dist/server.js"
+startCommand = "node dist/server.js"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
