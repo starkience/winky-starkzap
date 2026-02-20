@@ -51,6 +51,7 @@ export function WinkyGame() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [deployed, setDeployed] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
+  const setupAttemptedRef = useRef(false);
 
   const isConnected = authenticated && !!walletId && deployed;
 
@@ -139,10 +140,12 @@ export function WinkyGame() {
     fetchWallets();
   }, [ready, authenticated, user?.id, walletId, walletAddress]);
 
-  // Auto-create + auto-deploy wallet after login
+  // Auto-create + auto-deploy wallet after login (runs once per session)
   useEffect(() => {
-    if (!ready || !authenticated || !user?.id || walletLoading) return;
+    if (!ready || !authenticated || !user?.id) return;
     if (walletId && deployed) return;
+    if (setupAttemptedRef.current || walletLoading) return;
+    setupAttemptedRef.current = true;
 
     const setupWallet = async () => {
       setWalletLoading(true);
