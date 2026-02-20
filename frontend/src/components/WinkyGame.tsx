@@ -335,7 +335,7 @@ export function WinkyGame() {
               <span style={{ fontSize: '16px', fontWeight: 600, color: '#C0B4DA', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
                 Powered by the{' '}
                 <a
-                  href="https://github.com/starknet-edu/starknet-privy-demo"
+                  href="https://github.com/keep-starknet-strange/awesome-starkzap"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#C0B4DA', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
