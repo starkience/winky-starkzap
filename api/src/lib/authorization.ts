@@ -1,11 +1,5 @@
-import { getPrivyClient } from "./privyClient";
 import type { WalletApiRequestSignatureInput } from "@privy-io/server-auth";
 import { generateAuthorizationSignature } from "@privy-io/server-auth/wallet-api";
-
-const userSignerCache = new Map<
-  string,
-  { authorizationKey: string; expiresAt: number }
->();
 
 export async function getUserAuthorizationKey({
   userJwt,
@@ -14,20 +8,13 @@ export async function getUserAuthorizationKey({
   userJwt: string;
   userId?: string;
 }): Promise<string> {
-  const cacheKey = userId || "unknown";
-  const cached = userSignerCache.get(cacheKey);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now + 5_000) {
-    return cached.authorizationKey;
+  const authKey = process.env.PRIVY_WALLET_AUTH_PRIVATE_KEY;
+  if (!authKey) {
+    throw new Error(
+      "PRIVY_WALLET_AUTH_PRIVATE_KEY is required for server wallet signing"
+    );
   }
-  const privy = getPrivyClient();
-  const res = await privy.walletApi.generateUserSigner({
-    userJwt: userJwt,
-  });
-  const authKey = res.authorizationKey;
-  const expiresAt = new Date(res.expiresAt as unknown as string).getTime();
-  userSignerCache.set(cacheKey, { authorizationKey: authKey, expiresAt });
-  return authKey;
+  return authKey.trim();
 }
 
 export function buildAuthorizationSignature({
