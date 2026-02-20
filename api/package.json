@@ -10,7 +10,7 @@
   },
   "type": "commonjs",
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "dependencies": {
     "@privy-io/server-auth": "^1.32.2",
