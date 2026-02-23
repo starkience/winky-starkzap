@@ -8,9 +8,9 @@ Winky uses your webcam to detect eye blinks in real time. Each blink fires a tra
 
 ---
 
-## From Web2 to Web3 with Starkzap
+## From Web2 to Web3 with the Starkzap SDK
 
-This project is a step-by-step example of how to take an existing web app and add Web3 features using the [Starkzap SDK](https://github.com/starknet-edu/starknet-privy-demo).
+This project is a step-by-step example of how to take an existing web app and add Web3 features using the [Starkzap SDK](https://github.com/starknet-edu/awesome-starkzap).
 
 **The starting point:** a simple Next.js blinking app. The camera detects blinks, and a counter goes up. That's it, pure Web2.
 
@@ -22,23 +22,58 @@ Here's how we got there.
 
 ## Step 1: Understand the Architecture
 
-Starkzap introduces a **client/server split**. The frontend handles login and UI. A backend Express server handles all blockchain operations: creating wallets, signing transactions, and talking to the paymaster.
+The Starkzap SDK handles wallet connection, account deployment, transaction signing, and paymaster integration on the frontend. A minimal Express backend holds secrets (Privy App Secret, AVNU API key) and exposes three endpoints.
 
 ```
-User blinks → Frontend detects it → Backend API signs & sends TX → Starknet
+┌─────────────────────────────────────────────────────────────────────┐
+│                           USER (Browser)                            │
+│                                                                     │
+│  1. Login via email/Google ──► Privy SDK ──► Privy Cloud            │
+│  2. Blink detected          │              (creates Starknet        │
+│                              │               keypair for user)      │
+│  3. SDK.onboard() ───────────┤                                      │
+│  4. wallet.execute() ────────┤                                      │
+└──────────────┬───────────────┘                                      │
+               │                                                      │
+               │  POST /api/wallet/starknet  (create wallet)          │
+               │  POST /api/wallet/sign      (sign hash)              │
+               │  POST /api/paymaster/*      (proxy to AVNU)          │
+               ▼                                                      │
+┌─────────────────────────────────┐                                   │
+│    MINIMAL EXPRESS BACKEND      │                                   │
+│                                 │     ┌───────────────────┐         │
+│  1. Create wallet ──────────────┼────►│   Privy Wallet    │         │
+│  2. Sign hash ──────────────────┼────►│   API (rawSign)   │         │
+│  3. Proxy paymaster ────────────┼────►│   AVNU Paymaster  │         │
+│                                 │     └───────────────────┘         │
+└─────────────────────────────────┘                                   │
+                                                                      │
+               SDK handles deploy + execute directly ─────────────────┤
+                                                 ▼                    │
+                                    ┌───────────────────────┐         │
+                                    │      STARKNET         │         │
+                                    │                       │         │
+                                    │  WinkyStarkzap        │         │
+                                    │  Contract             │         │
+                                    │  - record_blink()     │         │
+                                    │  - get_user_blinks()  │         │
+                                    │  - get_total_blinks() │         │
+                                    └───────────────────────┘         │
 ```
+
+**In short:** the user never touches a wallet, never pays gas, and never signs a popup. The SDK handles wallet creation, deployment, signing, and paymaster -- the backend only holds secrets and proxies requests.
 
 ```
 winky/
-├── api/                  # Express backend (Starkzap)
+├── api/                  # Minimal Express backend (3 endpoints)
 │   └── src/
-│       ├── lib/          # Privy client, signer, paymaster, account logic
-│       └── routes/       # API endpoints (create-wallet, deploy, record-blink)
-├── frontend/             # Next.js app
+│       ├── lib/          # Privy client
+│       └── routes/       # wallet.ts (create + sign), paymaster.ts (proxy)
+├── frontend/             # Next.js app + Starkzap SDK
 │   └── src/
 │       ├── app/          # Providers (Privy), layout, page
-│       ├── components/   # Game UI
-│       └── hooks/        # Blink detection, contract interaction via API
+│       ├── components/   # Game UI (WinkyGame.tsx uses SDK)
+│       └── hooks/        # Blink detection, contract interaction via SDK
 └── contracts/            # Cairo smart contract
 ```
 
@@ -82,27 +117,41 @@ That's it on the frontend. One provider, one hook.
 
 ---
 
-## Step 3: Smart Accounts (Why You Need a Backend)
+## Step 3: Smart Accounts via the Starkzap SDK
 
-On Starknet, there are no simple keypair accounts like on Ethereum. Every account is a **smart contract**. A smart account is a programmable onchain account that can validate transactions, enforce security rules, and support features like gas sponsorship. When Privy generates a keypair for a user, that keypair still needs a smart account contract deployed on-chain to actually execute transactions.
+On Starknet, every account is a **smart contract**. When Privy generates a keypair for a user, that keypair still needs a smart account contract deployed on-chain. The Starkzap SDK handles this automatically.
 
-We use **Argent Ready** (formerly Argent) as the smart account. It's the most battle-tested account contract on Starknet, securing over 90% of the network's value.
+The SDK's `onboard()` method creates the wallet, connects it, and deploys the smart account if needed:
 
-The backend handles this automatically:
+```typescript
+import { StarkSDK, OnboardStrategy } from '@starkware-ecosystem/starkzap';
 
-1. **Create wallet**: Privy generates a Starknet keypair for the user
-2. **Deploy account**: the backend deploys an Argent Ready smart account tied to that keypair
-3. **Execute transactions**: the backend signs calls using Privy's Wallet API and submits them
+const sdk = new StarkSDK({
+  network: 'mainnet',
+  paymaster: { nodeUrl: `${API_URL}/api/paymaster` },
+});
 
-The key backend files from the Starkzap SDK:
+const { wallet } = await sdk.onboard({
+  strategy: OnboardStrategy.Privy,
+  deploy: 'if_needed',
+  feeMode: 'sponsored',
+  privy: {
+    resolve: async () => ({
+      walletId: savedWalletId,
+      publicKey: savedPublicKey,
+      serverUrl: `${API_URL}/api/wallet/sign`,
+    }),
+  },
+});
+```
+
+The backend only needs two wallet endpoints:
 
 | File | Purpose |
 |------|---------|
 | [`api/src/lib/privyClient.ts`](api/src/lib/privyClient.ts) | Privy server client (holds App Secret) |
-| [`api/src/lib/ready.ts`](api/src/lib/ready.ts) | Argent Ready account deployment and signing |
-| [`api/src/lib/rawSigner.ts`](api/src/lib/rawSigner.ts) | Custom signer that delegates to Privy `raw_sign` |
-| [`api/src/lib/provider.ts`](api/src/lib/provider.ts) | RPC provider and AVNU Paymaster setup |
-| [`api/src/routes/privy.ts`](api/src/routes/privy.ts) | API endpoints: create-wallet, deploy-wallet, record-blink |
+| [`api/src/routes/wallet.ts`](api/src/routes/wallet.ts) | Create wallet + sign hash (2 endpoints) |
+| [`api/src/routes/paymaster.ts`](api/src/routes/paymaster.ts) | Proxy paymaster requests to AVNU |
 
 ---
 
@@ -110,57 +159,65 @@ The key backend files from the Starkzap SDK:
 
 Nobody wants to buy crypto just to use your app. The [AVNU Paymaster](https://docs.avnu.fi/) sponsors gas fees so your users pay nothing.
 
-In **sponsored mode**, your dApp covers the gas. You get an API key from [portal.avnu.fi](https://portal.avnu.fi), fund it with STRK, and add it to the backend `.env`:
+In **sponsored mode**, your dApp covers the gas. You get an API key from [portal.avnu.fi](https://portal.avnu.fi), fund it with STRK, and set up a paymaster proxy on the backend.
 
-```
-PAYMASTER_URL=https://starknet.paymaster.avnu.fi
-PAYMASTER_MODE=sponsored
-PAYMASTER_API_KEY=your-api-key
-```
-
-The backend then uses `executePaymasterTransaction` from starknet.js to submit sponsored transactions:
+The backend proxies paymaster requests to AVNU, adding the API key server-side:
 
 ```typescript
-const paymasterDetails = { feeMode: { mode: 'sponsored' } };
-const result = await account.executePaymasterTransaction(
-  [call],
-  paymasterDetails
-);
+// api/src/routes/paymaster.ts
+router.all('/*', async (req, res) => {
+  const upstream = await fetch(targetUrl, {
+    method: req.method,
+    headers: { 'x-paymaster-api-key': API_KEY },
+    body: JSON.stringify(req.body),
+  });
+  res.send(await upstream.text());
+});
+```
+
+The frontend points the SDK's paymaster to this proxy:
+
+```typescript
+const sdk = new StarkSDK({
+  network: 'mainnet',
+  paymaster: { nodeUrl: `${API_URL}/api/paymaster` },
+});
 ```
 
 The API key stays server-side, never exposed to the frontend.
 
 ---
 
-## Step 5: Session-Like Behavior (No Popups)
+## Step 5: Executing Transactions (No Popups)
 
 With a traditional wallet, every transaction triggers a popup asking the user to approve and sign. That would make a blinking game unusable.
 
-Starkzap solves this architecturally: once the user logs in via Privy, the backend can sign transactions on their behalf using the Privy Wallet API. The user's Privy JWT acts as the session token. No popups, no interruptions.
+The Starkzap SDK solves this: once onboarded, the wallet object can execute transactions directly. The SDK signs via the backend's `/api/wallet/sign` endpoint and submits through the paymaster proxy. No popups, no interruptions.
 
-From the frontend, recording a blink is just an API call:
+From the frontend, recording a blink is a single SDK call:
 
 ```typescript
-const jwt = await getAccessToken();
-const resp = await fetch(`${API_URL}/privy/record-blink`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${jwt}`,
-  },
-  body: JSON.stringify({ walletId }),
-});
+const tx = await wallet.execute(
+  [{
+    contractAddress: WINKY_CONTRACT_ADDRESS,
+    entrypoint: 'record_blink',
+    calldata: [],
+  }],
+  { feeMode: 'sponsored' },
+);
+
+console.log('Transaction hash:', tx.hash);
 ```
 
-The backend verifies the JWT, signs the transaction via Privy, and submits it through the paymaster. Zero friction.
+The SDK handles signing (via the backend), paymaster submission, and nonce management. Zero friction.
 
 ---
 
 ## Step 6: Get an RPC URL
 
-To talk to Starknet, your backend needs an RPC endpoint. We used [Alchemy](https://www.alchemy.com/), but you can use any Starknet RPC provider (Nethermind, Lava, etc.).
+To talk to Starknet, the SDK needs an RPC endpoint. We used [Alchemy](https://www.alchemy.com/), but you can use any Starknet RPC provider (Nethermind, Lava, etc.).
 
-Sign up at your provider, create a Starknet app, and add the URL to `api/.env`:
+Sign up at your provider, create a Starknet app, and add the URL to your environment:
 
 ```
 RPC_URL=https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_KEY
@@ -168,33 +225,59 @@ RPC_URL=https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_K
 
 ---
 
+## Step 7: Transaction Throughput
+
+In a blinking game, transactions fire rapidly -- often faster than a single RPC round-trip can complete. We solved this with **concurrent transaction slots** and **timeouts**.
+
+### Concurrent slots
+
+The frontend maintains a counter of in-flight transactions. Up to `MAX_CONCURRENT_TXS` blinks can be processed simultaneously. Only when all slots are occupied does a blink get skipped.
+
+```typescript
+// frontend/src/hooks/use-winky-contract.ts
+const TX_TIMEOUT_MS = 20_000;
+const MAX_CONCURRENT_TXS = 3;
+```
+
+Each blink fires immediately without waiting for the previous one to confirm. If the network is fast, all 3 slots stay open. If it slows down, the slots fill up and excess blinks are gracefully skipped rather than queued indefinitely.
+
+### Timeouts
+
+Every `wallet.execute()` call uses a 20-second timeout. If the RPC or paymaster hangs, the slot is freed instead of blocking forever.
+
+### Tuning for your app
+
+To allow more concurrency, increase `MAX_CONCURRENT_TXS`. To tolerate slower RPCs, increase `TX_TIMEOUT_MS`. Both are constants at the top of [`frontend/src/hooks/use-winky-contract.ts`](frontend/src/hooks/use-winky-contract.ts).
+
+---
+
 ## Summary: What Changed
 
-| Area | Before (Web2) | After (Web3 via Starkzap) |
-|------|---------------|---------------------------|
+| Area | Before (Web2) | After (Web3 via Starkzap SDK) |
+|------|---------------|-------------------------------|
 | **Login** | None / simple auth | Privy social login (email, Google, SMS) |
-| **Blink recording** | Database insert | On-chain transaction on Starknet |
+| **Blink recording** | Database insert | On-chain transaction via `wallet.execute()` |
 | **Gas fees** | N/A | Sponsored by AVNU Paymaster (free for users) |
-| **Transaction signing** | N/A | Backend signs via Privy Wallet API (no popups) |
-| **Wallet** | None | Argent Ready smart account (auto-created) |
-| **Backend** | None | Express API (Starkzap pattern) |
+| **Transaction signing** | N/A | SDK signs via backend PrivySigner (no popups) |
+| **Wallet** | None | Smart account (auto-created + auto-deployed) |
+| **Backend** | None | Minimal Express API (3 endpoints) |
 
 ### Result
 
-In just a few plug-and-play integrations, we added full Web3 functionality without adding end-user friction or forcing anyone to download a wallet extension or acquire tokens. With this integration, your app is now interoperable with Starknet's and Ethereum's blockchain ecosystem: Bitcoin assets, DeFi, stablecoins, onchain gaming, consumer apps, and more.
+In just a few plug-and-play integrations, we added full Web3 functionality without adding end-user friction or forcing anyone to download a wallet extension or acquire tokens.
 
-### Files that were added or changed
+### Key files
 
-**New (backend):**
-- `api/`, entire Express server following the Starkzap SDK pattern
+**Backend:**
+- `api/src/routes/wallet.ts` -- Create wallet + sign hash
+- `api/src/routes/paymaster.ts` -- Proxy paymaster requests to AVNU
+- `api/src/lib/privyClient.ts` -- Privy server client
 
-**Modified (frontend):**
-- `providers.tsx`, added Privy as the login and wallet provider
-- `WinkyGame.tsx`, uses `usePrivy()` instead of wallet hooks
-- `use-winky-contract.ts`, calls backend API instead of signing directly
-- `WalletConnect.tsx`, Privy login button
-- `constants.ts`, API URL, removed old wallet-specific config
-- `package.json`, added `@privy-io/react-auth`
+**Frontend:**
+- `frontend/src/app/providers.tsx` -- Privy provider
+- `frontend/src/components/WinkyGame.tsx` -- SDK onboarding + game UI
+- `frontend/src/hooks/use-winky-contract.ts` -- `wallet.execute()` for blinks
+- `frontend/package.json` -- `@starkware-ecosystem/starkzap`, `@privy-io/react-auth`
 
 ---
 
@@ -251,11 +334,10 @@ The `WinkyStarkzap` Cairo smart contract exposes these functions:
 
 ## Learn More
 
-- [Starkzap SDK (starknet-privy-demo)](https://github.com/starknet-edu/starknet-privy-demo), the reference implementation this project is based on
+- [Starkzap SDK](https://github.com/starknet-edu/awesome-starkzap), the SDK this project is built with
 - [Privy Docs](https://docs.privy.io/), embedded wallets and social login
 - [AVNU Paymaster](https://docs.avnu.fi/), gasless and sponsored transactions
-- [Starknet.js Paymaster Guide](https://starknetjs.com/docs/guides/account/paymaster), starknet.js paymaster integration
-- [Argent Ready](https://www.ready.co/developers), smart account contracts on Starknet
+- [Starknet.js](https://starknetjs.com/docs/guides/account/paymaster), starknet.js paymaster integration
 
 ## License
 

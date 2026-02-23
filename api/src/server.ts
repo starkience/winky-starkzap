@@ -1,10 +1,8 @@
-import './fetchOverride'
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
-import { config as starknetConfig } from 'starknet'
 
 const candidates = [
   path.resolve(__dirname, '.env.local'),
@@ -15,12 +13,6 @@ const candidates = [
 for (const p of candidates) {
   if (fs.existsSync(p)) dotenv.config({ path: p })
 }
-
-starknetConfig.set('resourceBoundsOverhead', {
-  l1_gas: { max_amount: 50, max_price_per_unit: 50 },
-  l1_data_gas: { max_amount: 50, max_price_per_unit: 50 },
-  l2_gas: { max_amount: 300, max_price_per_unit: 50 },
-})
 
 const app = express()
 const PORT = Number(process.env.PORT || 3000)
@@ -42,11 +34,26 @@ app.use(
 )
 app.use(express.json())
 
-app.use('/', require('./routes/health').default || require('./routes/health'))
-const { authMiddleware } = require('./middleware/auth')
-app.use('/privy', authMiddleware, require('./routes/privy').default || require('./routes/privy'))
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'Winky API running',
+    version: '2.0.0',
+    endpoints: {
+      walletCreate: 'POST /api/wallet/starknet',
+      walletSign: 'POST /api/wallet/sign',
+      paymaster: 'POST /api/paymaster/*',
+    },
+  })
+})
+
+import { authMiddleware } from './middleware/auth'
+import walletRoutes from './routes/wallet'
+import paymasterRoutes from './routes/paymaster'
+
+app.use('/api/wallet', authMiddleware, walletRoutes)
+app.use('/api/paymaster', paymasterRoutes)
 
 app.listen(PORT, () => {
-  console.log(`Winky API v1.2.0`)
+  console.log(`Winky API v2.0.0`)
   console.log(`Server running on http://localhost:${PORT}`)
 })

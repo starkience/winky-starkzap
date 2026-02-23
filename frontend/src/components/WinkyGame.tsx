@@ -13,6 +13,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import { StarkSDK, OnboardStrategy } from '@starkware-ecosystem/starkzap';
+import type { WalletInterface } from '@starkware-ecosystem/starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
 import { useTwitterAuth } from '@/hooks/use-twitter-auth';
@@ -45,15 +47,13 @@ export function WinkyGame() {
     typeof window !== 'undefined' && localStorage.getItem('winky_milestone_100') === '1'
   );
 
-  // Wallet state managed via backend API + localStorage
-  const [walletId, setWalletId] = useState<string | null>(null);
+  // Wallet state managed via Starkzap SDK
+  const [sdkWallet, setSdkWallet] = useState<WalletInterface | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [deployed, setDeployed] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const setupAttemptedRef = useRef(false);
 
-  const isConnected = authenticated && !!walletId && deployed;
+  const isConnected = authenticated && !!sdkWallet;
 
   // Twitter auth - optional, enhances leaderboard
   const twitter = useTwitterAuth(walletAddress || undefined);
@@ -84,120 +84,68 @@ export function WinkyGame() {
     }
   }, []);
 
-  // Restore wallet state from localStorage when Privy auth is ready
+  // SDK-based wallet setup: create wallet, onboard, and deploy via Starkzap SDK
   useEffect(() => {
     if (!ready || !authenticated || !user?.id) return;
-    try {
-      const storedUser = window.localStorage.getItem(STORAGE_KEYS.userId);
-      if (storedUser && storedUser !== user.id) {
-        window.localStorage.removeItem(STORAGE_KEYS.walletId);
-        window.localStorage.removeItem(STORAGE_KEYS.walletAddress);
-        window.localStorage.removeItem(STORAGE_KEYS.publicKey);
-        window.localStorage.removeItem(STORAGE_KEYS.deployedWalletId);
-        setWalletId(null);
-        setWalletAddress(null);
-        setPublicKey(null);
-        setDeployed(false);
-      }
-      window.localStorage.setItem(STORAGE_KEYS.userId, user.id);
-      const lsId = window.localStorage.getItem(STORAGE_KEYS.walletId);
-      const lsAddr = window.localStorage.getItem(STORAGE_KEYS.walletAddress);
-      const lsPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
-      if (lsId) setWalletId(lsId);
-      if (lsAddr) setWalletAddress(lsAddr);
-      if (lsPk) setPublicKey(lsPk);
-      const lsDeployed = window.localStorage.getItem(STORAGE_KEYS.deployedWalletId);
-      if (lsId && lsDeployed === lsId) setDeployed(true);
-    } catch {}
-  }, [ready, authenticated, user?.id]);
-
-  // Persist wallet state
-  useEffect(() => { try { if (walletId) window.localStorage.setItem(STORAGE_KEYS.walletId, walletId); } catch {} }, [walletId]);
-  useEffect(() => { try { if (walletAddress) window.localStorage.setItem(STORAGE_KEYS.walletAddress, walletAddress); } catch {} }, [walletAddress]);
-  useEffect(() => { try { if (publicKey) window.localStorage.setItem(STORAGE_KEYS.publicKey, publicKey); } catch {} }, [publicKey]);
-
-  // Fetch existing wallets from backend when authenticated
-  useEffect(() => {
-    if (!ready || !authenticated || !user?.id) return;
-    if (walletId || walletAddress) return;
-
-    const fetchWallets = async () => {
-      try {
-        const resp = await fetch(
-          `${API_URL}/privy/user-wallets?userId=${encodeURIComponent(user.id)}&t=${Date.now()}`
-        );
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) return;
-        const list = Array.isArray(data.wallets) ? data.wallets : [];
-        if (list.length > 0) {
-          const w = list.find((v: any) => v?.publicKey) || list[0];
-          if (w.id) setWalletId(w.id);
-          if (w.address) setWalletAddress(w.address);
-          if (w.publicKey) setPublicKey(w.publicKey);
-        }
-      } catch {}
-    };
-    fetchWallets();
-  }, [ready, authenticated, user?.id, walletId, walletAddress]);
-
-  // Auto-create + auto-deploy wallet after login (runs once per session)
-  useEffect(() => {
-    if (!ready || !authenticated || !user?.id) return;
-    if (walletId && deployed) return;
+    if (sdkWallet) return;
     if (setupAttemptedRef.current || walletLoading) return;
     setupAttemptedRef.current = true;
 
     const setupWallet = async () => {
       setWalletLoading(true);
       try {
-        const userJwt = await getAccessToken();
-        if (!userJwt) { setWalletLoading(false); return; }
+        // Check localStorage for existing wallet
+        const storedUser = window.localStorage.getItem(STORAGE_KEYS.userId);
+        if (storedUser && storedUser !== user.id) {
+          window.localStorage.removeItem(STORAGE_KEYS.walletId);
+          window.localStorage.removeItem(STORAGE_KEYS.walletAddress);
+          window.localStorage.removeItem(STORAGE_KEYS.publicKey);
+        }
+        window.localStorage.setItem(STORAGE_KEYS.userId, user.id);
 
-        let wId = walletId;
-        let wAddr = walletAddress;
+        let wId = window.localStorage.getItem(STORAGE_KEYS.walletId);
+        let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
 
-        // Create wallet if needed
-        if (!wId) {
-          const resp = await fetch(`${API_URL}/privy/create-wallet`, {
+        // Create wallet via backend if needed
+        if (!wId || !wPk) {
+          const resp = await fetch(`${API_URL}/api/wallet/starknet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chainType: 'starknet' }),
           });
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');
           const w = data.wallet || {};
           wId = w.id || null;
-          wAddr = w.address || null;
-          const pk = w.public_key || w.publicKey || null;
-          if (wId) setWalletId(wId);
-          if (wAddr) setWalletAddress(wAddr);
-          if (pk) setPublicKey(pk);
+          wPk = w.publicKey || w.public_key || null;
+          if (wId) window.localStorage.setItem(STORAGE_KEYS.walletId, wId);
+          if (wPk) window.localStorage.setItem(STORAGE_KEYS.publicKey, wPk);
         }
 
-        // Deploy wallet if not yet deployed
-        if (wId && !deployed) {
-          const lsDeployed = window.localStorage.getItem(STORAGE_KEYS.deployedWalletId);
-          if (lsDeployed === wId) {
-            setDeployed(true);
-            setWalletLoading(false);
-            return;
-          }
+        if (!wId || !wPk) throw new Error('Failed to get wallet credentials');
 
-          const resp = await fetch(`${API_URL}/privy/deploy-wallet`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${userJwt}`,
-            },
-            body: JSON.stringify({ walletId: wId }),
-          });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(data?.error || 'Deploy failed');
-          if (data.address) setWalletAddress(data.address);
-          if (data.publicKey) setPublicKey(data.publicKey);
-          window.localStorage.setItem(STORAGE_KEYS.deployedWalletId, wId);
-          setDeployed(true);
-        }
+        // Onboard via Starkzap SDK
+        const sdk = new StarkSDK({
+          network: NETWORK === 'mainnet' ? 'mainnet' : 'sepolia',
+          paymaster: { nodeUrl: `${API_URL}/api/paymaster` },
+        });
+
+        const { wallet } = await sdk.onboard({
+          strategy: OnboardStrategy.Privy,
+          deploy: 'if_needed',
+          feeMode: 'sponsored',
+          privy: {
+            resolve: async () => ({
+              walletId: wId!,
+              publicKey: wPk!,
+              serverUrl: `${API_URL}/api/wallet/sign`,
+            }),
+          },
+        });
+
+        const addr = wallet.address;
+        setSdkWallet(wallet);
+        setWalletAddress(addr);
+        if (addr) window.localStorage.setItem(STORAGE_KEYS.walletAddress, addr);
       } catch (err: any) {
         console.error('[setupWallet] Error:', err.message);
         setError(err.message || 'Wallet setup failed');
@@ -206,7 +154,7 @@ export function WinkyGame() {
       }
     };
     setupWallet();
-  }, [ready, authenticated, user?.id, walletId, deployed, walletLoading, getAccessToken, walletAddress]);
+  }, [ready, authenticated, user?.id, sdkWallet, walletLoading]);
 
   const handleLogin = useCallback(() => {
     login();
@@ -218,11 +166,10 @@ export function WinkyGame() {
         try { window.localStorage.removeItem(k); } catch {}
       });
     } catch {}
-    setWalletId(null);
+    setSdkWallet(null);
     setWalletAddress(null);
-    setPublicKey(null);
-    setDeployed(false);
     setShowWalletMenu(false);
+    setupAttemptedRef.current = false;
     try { await logout(); } catch {}
   }, [logout]);
 
@@ -232,9 +179,8 @@ export function WinkyGame() {
     txLog,
     isReady: isContractReady,
   } = useWinkyContract({
-    walletId,
+    wallet: sdkWallet,
     walletAddress,
-    getAccessToken,
     isAuthenticated: authenticated,
   });
 

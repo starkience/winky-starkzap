@@ -1,4 +1,4 @@
-import { PrivyClient } from '@privy-io/server-auth'
+import { PrivyClient } from '@privy-io/node'
 
 let client: PrivyClient | undefined
 
@@ -7,14 +7,6 @@ export function getPrivyClient(): PrivyClient {
   const appId = process.env.PRIVY_APP_ID
   const appSecret = process.env.PRIVY_APP_SECRET
   if (!appId || !appSecret) throw new Error('Missing PRIVY_APP_ID or PRIVY_APP_SECRET')
-  client = new PrivyClient(appId, appSecret)
-  const authKey = process.env.PRIVY_WALLET_AUTH_PRIVATE_KEY
-  if (authKey) {
-    try {
-      client.walletApi.updateAuthorizationKey(authKey)
-    } catch (e: any) {
-      console.warn('Failed to set Privy wallet authorization key:', e?.message)
-    }
-  }
+  client = new PrivyClient({ appId, appSecret })
   return client
 }

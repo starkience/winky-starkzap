@@ -60,5 +60,4 @@ export const STORAGE_KEYS = {
   walletId: 'winky_wallet_id',
   walletAddress: 'winky_wallet_address',
   publicKey: 'winky_public_key',
-  deployedWalletId: 'winky_deployed_wallet_id',
 } as const;

@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * Hook to interact with the WinkyBlink contract via the backend API.
+ * Hook to interact with the WinkyBlink contract via the Starkzap SDK.
  *
- * 1 blink = 1 transaction via Privy + AVNU paymaster (auto-signed, zero gas).
- * The backend handles signing via Privy Wallet API and paymaster submission.
+ * 1 blink = 1 transaction via PrivySigner + AVNU paymaster (auto-signed, zero gas).
+ * The SDK handles signing (via backend) and paymaster submission.
  */
 
 import { useCallback, useState, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { API_URL, WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
+import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
+import type { WalletInterface } from '@starkware-ecosystem/starkzap';
 
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
 const EVENT_START_BLOCK: Record<string, number> = {
@@ -32,22 +33,20 @@ export interface BlinkTransaction {
 }
 
 interface UseWinkyContractOpts {
-  walletId: string | null;
+  wallet: WalletInterface | null;
   walletAddress: string | null;
-  getAccessToken: () => Promise<string | null>;
   isAuthenticated: boolean;
 }
 
 const TX_TIMEOUT_MS = 20_000;
 const MAX_CONCURRENT_TXS = 3;
 
-export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAuthenticated }: UseWinkyContractOpts) {
+export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: UseWinkyContractOpts) {
   const [txLog, setTxLog] = useState<BlinkTransaction[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const inflightRef = useRef(0);
-  const cachedJwtRef = useRef<{ token: string; expires: number } | null>(null);
 
   const addToLog = useCallback((tx: BlinkTransaction) => {
     setTxLog((prev) => {
@@ -60,18 +59,6 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
       prev.map(tx => tx.id === id ? { ...tx, ...updates } : tx)
     );
   }, []);
-
-  const getCachedToken = useCallback(async (): Promise<string | null> => {
-    const now = Date.now();
-    if (cachedJwtRef.current && cachedJwtRef.current.expires > now) {
-      return cachedJwtRef.current.token;
-    }
-    const token = await getAccessToken();
-    if (token) {
-      cachedJwtRef.current = { token, expires: now + 55_000 };
-    }
-    return token;
-  }, [getAccessToken]);
 
   const executeBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
@@ -86,27 +73,22 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
     setPendingCount((c) => c + 1);
 
     try {
-      const userJwt = await getCachedToken();
-      if (!userJwt) throw new Error('Unable to get auth token. Please re-login.');
+      if (!wallet) throw new Error('Wallet not connected');
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), TX_TIMEOUT_MS);
 
-      const resp = await fetch(`${API_URL}/privy/record-blink`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userJwt}`,
-        },
-        body: JSON.stringify({ walletId, wait: false }),
-        signal: controller.signal,
-      });
+      const tx = await wallet.execute(
+        [{
+          contractAddress: WINKY_CONTRACT_ADDRESS,
+          entrypoint: 'record_blink',
+          calldata: [],
+        }],
+        { feeMode: 'sponsored' },
+      );
       clearTimeout(timeout);
 
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
-
-      const txHash = data?.transactionHash;
+      const txHash = tx.hash;
 
       updateInLog(txId, { status: 'success', hash: txHash });
       setPendingCount((c) => Math.max(0, c - 1));
@@ -135,16 +117,16 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
 
       return { ...pendingTx, status: 'error', error: errorMsg };
     }
-  }, [walletId, walletAddress, getCachedToken, addToLog, updateInLog]);
+  }, [wallet, walletAddress, addToLog, updateInLog]);
 
   const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
 
-    if (!isAuthenticated || !walletId) {
+    if (!isAuthenticated || !wallet) {
       const tx: BlinkTransaction = {
         id: txId,
         status: 'error',
-        error: 'Not logged in or wallet not created',
+        error: 'Not logged in or wallet not connected',
         blinkNumber,
         timestamp: Date.now(),
       };
@@ -173,7 +155,7 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
     if (inflightRef.current === 0) setIsProcessing(false);
 
     return result;
-  }, [isAuthenticated, walletId, addToLog, executeBlink]);
+  }, [isAuthenticated, wallet, addToLog, executeBlink]);
 
   const clearLog = useCallback(() => {
     setTxLog([]);
@@ -225,6 +207,6 @@ export function useWinkyContract({ walletId, walletAddress, getAccessToken, isAu
     isPending: pendingCount > 0,
     isProcessing,
     pendingCount,
-    isReady: isAuthenticated && !!walletId,
+    isReady: isAuthenticated && !!wallet,
   };
 }
