@@ -2,13 +2,13 @@ import { Router, Request, Response } from 'express'
 
 const router = Router()
 
-const AVNU_URL = process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi'
+const AVNU_URL = (process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi').replace(/\/+$/, '')
 const API_KEY = (process.env.PAYMASTER_API_KEY || '').trim()
 
-router.all('/*', async (req: Request, res: Response) => {
+async function proxyPaymaster(req: Request, res: Response) {
   try {
-    const targetPath = req.params[0] || ''
-    const targetUrl = `${AVNU_URL}/${targetPath}`.replace(/\/+$/, '')
+    const subPath = (req.params as any).path || req.path?.replace(/^\//, '') || ''
+    const targetUrl = subPath ? `${AVNU_URL}/${subPath}` : AVNU_URL
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -25,8 +25,12 @@ router.all('/*', async (req: Request, res: Response) => {
       fetchOpts.body = JSON.stringify(req.body)
     }
 
+    console.log(`[paymaster-proxy] ${req.method} -> ${targetUrl}`)
+
     const upstream = await fetch(targetUrl, fetchOpts)
     const text = await upstream.text()
+
+    console.log(`[paymaster-proxy] ${upstream.status} (${text.length} bytes)`)
 
     res.status(upstream.status)
     upstream.headers.forEach((value, key) => {
@@ -40,6 +44,9 @@ router.all('/*', async (req: Request, res: Response) => {
     console.error('Paymaster proxy error:', error?.message)
     return res.status(502).json({ error: error?.message || 'Paymaster proxy failed' })
   }
-})
+}
+
+router.all('/', proxyPaymaster)
+router.all('{*path}', proxyPaymaster)
 
 export default router
