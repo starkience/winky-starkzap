@@ -10,13 +10,17 @@ Winky uses your webcam to detect eye blinks in real time. Each blink fires a tra
 
 ## From Web2 to Web3 with the Starkzap SDK
 
-This project is a step-by-step example of how to take an existing web app and add Web3 features using the [Starkzap SDK](https://github.com/starknet-edu/awesome-starkzap).
+This project is a step-by-step example of how to take an existing web app and add Web3 features using the [Starkzap SDK](https://github.com/keep-starknet-strange/starkzap).
 
 **The starting point:** a simple Next.js blinking app. The camera detects blinks, and a counter goes up. That's it, pure Web2.
 
 **The end result:** the same app, but every blink is now a real transaction on Starknet. Users log in with their email (no wallet needed), gas is paid for them, and everything happens seamlessly in the background.
 
-Here's how we got there.
+Here's how we got there. First, install the SDK:
+
+```bash
+npm install starkzap
+```
 
 ---
 
@@ -124,7 +128,7 @@ On Starknet, every account is a **smart contract**. When Privy generates a keypa
 The SDK's `onboard()` method creates the wallet, connects it, and deploys the smart account if needed:
 
 ```typescript
-import { StarkSDK, OnboardStrategy } from '@starkware-ecosystem/starkzap';
+import { StarkSDK, OnboardStrategy } from 'starkzap';
 
 const sdk = new StarkSDK({
   network: 'mainnet',
@@ -277,7 +281,7 @@ In just a few plug-and-play integrations, we added full Web3 functionality witho
 - `frontend/src/app/providers.tsx` -- Privy provider
 - `frontend/src/components/WinkyGame.tsx` -- SDK onboarding + game UI
 - `frontend/src/hooks/use-winky-contract.ts` -- `wallet.execute()` for blinks
-- `frontend/package.json` -- `@starkware-ecosystem/starkzap`, `@privy-io/react-auth`
+- `frontend/package.json` -- `starkzap`, `@privy-io/react-auth`
 
 ---
 
@@ -334,7 +338,7 @@ The `WinkyStarkzap` Cairo smart contract exposes these functions:
 
 ## Learn More
 
-- [Starkzap SDK](https://github.com/starknet-edu/awesome-starkzap), the SDK this project is built with
+- [Starkzap SDK](https://github.com/keep-starknet-strange/starkzap), the SDK this project is built with
 - [Privy Docs](https://docs.privy.io/), embedded wallets and social login
 - [AVNU Paymaster](https://docs.avnu.fi/), gasless and sponsored transactions
 - [Starknet.js](https://starknetjs.com/docs/guides/account/paymaster), starknet.js paymaster integration
