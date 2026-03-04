@@ -1,27 +1,37 @@
 'use client';
 
-/**
- * WinkyGame - Single-page blink counter with Starknet integration.
- *
- * Layout:
- *   Header floats on top of the left zone
- *   Body  – 75 % camera (full area)  |  25 % transaction log
- *
- * Camera feed starts immediately; blurry when wallet is not ready.
- * Uses Privy for social login and backend API for wallet operations.
- */
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { StarkSDK, OnboardStrategy } from '@starkware-ecosystem/starkzap';
-import type { WalletInterface } from '@starkware-ecosystem/starkzap';
+import { StarkSDK, OnboardStrategy } from 'starkzap';
+import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
-import { useWinkyContract, BlinkTransaction } from '@/hooks/use-winky-contract';
-import { useTwitterAuth } from '@/hooks/use-twitter-auth';
-import { GAME_CONFIG, VOYAGER_TX_URL, NETWORK, API_URL, STORAGE_KEYS } from '@/lib/constants';
-import { generateBlinkCard } from '@/lib/generate-blink-card';
-import { LeaderboardModal } from '@/components/Leaderboard';
-import { useLiveFeed, LiveBlinkEvent, TopBlinker } from '@/hooks/use-live-feed';
+import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS } from '@/lib/constants';
+import { BlinkChart } from '@/components/BlinkChart';
+
+// ─── Types & Constants ───
+
+type GamePhase = 'idle' | 'ready' | 'countdown' | 'playing' | 'result';
+
+const BET_AMOUNTS = [1, 5, 10, 25, 50];
+const GAME_DURATION = 30;
+
+interface LeaderboardEntry {
+  id: string;
+  name: string;
+  blinks: number;
+  earnings: number;
+}
+
+const INITIAL_LEADERBOARD: LeaderboardEntry[] = [
+  { id: '1', name: 'BlinkMaster.stark', blinks: 87, earnings: 150 },
+  { id: '2', name: 'EyeStorm', blinks: 72, earnings: 95 },
+  { id: '3', name: '0x7a3f...d912', blinks: 65, earnings: 80 },
+  { id: '4', name: 'WinkKing', blinks: 58, earnings: 60 },
+  { id: '5', name: '0x9b2c...e4a1', blinks: 45, earnings: 35 },
+  { id: '6', name: 'StarkBlinker', blinks: 41, earnings: 25 },
+  { id: '7', name: '0x3d1e...f7b2', blinks: 38, earnings: 20 },
+  { id: '8', name: 'NeonWink', blinks: 33, earnings: 15 },
+];
 
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
@@ -29,62 +39,56 @@ function formatAddress(addr: string | null | undefined): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+// ─── Component ───
+
 export function WinkyGame() {
-  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
+  const { ready, authenticated, user, login, logout } = usePrivy();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showWalletMenu, setShowWalletMenu] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
-  const [mounted, setMounted] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [persistentBlinks, setPersistentBlinks] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showMilestone, setShowMilestone] = useState(false);
-  const milestoneShownRef = useRef(
-    typeof window !== 'undefined' && localStorage.getItem('winky_milestone_100') === '1'
-  );
-
-  // Wallet state managed via Starkzap SDK
+  // Wallet state (Starkzap SDK)
   const [sdkWallet, setSdkWallet] = useState<WalletInterface | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const setupAttemptedRef = useRef(false);
 
-  const isConnected = authenticated && !!sdkWallet;
+  // Game state
+  const [gamePhase, setGamePhase] = useState<GamePhase>('idle');
+  const [selectedBet, setSelectedBet] = useState<number>(5);
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [chartData, setChartData] = useState<Array<{ time: number; blinks: number }>>([]);
+  const [countdownNumber, setCountdownNumber] = useState(3);
+  const [finalScore, setFinalScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState<number | null>(null);
+  const [opponentRevealed, setOpponentRevealed] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(INITIAL_LEADERBOARD);
 
-  // Twitter auth - optional, enhances leaderboard
-  const twitter = useTwitterAuth(walletAddress || undefined);
+  // UI state
+  const [copied, setCopied] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
 
+  // Refs
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chartIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const blinkCountRef = useRef(0);
+  const gameStartTimeRef = useRef(0);
+  const leaderboardUpdatedRef = useRef(false);
+
+  const isConnected = ready && authenticated && !!sdkWallet;
+  const isPlaying = gamePhase === 'playing';
+  const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
+
+  // ─── Mobile detection ───
   useEffect(() => {
-    setMounted(true);
     const checkMobile = () => {
-      const mobile = window.innerWidth <= 768
-        || ('ontouchstart' in window && window.innerWidth <= 1024);
-      setIsMobile(mobile);
+      setIsMobile(window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024));
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auto-open leaderboard when returning from Twitter OAuth
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('twitter_connected')) {
-      setShowLeaderboard(true);
-      params.delete('twitter_connected');
-      const cleanUrl = params.toString()
-        ? `${window.location.pathname}?${params.toString()}`
-        : window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-  }, []);
-
-  // SDK-based wallet setup: create wallet, onboard, and deploy via Starkzap SDK
+  // ─── Wallet setup via Starkzap SDK ───
   useEffect(() => {
     if (!ready || !authenticated || !user?.id) return;
     if (sdkWallet) return;
@@ -94,7 +98,6 @@ export function WinkyGame() {
     const setupWallet = async () => {
       setWalletLoading(true);
       try {
-        // Check localStorage for existing wallet
         const storedUser = window.localStorage.getItem(STORAGE_KEYS.userId);
         if (storedUser && storedUser !== user.id) {
           window.localStorage.removeItem(STORAGE_KEYS.walletId);
@@ -106,7 +109,6 @@ export function WinkyGame() {
         let wId = window.localStorage.getItem(STORAGE_KEYS.walletId);
         let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
 
-        // Create wallet via backend if needed
         if (!wId || !wPk) {
           const resp = await fetch(`${API_URL}/api/wallet/starknet`, {
             method: 'POST',
@@ -123,7 +125,6 @@ export function WinkyGame() {
 
         if (!wId || !wPk) throw new Error('Failed to get wallet credentials');
 
-        // Onboard via Starkzap SDK
         const sdk = new StarkSDK({
           network: NETWORK === 'mainnet' ? 'mainnet' : 'sepolia',
           paymaster: { nodeUrl: `${API_URL}/api/paymaster` },
@@ -156,9 +157,7 @@ export function WinkyGame() {
     setupWallet();
   }, [ready, authenticated, user?.id, sdkWallet, walletLoading]);
 
-  const handleLogin = useCallback(() => {
-    login();
-  }, [login]);
+  const handleLogin = useCallback(() => { login(); }, [login]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -168,27 +167,14 @@ export function WinkyGame() {
     } catch {}
     setSdkWallet(null);
     setWalletAddress(null);
-    setShowWalletMenu(false);
     setupAttemptedRef.current = false;
     try { await logout(); } catch {}
   }, [logout]);
 
-  const {
-    recordBlink,
-    getTotalBlinks,
-    txLog,
-    isReady: isContractReady,
-  } = useWinkyContract({
-    wallet: sdkWallet,
-    walletAddress,
-    isAuthenticated: authenticated,
-  });
-
-  const handleBlink = useCallback((count: number) => {
-    if (isConnected && isContractReady) {
-      recordBlink(persistentBlinks + count, twitter.profile?.username);
-    }
-  }, [isConnected, isContractReady, recordBlink, persistentBlinks, twitter.profile?.username]);
+  // ─── Blink detection ───
+  const handleBlink = useCallback((_count: number) => {
+    // Blink counting is handled by the hook's blinkCount state
+  }, []);
 
   const {
     videoRef,
@@ -196,1036 +182,904 @@ export function WinkyGame() {
     isReady: isDetectorReady,
     isRunning,
     blinkCount,
-    currentEAR,
-    fps,
     start: startDetection,
     reset: resetDetection,
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
-    enabled: isConnected,
+    enabled: isPlaying,
   });
 
+  // Sync blink count ref for use in intervals
   useEffect(() => {
-    if (isDetectorReady && isLoading) {
+    blinkCountRef.current = blinkCount;
+  }, [blinkCount]);
+
+  // Update chart data on every blink during playing
+  useEffect(() => {
+    if (gamePhase === 'playing' && gameStartTimeRef.current > 0) {
+      const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
+      setChartData(prev => {
+        const last = prev[prev.length - 1];
+        if (last && Math.abs(last.time - elapsed) < 0.05) {
+          return [...prev.slice(0, -1), { time: Math.round(elapsed * 10) / 10, blinks: blinkCount }];
+        }
+        return [...prev, { time: Math.round(elapsed * 10) / 10, blinks: blinkCount }];
+      });
+    }
+  }, [blinkCount, gamePhase]);
+
+  // ─── Start camera when entering ready phase ───
+  useEffect(() => {
+    if (gamePhase === 'ready' && isDetectorReady && !cameraReady) {
       startDetection()
-        .then(() => setIsLoading(false))
+        .then(() => setCameraReady(true))
         .catch((err) => {
           console.error('Failed to start camera:', err);
-          setError('Enable camera access to be the ultimate Blink-o-nator Terminator');
-          setIsLoading(false);
+          setError('Camera access required to play');
+          setGamePhase('idle');
         });
     }
-  }, [isDetectorReady, isLoading, startDetection]);
+  }, [gamePhase, isDetectorReady, cameraReady, startDetection]);
 
-  // Fetch persistent on-chain blink total when wallet is ready
+  // ─── Game timer ───
   useEffect(() => {
-    if (isConnected && isContractReady) {
-      getTotalBlinks().then((total) => {
-        if (total > 0) setPersistentBlinks(total);
-      }).catch(() => {});
-    }
-  }, [isConnected, isContractReady, getTotalBlinks]);
+    if (gamePhase !== 'playing') return;
 
-  // Live global blink feed
-  const liveFeed = useLiveFeed();
+    gameStartTimeRef.current = Date.now();
+    setTimeLeft(GAME_DURATION);
+    setChartData([{ time: 0, blinks: 0 }]);
 
-  const totalBlinkCount = persistentBlinks + blinkCount;
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          if (chartIntervalRef.current) clearInterval(chartIntervalRef.current);
 
-  // Milestone popup at 100 blinks
+          const score = blinkCountRef.current;
+          setFinalScore(score);
+          setGamePhase('result');
+          leaderboardUpdatedRef.current = false;
+
+          // Mock opponent reveal after 2s
+          setTimeout(() => {
+            const mockOpponent = Math.floor(Math.random() * 40) + 20;
+            setOpponentScore(mockOpponent);
+            setOpponentRevealed(true);
+          }, 2000);
+
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Chart data collection every 500ms
+    chartIntervalRef.current = setInterval(() => {
+      const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
+      setChartData(prev => {
+        const last = prev[prev.length - 1];
+        if (last && Math.abs(last.time - elapsed) < 0.3) return prev;
+        return [...prev, { time: Math.round(elapsed * 10) / 10, blinks: blinkCountRef.current }];
+      });
+    }, 500);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (chartIntervalRef.current) clearInterval(chartIntervalRef.current);
+    };
+  }, [gamePhase]);
+
+  // ─── Leaderboard update after win ───
   useEffect(() => {
-    if (
-      totalBlinkCount >= 100 &&
-      persistentBlinks < 100 &&
-      !milestoneShownRef.current
-    ) {
-      milestoneShownRef.current = true;
-      localStorage.setItem('winky_milestone_100', '1');
-      setShowMilestone(true);
+    if (!opponentRevealed || opponentScore === null || leaderboardUpdatedRef.current) return;
+    if (finalScore <= opponentScore) return;
+    if (!walletAddress) return;
+
+    leaderboardUpdatedRef.current = true;
+    const displayName = formatAddress(walletAddress);
+    setLeaderboard(prev => {
+      const existing = prev.find(e => e.name === displayName);
+      if (existing) {
+        return prev.map(e =>
+          e.name === displayName
+            ? { ...e, blinks: finalScore, earnings: Math.round((e.earnings + selectedBet * 2 * 0.95) * 100) / 100 }
+            : e
+        ).sort((a, b) => b.earnings - a.earnings);
+      }
+      return [
+        { id: `user-${Date.now()}`, name: displayName, blinks: finalScore, earnings: Math.round(selectedBet * 2 * 0.95 * 100) / 100 },
+        ...prev,
+      ].sort((a, b) => b.earnings - a.earnings);
+    });
+  }, [opponentRevealed, opponentScore, finalScore, walletAddress, selectedBet]);
+
+  // ─── Handlers ───
+  const handlePlay = useCallback(() => {
+    if (!isConnected) return;
+    resetDetection();
+    blinkCountRef.current = 0;
+    setChartData([]);
+    setFinalScore(0);
+    setOpponentScore(null);
+    setOpponentRevealed(false);
+    setError(null);
+    setGamePhase('ready');
+  }, [isConnected, resetDetection]);
+
+  const handleStart = useCallback(() => {
+    setGamePhase('countdown');
+    setCountdownNumber(3);
+    resetDetection();
+    blinkCountRef.current = 0;
+
+    setTimeout(() => setCountdownNumber(2), 1000);
+    setTimeout(() => setCountdownNumber(1), 2000);
+    setTimeout(() => setGamePhase('playing'), 3000);
+  }, [resetDetection]);
+
+  const handlePlayAgain = useCallback(() => {
+    resetDetection();
+    blinkCountRef.current = 0;
+    setChartData([]);
+    setFinalScore(0);
+    setOpponentScore(null);
+    setOpponentRevealed(false);
+    setTimeLeft(GAME_DURATION);
+    leaderboardUpdatedRef.current = false;
+    setGamePhase('idle');
+  }, [resetDetection]);
+
+  const handleCopyAddress = useCallback(() => {
+    if (walletAddress) {
+      navigator.clipboard.writeText(walletAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [totalBlinkCount, persistentBlinks]);
+  }, [walletAddress]);
+
+  const handleBack = useCallback(() => {
+    setGamePhase('idle');
+  }, []);
+
+  // Determine winner
+  const isWinner = opponentRevealed && opponentScore !== null && finalScore > opponentScore;
+  const isDraw = opponentRevealed && opponentScore !== null && finalScore === opponentScore;
+  const isLoser = opponentRevealed && opponentScore !== null && finalScore < opponentScore;
 
   const loginBusy = !ready || walletLoading;
-  const displayAddress = walletAddress || '';
-  const displayName = user?.email?.address || formatAddress(walletAddress) || user?.id || '';
 
+  // ─── Render ───
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       width: '100%',
-      height: isMobile ? '100dvh' : 'calc(100vh / 0.85)',
+      height: '100vh',
       overflow: 'hidden',
-      position: isMobile ? 'fixed' : 'relative',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      background: '#0A0A0A',
+      fontFamily: "'Manrope', sans-serif",
     }}>
 
       {/* ─── Header ─── */}
-      <header
-        ref={headerRef}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          flexShrink: 0,
-          padding: isMobile ? '8px 12px' : '12px 32px',
-          flexWrap: 'wrap',
-          gap: isMobile ? '6px' : '8px',
-        }}
-      >
-          {/* Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '6px' : '10px', flexShrink: 0 }}>
-            <img src="/logo.png" alt="Wink." style={{ height: isMobile ? '28px' : '40px', objectFit: 'contain' }} />
-            {!isMobile && (
-              <span style={{ fontSize: '16px', fontWeight: 600, color: '#C0B4DA', fontFamily: "'Manrope', sans-serif", alignSelf: 'flex-end' }}>
-                Powered by the{' '}
-                <a
-                  href="https://github.com/keep-starknet-strange/awesome-starkzap"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#C0B4DA', textDecoration: 'none', transition: 'text-decoration 0.15s' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                >
-                  Starkzap SDK
-                </a>
-              </span>
-            )}
-            {NETWORK === 'mainnet' && (
-              <span
-                style={{
-                  fontSize: isMobile ? '9px' : '10px',
-                  color: '#16a34a',
-                  padding: '2px 6px',
-                  border: '1px solid #16a34a',
-                  borderRadius: '4px',
-                  fontWeight: 600,
-                  background: 'rgba(22,163,74,0.1)',
-                }}
-              >
-                Mainnet
-              </span>
-            )}
-            {NETWORK === 'sepolia' && (
-              <span
-                style={{
-                  fontSize: isMobile ? '9px' : '10px',
-                  color: 'var(--warning)',
-                  padding: '2px 6px',
-                  border: '1px solid var(--warning)',
-                  borderRadius: '4px',
-                  fontWeight: 600,
-                  background: 'rgba(245,166,35,0.1)',
-                }}
-              >
-                Sepolia
-              </span>
-            )}
-          </div>
-
-          {/* Right: User menu */}
-          <div style={{ position: 'relative' }}>
-            {isConnected && displayAddress ? (
-              <div style={{ display: 'flex', gap: isMobile ? '4px' : '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {/* GitHub icon */}
-                {!isMobile && (
-                <a
-                  href="https://github.com/starkience/winky-starkzap"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '50%',
-                    border: '3px solid #C0B4DA',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#C0B4DA';
-                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    (e.currentTarget.querySelector('svg') as SVGElement).style.fill = '#C0B4DA';
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#C0B4DA" style={{ transition: 'fill 0.2s' }}>
-                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                  </svg>
-                </a>
-                )}
-                {/* Info icon */}
-                <div
-                  style={{ position: 'relative' }}
-                  onClick={() => isMobile && setShowInfo((prev) => !prev)}
-                  onMouseEnter={() => !isMobile && setShowInfo(true)}
-                  onMouseLeave={() => !isMobile && setShowInfo(false)}
-                >
-                  <div
-                    style={{
-                      width: isMobile ? '32px' : '38px',
-                      height: isMobile ? '32px' : '38px',
-                      borderRadius: '50%',
-                      border: isMobile ? '2px solid #C0B4DA' : '3px solid #C0B4DA',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      fontSize: isMobile ? '14px' : '18px',
-                      fontWeight: 800,
-                      fontFamily: "'Manrope', sans-serif",
-                      color: '#C0B4DA',
-                      transition: 'all 0.2s',
-                      position: 'relative',
-                      zIndex: showInfo && isMobile ? 3001 : 'auto',
-                    }}
-                  >
-                    i
-                  </div>
-                  {showInfo && isMobile && (
-                    <div
-                      onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
-                      style={{
-                        position: 'fixed',
-                        inset: 0,
-                        zIndex: 2999,
-                        background: 'transparent',
-                      }}
-                    />
-                  )}
-                  {showInfo && !isMobile && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 8px)',
-                        left: 0,
-                        width: '380px',
-                        maxWidth: '380px',
-                        padding: '20px',
-                        background: '#1a1a1a',
-                        borderRadius: '10px',
-                        border: '2px solid rgba(255,255,255,0.08)',
-                        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                        zIndex: 3000,
-                        fontFamily: "'Manrope', sans-serif",
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#A6A4A7',
-                        lineHeight: 1.6,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '12px', color: '#C0B4DA' }}>
-                        How does Wink work?
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <li><strong>Zero gas fees:</strong> powered by AVNU paymaster, so you pay nothing</li>
-                        <li><strong>Social login, no popups:</strong> sign in once via Privy and all blinks go through automatically</li>
-                        <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
-                        <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
-                        <li><strong>Powered by Privy + Starkzap,</strong> bringing Web3 to any app with social login</li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-                {/* Generate Image button */}
-                {!isMobile && (
-                <button
-                  onClick={async () => {
-                    if (isGeneratingImage) return;
-                    setIsGeneratingImage(true);
-                    try {
-                      const totalBlinks = await getTotalBlinks();
-                      const count = totalBlinks > 0 ? totalBlinks : blinkCount;
-                      const blob = await generateBlinkCard(count);
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `winky-${count}-blinks.png`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch (err) {
-                      console.error('[WinkyGame] Failed to generate blink card:', err);
-                    } finally {
-                      setIsGeneratingImage(false);
-                    }
-                  }}
-                  disabled={isGeneratingImage}
-                  className="winky-header-btn"
-                  style={{
-                    cursor: isGeneratingImage ? 'wait' : 'pointer',
-                    opacity: isGeneratingImage ? 0.6 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isGeneratingImage) {
-                      e.currentTarget.style.background = '#C0B4DA';
-                      e.currentTarget.style.color = '#fff';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#C0B4DA';
-                  }}
-                >
-                  {isGeneratingImage ? 'Generating...' : 'Generate Image'}
-                </button>
-                )}
-                {/* Leaderboard button */}
-                <button
-                  onClick={() => setShowLeaderboard(true)}
-                  className={isMobile ? 'winky-header-btn winky-header-btn--mobile' : 'winky-header-btn'}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#C0B4DA';
-                    e.currentTarget.style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#C0B4DA';
-                  }}
-                >
-                  {isMobile ? 'LB' : 'Leaderboard'}
-                </button>
-                {/* Get Image button on mobile */}
-                {isMobile && (
-                  <button
-                    onClick={async () => {
-                      if (isGeneratingImage) return;
-                      setIsGeneratingImage(true);
-                      try {
-                        const totalBlinks = await getTotalBlinks();
-                        const count = totalBlinks > 0 ? totalBlinks : blinkCount;
-                        const blob = await generateBlinkCard(count);
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `winky-${count}-blinks.png`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      } catch (err) {
-                        console.error('[WinkyGame] Failed to generate blink card:', err);
-                      } finally {
-                        setIsGeneratingImage(false);
-                      }
-                    }}
-                    disabled={isGeneratingImage}
-                    className="winky-header-btn winky-header-btn--mobile"
-                    style={{
-                      cursor: isGeneratingImage ? 'wait' : 'pointer',
-                      opacity: isGeneratingImage ? 0.6 : 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isGeneratingImage) {
-                        e.currentTarget.style.background = '#C0B4DA';
-                        e.currentTarget.style.color = '#fff';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#C0B4DA';
-                    }}
-                  >
-                    {isGeneratingImage ? '...' : 'Get image'}
-                  </button>
-                )}
-                {/* Tweet button */}
-                {!isMobile && (
-                <a
-                  href="#"
-                  className="winky-header-btn"
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const totalBlinks = await getTotalBlinks();
-                    const count = totalBlinks > 0 ? totalBlinks : blinkCount;
-                    const text = `I'm a Starknet Winker: blinked ${count} time${count !== 1 ? 's' : ''}, what about you? 👁️\n\nOne Blink is one Starknet transaction. Powered by Privy social login and Gasless transactions. All onchain.\n\nHow much can you blink: https://wink-on-starknet.com/`;
-                    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#C0B4DA';
-                    e.currentTarget.style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#C0B4DA';
-                  }}
-                >
-                  Tweeeeeet it
-                </a>
-                )}
-                <button
-                  onClick={() => setShowWalletMenu((prev) => !prev)}
-                  className="winky-header-btn-wallet"
-                  style={isMobile ? { padding: '6px 12px', fontSize: '12px' } : undefined}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: 'var(--success)',
-                      boxShadow: 'none',
-                      flexShrink: 0,
-                    }}
-                  />
-                  {formatAddress(displayAddress) || displayName}
-                </button>
-
-                {showWalletMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      right: 0,
-                      minWidth: '220px',
-                      background: 'rgba(26, 26, 26, 0.97)',
-                      borderRadius: '6px',
-                      overflow: 'hidden',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                      backdropFilter: 'blur(12px)',
-                      zIndex: 1000,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '12px 16px',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        fontSize: '11px',
-                        fontFamily: "'Manrope', sans-serif",
-                        color: '#A6A4A7',
-                        wordBreak: 'break-all',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {displayAddress || displayName}
-                    </div>
-                    {displayAddress && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(displayAddress);
-                        setShowWalletMenu(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '12px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        color: '#A6A4A7',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      Copy Address
-                    </button>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '12px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--error)',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-      </header>
-
-      {/* ─── Mobile info card ─── */}
-      {showInfo && isMobile && (
-        <div
-          style={{
-            position: 'absolute',
-            top: headerRef.current ? `${headerRef.current.offsetHeight + 4}px` : '80px',
-            left: '8px',
-            right: '8px',
-            zIndex: 3000,
-            padding: '14px',
-            background: '#1a1a1a',
-            borderRadius: '10px',
-            border: '2px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: '12px',
-            fontWeight: 500,
-            color: '#A6A4A7',
-            lineHeight: 1.6,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '12px', color: '#C0B4DA' }}>
-            How does Wink work?
-          </div>
-          <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <li><strong>Zero gas fees:</strong> powered by AVNU paymaster, so you pay nothing</li>
-            <li><strong>Social login, no popups:</strong> sign in once via Privy and all blinks go through automatically</li>
-            <li><strong>1 blink = 1 transaction:</strong> each blink sends a real transaction on Starknet</li>
-            <li><strong>Instant feedback:</strong> transactions are pre-confirmed, then settled on L2</li>
-            <li><strong>Powered by Privy + Starkzap,</strong> bringing Web3 to any app with social login</li>
-          </ul>
-        </div>
-      )}
-
-      {/* ─── Body: 75/25 horizontal on desktop, stacked on mobile ─── */}
-      <div style={{
+      <header style={{
         display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        flex: 1,
-        minHeight: 0,
-        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: isMobile ? '12px 16px' : '16px 32px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
       }}>
-
-      {/* ─── Camera section ─── */}
-      <div
-        style={{
-          flex: isMobile ? 'none' : 3,
-          height: isMobile ? '55vh' : 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          padding: isMobile ? '4px 8px 4px' : '8px 48px 40px',
-        }}
-      >
-        <div
-          className="video-container"
-          style={{ position: 'relative', flex: 1, minHeight: 0 }}
-        >
-          <video
-            ref={(el) => { videoRef.current = el; }}
-            autoPlay
-            playsInline
-            muted
-            className="video-feed"
-            style={{
-              filter: !isConnected ? 'blur(14px) brightness(0.6)' : 'none',
-              transition: 'filter 0.4s ease',
-            }}
-          />
-          <canvas
-            ref={(el) => { canvasRef.current = el; }}
-            width={400}
-            height={300}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-              zIndex: 2,
-              opacity: !isConnected ? 0 : 1,
-              transition: 'opacity 0.4s ease',
-            }}
-          />
-
-          {/* Overlay — shown when not connected */}
-          {!isConnected && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: isMobile ? '24px' : '0',
-                zIndex: 3,
-              }}
-            >
-              {!isMobile && (
-                <>
-                  <button
-                    onClick={handleLogin}
-                    disabled={loginBusy}
-                    style={{
-                      marginTop: '32px',
-                      padding: '18px 64px',
-                      fontSize: '22px',
-                      fontWeight: 800,
-                      fontFamily: "'Manrope', sans-serif",
-                      background: walletLoading ? '#6366f1' : '#C0B4DA',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: loginBusy ? 'wait' : 'pointer',
-                      opacity: loginBusy ? 0.6 : 1,
-                      letterSpacing: '0.5px',
-                      boxShadow: '0 4px 24px rgba(192, 180, 218, 0.5)',
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 6px 32px rgba(192, 180, 218, 0.6)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 24px rgba(192, 180, 218, 0.5)';
-                    }}
-                  >
-                    {walletLoading ? 'Setting up wallet...' : !ready ? 'Loading...' : 'Sign Up'}
-                  </button>
-                </>
-              )}
-              {isMobile && (
-                <button
-                  onClick={handleLogin}
-                  disabled={loginBusy}
-                  style={{
-                    padding: '18px 48px',
-                    fontSize: '20px',
-                    fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
-                    background: walletLoading ? '#6366f1' : '#C0B4DA',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: loginBusy ? 'wait' : 'pointer',
-                    opacity: loginBusy ? 0.6 : 1,
-                    letterSpacing: '0.5px',
-                    boxShadow: '0 4px 20px rgba(192, 180, 218, 0.4)',
-                  }}
-                >
-                  {walletLoading ? 'Setting up...' : !ready ? 'Loading...' : 'Sign Up'}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Blink counter */}
-          {!isLoading && isRunning && (
-            <div
-              style={{
-                position: 'absolute',
-                top: isMobile ? '4px' : '-4px',
-                right: isMobile ? '8px' : '20px',
-                zIndex: 5,
-                fontFamily: "'Manrope', sans-serif",
-                fontSize: isMobile ? '48px' : '90px',
-                fontWeight: 700,
-                color: '#C0B4DA',
-              }}
-            >
-              {totalBlinkCount}
-            </div>
-          )}
-
-          {/* Fastest blinker */}
-          {isConnected && liveFeed.topBlinker && liveFeed.topBlinker.rpm >= 2 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: isMobile ? '6px' : '8px',
-                left: isMobile ? '8px' : '20px',
-                zIndex: 5,
-                maxWidth: isMobile ? '60%' : '50%',
-                fontFamily: "'Manrope', sans-serif",
-                fontSize: isMobile ? '20px' : '66px',
-                fontWeight: 800,
-                lineHeight: 1.2,
-                animation: 'rainbow 0.5s linear infinite',
-                textShadow: '0 0 8px rgba(255,255,255,0.4)',
-              }}
-            >
-              Fastest blinker:
-              <br />
-              {liveFeed.topBlinker.displayName.startsWith('@') ? (
-                <a
-                  href={`https://x.com/${liveFeed.topBlinker.displayName.slice(1)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'inherit', textDecoration: 'none' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                >
-                  {liveFeed.topBlinker.displayName}
-                </a>
-              ) : (
-                liveFeed.topBlinker.displayName
-              )}{' '}
-              at {liveFeed.topBlinker.rpm} bpm
-            </div>
-          )}
-
-          {/* Live feed ticker */}
-          {isConnected && liveFeed.events.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                zIndex: 4,
-                overflow: 'hidden',
-                background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)',
-                padding: isMobile ? '16px 10px 10px' : '20px 20px 14px',
-                borderRadius: isMobile ? '0 0 12px 12px' : '0 0 20px 20px',
-                pointerEvents: 'none',
-              }}
-            >
-              <LiveFeedTicker events={liveFeed.events} isMobile={isMobile} />
-            </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="error-banner" style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', zIndex: 10 }}>
-            {error}
-          </div>
-        )}
-      </div>
-
-      {/* ─── TX log section ─── */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          padding: isMobile ? '0 0 8px' : '8px 0 40px',
-          minHeight: 0,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            position: 'relative',
-            overflow: 'hidden',
-            padding: isMobile ? '0 12px' : '0 16px 0',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: isMobile ? '40%' : '35%',
-              background: 'linear-gradient(to bottom, #0A0A0A 0%, transparent 100%)',
-              zIndex: 1,
-              pointerEvents: 'none',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: isMobile ? '0 12px' : '0 16px',
-              display: 'flex',
-              flexDirection: 'column-reverse',
-              overflow: 'hidden',
-              height: '100%',
-            }}
-          >
-          {isConnected && txLog.length > 0 ? (
-            txLog.map((tx) => (
-              <TxLogItem key={tx.id} tx={tx} compact={isMobile} />
-            ))
-          ) : null}
-          </div>
-        </div>
-      </div>
-      </div>
-
-      {/* Milestone Popup — 100 blinks */}
-      {showMilestone && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(6px)',
-          }}
-          onClick={() => setShowMilestone(false)}
-        >
-          <div
-            style={{
-              background: '#1a1a1a',
-              borderRadius: '20px',
-              padding: isMobile ? '32px 24px' : '48px 56px',
-              maxWidth: '440px',
-              width: '90vw',
-              textAlign: 'center',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
-              fontFamily: "'Manrope', sans-serif",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontSize: '56px', marginBottom: '12px' }}>
-              👁️
-            </div>
-            <h2 style={{
-              fontSize: isMobile ? '22px' : '28px',
-              fontWeight: 900,
-              color: '#C0B4DA',
-              margin: '0 0 8px',
-            }}>
-              100 Blinks!
-            </h2>
-            <p style={{
-              fontSize: isMobile ? '14px' : '16px',
-              color: '#A6A4A7',
-              margin: '0 0 28px',
-              lineHeight: 1.5,
-            }}>
-              You just hit <strong>100 onchain blinks</strong> on Starknet. Tell the world you&apos;re in the Blink-ster crew.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  const text = `I just hit 100 blinks on Starknet! Each blink is a real transaction. Powered by Privy social login and Gasless transactions. All onchain.\n\nCan you out-blink me? 👁️\nhttps://wink-on-starknet.com/`;
-                  window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                  setShowMilestone(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  padding: '14px 32px',
-                  fontSize: '16px',
-                  fontWeight: 800,
-                  fontFamily: "'Manrope', sans-serif",
-                  background: '#000',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  width: '100%',
-                  maxWidth: '280px',
-                  transition: 'opacity 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-                Share on X
-              </button>
-              <button
-                onClick={() => setShowMilestone(false)}
-                style={{
-                  padding: '10px 24px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  fontFamily: "'Manrope', sans-serif",
-                  background: 'transparent',
-                  color: '#888',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Keep blinking
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Leaderboard Modal */}
-      {showLeaderboard && (
-        <LeaderboardModal
-          userAddress={walletAddress || undefined}
-          twitterProfile={twitter.profile}
-          onClose={() => setShowLeaderboard(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Transaction Log Item ───
-function TxLogItem({ tx, compact = false }: { tx: BlinkTransaction; compact?: boolean }) {
-  const rowColor =
-    tx.status === 'success'
-      ? '#C0B4DA'
-      : tx.status === 'skipped'
-        ? '#E96D25'
-        : tx.status === 'error'
-          ? '#ef4444'
-          : 'rgba(255,255,255,0.3)';
-
-  const timeAgo = getTimeAgo(tx.timestamp);
-
-  const displayHash = tx.hash
-    ? `${tx.hash.slice(0, 6)}…${tx.hash.slice(-4)}`
-    : tx.status === 'pending'
-      ? 'pending…'
-      : '0x0000…0000';
-
-  const titleSize = compact ? '18px' : '36px';
-  const hashSize = compact ? '14px' : '32px';
-  const timeSize = compact ? '14px' : '32px';
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: compact ? '6px' : '10px',
-        padding: compact ? '3px 0' : '5px 0',
-        color: rowColor,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: titleSize, fontWeight: '800', color: rowColor }}>
-          Blink #{tx.blinkNumber}
-        </div>
-        <div style={{ marginTop: '1px' }}>
-          {tx.hash && VOYAGER_TX_URL ? (
-            <a
-              href={`${VOYAGER_TX_URL}/${tx.hash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: hashSize,
-                fontWeight: '800',
-                fontFamily: "'Manrope', sans-serif",
-                color: '#DEE2C7',
-                opacity: 0.7,
-                textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-            >
-              {displayHash}
-            </a>
-          ) : (
-            <span
-              style={{
-                fontSize: hashSize,
-                fontWeight: '800',
-                fontFamily: "'Manrope', sans-serif",
-                color: '#DEE2C7',
-                opacity: 0.6,
-              }}
-            >
-              {displayHash}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img src="/logo.png" alt="Wink." style={{ height: isMobile ? '28px' : '36px', objectFit: 'contain' }} />
+          {!isMobile && (
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              PVP Blink Duel
             </span>
           )}
         </div>
-      </div>
-      <span
-        style={{
-          fontSize: timeSize,
-          fontWeight: '800',
-          color: '#DEE2C7',
-          opacity: 0.55,
-          whiteSpace: 'nowrap',
-          paddingTop: '2px',
-          fontFamily: "'Manrope', sans-serif",
-        }}
-      >
-        {timeAgo}
-      </span>
-    </div>
-  );
-}
-
-function getTimeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
-}
-
-// ─── Live Feed Ticker ───
-function LiveFeedTicker({ events, isMobile }: { events: LiveBlinkEvent[]; isMobile: boolean }) {
-  const maxVisible = isMobile ? 5 : 10;
-  const visible = events.slice(0, maxVisible).reverse();
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: isMobile ? '2px' : '3px',
-        pointerEvents: 'auto',
-      }}
-    >
-      {visible.map((ev, idx) => {
-        const displayName = ev.twitterUsername
-          ? `@${ev.twitterUsername}`
-          : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`;
-        const txShort = `${ev.txHash.slice(0, 6)}...${ev.txHash.slice(-4)}`;
-        const ago = getTimeAgo(ev.timestamp);
-        const isTopFading = idx === 0 && visible.length >= maxVisible;
-
-        return (
-          <div
-            key={ev.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? '6px' : '8px',
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: isMobile ? '10px' : '13px',
-              fontWeight: 600,
-              color: 'rgba(255,255,255,0.9)',
-              lineHeight: 1.3,
-              opacity: isTopFading ? 0.3 : 1,
-              transition: 'opacity 0.5s ease-out',
-            }}
-          >
-            <span style={{ color: '#C0B4DA', fontSize: isMobile ? '6px' : '8px' }}>&#9679;</span>
-            <span style={{ fontWeight: 800 }}>{displayName}</span>
-            <span style={{ opacity: 0.7 }}>blinked</span>
-            <a
-              href={`https://voyager.online/tx/${ev.txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isConnected && walletAddress ? (
+            <>
+              <button
+                onClick={handleCopyAddress}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: isMobile ? '8px 14px' : '10px 20px',
+                  background: 'rgba(192, 180, 218, 0.08)',
+                  border: '2px solid #C0B4DA',
+                  borderRadius: '10px',
+                  color: '#C0B4DA',
+                  fontSize: isMobile ? '13px' : '15px',
+                  fontWeight: 700,
+                  fontFamily: "'Manrope', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                {copied ? 'Copied!' : formatAddress(walletAddress)}
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: isMobile ? '8px 12px' : '10px 16px',
+                  background: 'transparent',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  color: '#ef4444',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontFamily: "'Manrope', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleLogin}
+              disabled={loginBusy}
               style={{
-                color: 'rgba(255,255,255,0.6)',
-                textDecoration: 'none',
-                fontFamily: "'SF Mono', Monaco, monospace",
-                fontSize: isMobile ? '9px' : '11px',
+                padding: isMobile ? '10px 20px' : '12px 32px',
+                background: walletLoading ? '#6366f1' : '#C0B4DA',
+                border: 'none',
+                borderRadius: '10px',
+                color: '#fff',
+                fontSize: isMobile ? '14px' : '16px',
+                fontWeight: 800,
+                fontFamily: "'Manrope', sans-serif",
+                cursor: loginBusy ? 'wait' : 'pointer',
+                opacity: loginBusy ? 0.7 : 1,
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 12px rgba(192, 180, 218, 0.3)',
               }}
             >
-              {txShort}
-            </a>
-            <span style={{ opacity: 0.5, whiteSpace: 'nowrap' }}>{ago}</span>
+              {walletLoading ? 'Setting up...' : !ready ? 'Loading...' : 'Connect'}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* ─── Main Content ─── */}
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        overflow: 'auto',
+        padding: isMobile ? '20px 16px' : '40px 32px',
+      }}>
+
+        {/* ═══ IDLE PHASE ═══ */}
+        {gamePhase === 'idle' && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: isMobile ? '24px' : '32px',
+            width: '100%',
+            maxWidth: '600px',
+          }}>
+            {/* Bet amount buttons */}
+            <div style={{ textAlign: 'center' }}>
+              <p style={{
+                fontSize: '12px', fontWeight: 700, color: '#555',
+                marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1.5px',
+              }}>
+                Bet Amount (USDC)
+              </p>
+              <div style={{
+                display: 'flex', gap: isMobile ? '8px' : '12px',
+                justifyContent: 'center', flexWrap: 'wrap',
+              }}>
+                {BET_AMOUNTS.map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setSelectedBet(amount)}
+                    style={{
+                      padding: isMobile ? '10px 18px' : '12px 24px',
+                      background: selectedBet === amount ? '#C0B4DA' : 'transparent',
+                      border: `2px solid ${selectedBet === amount ? '#C0B4DA' : 'rgba(255,255,255,0.12)'}`,
+                      borderRadius: '12px',
+                      color: selectedBet === amount ? '#fff' : '#666',
+                      fontSize: isMobile ? '15px' : '18px',
+                      fontWeight: 800,
+                      fontFamily: "'Manrope', sans-serif",
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      minWidth: isMobile ? '54px' : '64px',
+                      boxShadow: selectedBet === amount ? '0 4px 16px rgba(192, 180, 218, 0.35)' : 'none',
+                    }}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Play button */}
+            <button
+              onClick={isConnected ? handlePlay : handleLogin}
+              disabled={loginBusy}
+              style={{
+                padding: isMobile ? '18px 48px' : '22px 80px',
+                background: isConnected ? '#C0B4DA' : 'rgba(166, 164, 167, 0.12)',
+                border: isConnected ? '3px solid #C0B4DA' : '3px solid rgba(166, 164, 167, 0.15)',
+                borderRadius: '16px',
+                color: isConnected ? '#fff' : '#555',
+                fontSize: isMobile ? '20px' : '28px',
+                fontWeight: 900,
+                fontFamily: "'Manrope', sans-serif",
+                cursor: isConnected ? 'pointer' : loginBusy ? 'wait' : 'pointer',
+                transition: 'all 0.3s',
+                letterSpacing: '1px',
+                boxShadow: isConnected ? '0 8px 32px rgba(192, 180, 218, 0.35)' : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (isConnected) {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(192, 180, 218, 0.5)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = isConnected ? '0 8px 32px rgba(192, 180, 218, 0.35)' : 'none';
+              }}
+            >
+              {isConnected ? 'Play' : 'Connect to play'}
+            </button>
+
+            {/* Leaderboard */}
+            <div style={{
+              width: '100%',
+              background: '#111',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.06)',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                padding: isMobile ? '16px 16px 12px' : '20px 24px 16px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <h3 style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 800, color: '#A6A4A7', margin: 0 }}>
+                  Leaderboard
+                </h3>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Blinks / Earnings
+                </span>
+              </div>
+              <div>
+                {leaderboard.map((entry, idx) => (
+                  <div
+                    key={entry.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: isMobile ? '12px 16px' : '14px 24px',
+                      borderBottom: idx < leaderboard.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      transition: 'background 0.15s',
+                      background: idx === 0 ? 'rgba(255, 215, 0, 0.04)' : idx === 1 ? 'rgba(192, 192, 192, 0.03)' : idx === 2 ? 'rgba(205, 127, 50, 0.03)' : 'transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                      <span style={{
+                        fontSize: '14px', fontWeight: 800,
+                        color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : idx === 2 ? '#CD7F32' : '#444',
+                        width: '28px', textAlign: 'center', flexShrink: 0,
+                      }}>
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
+                      </span>
+                      <span style={{
+                        fontSize: isMobile ? '13px' : '15px',
+                        fontWeight: 600,
+                        color: '#A6A4A7',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {entry.name}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '24px', flexShrink: 0 }}>
+                      <span style={{
+                        fontSize: isMobile ? '13px' : '15px',
+                        fontWeight: 700,
+                        color: '#C0B4DA',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {entry.blinks}
+                      </span>
+                      <span style={{
+                        fontSize: isMobile ? '13px' : '15px',
+                        fontWeight: 800,
+                        color: '#22c55e',
+                        minWidth: '60px',
+                        textAlign: 'right',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        ${entry.earnings}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        );
-      })}
+        )}
+
+        {/* ═══ GAME AREA (always in DOM for video ref stability) ═══ */}
+        <div style={showGameArea ? {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+          width: '100%',
+          maxWidth: '800px',
+        } : {
+          position: 'fixed' as const,
+          top: '-9999px',
+          left: '-9999px',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+          pointerEvents: 'none' as const,
+        }}>
+          {/* Back button (ready phase only) */}
+          {gamePhase === 'ready' && (
+            <button
+              onClick={handleBack}
+              style={{
+                alignSelf: 'flex-start',
+                padding: '8px 16px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '8px',
+                color: '#666',
+                fontSize: '13px',
+                fontWeight: 600,
+                fontFamily: "'Manrope', sans-serif",
+                cursor: 'pointer',
+              }}
+            >
+              ← Back
+            </button>
+          )}
+
+          {/* Bet info display */}
+          {showGameArea && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              fontSize: '14px', color: '#666', fontWeight: 600,
+            }}>
+              <span>Betting</span>
+              <span style={{ color: '#C0B4DA', fontWeight: 900, fontSize: '20px' }}>${selectedBet}</span>
+              <span>USDC</span>
+            </div>
+          )}
+
+          {/* Game layout: countdown (left) + webcam (center) */}
+          <div style={{
+            display: 'flex',
+            alignItems: isMobile ? 'center' : 'flex-start',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '16px' : '32px',
+            width: '100%',
+            justifyContent: 'center',
+          }}>
+
+            {/* Countdown timer (left side, playing only) */}
+            {gamePhase === 'playing' && (
+              <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'row' : 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: isMobile ? '20px' : '8px',
+                minWidth: isMobile ? 'auto' : '140px',
+                order: isMobile ? -1 : 0,
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: isMobile ? '56px' : '80px',
+                    fontWeight: 900,
+                    color: timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#C0B4DA',
+                    lineHeight: 1,
+                    transition: 'color 0.3s',
+                    textShadow: timeLeft <= 5
+                      ? '0 0 30px rgba(239, 68, 68, 0.5)'
+                      : '0 0 20px rgba(192, 180, 218, 0.2)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {timeLeft}
+                  </div>
+                  <span style={{
+                    fontSize: '11px', fontWeight: 700, color: '#555',
+                    textTransform: 'uppercase', letterSpacing: '2px',
+                  }}>
+                    seconds
+                  </span>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: isMobile ? '40px' : '48px',
+                    fontWeight: 900,
+                    color: '#22c55e',
+                    lineHeight: 1,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {blinkCount}
+                  </div>
+                  <span style={{
+                    fontSize: '11px', fontWeight: 700, color: '#555',
+                    textTransform: 'uppercase', letterSpacing: '1px',
+                  }}>
+                    blinks
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Webcam container */}
+            <div style={{
+              position: 'relative',
+              width: isMobile ? '100%' : '480px',
+              maxWidth: '480px',
+              aspectRatio: '4 / 3',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              background: '#111',
+              border: '2px solid rgba(255,255,255,0.08)',
+              flexShrink: 0,
+            }}>
+              <video
+                ref={(el) => { videoRef.current = el; }}
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: 'scaleX(-1)',
+                  display: 'block',
+                }}
+              />
+              <canvas
+                ref={(el) => { canvasRef.current = el; }}
+                width={480}
+                height={360}
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 2,
+                }}
+              />
+
+              {/* Loading camera overlay */}
+              {gamePhase === 'ready' && !cameraReady && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.7)',
+                  zIndex: 5,
+                  gap: '12px',
+                }}>
+                  <div className="spinner" />
+                  <span style={{ color: '#A6A4A7', fontSize: '14px', fontWeight: 600 }}>
+                    Starting camera...
+                  </span>
+                </div>
+              )}
+
+              {/* START button overlay */}
+              {gamePhase === 'ready' && cameraReady && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.3)',
+                  zIndex: 5,
+                }}>
+                  <button
+                    onClick={handleStart}
+                    style={{
+                      padding: '20px 64px',
+                      background: '#C0B4DA',
+                      border: 'none',
+                      borderRadius: '16px',
+                      color: '#fff',
+                      fontSize: '32px',
+                      fontWeight: 900,
+                      fontFamily: "'Manrope', sans-serif",
+                      cursor: 'pointer',
+                      letterSpacing: '4px',
+                      boxShadow: '0 8px 32px rgba(192, 180, 218, 0.5)',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                      e.currentTarget.style.boxShadow = '0 12px 40px rgba(192, 180, 218, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(192, 180, 218, 0.5)';
+                    }}
+                  >
+                    START
+                  </button>
+                </div>
+              )}
+
+              {/* 3-2-1 Countdown overlay */}
+              {gamePhase === 'countdown' && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.5)',
+                  zIndex: 5,
+                }}>
+                  <span style={{
+                    fontSize: '120px',
+                    fontWeight: 900,
+                    color: '#C0B4DA',
+                    textShadow: '0 0 40px rgba(192, 180, 218, 0.6)',
+                    animation: 'pulse 1s ease-in-out infinite',
+                  }}>
+                    {countdownNumber}
+                  </span>
+                </div>
+              )}
+
+              {/* Score overlay on mobile during play */}
+              {gamePhase === 'playing' && isMobile && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px', right: '12px',
+                  zIndex: 5,
+                  fontSize: '36px',
+                  fontWeight: 900,
+                  color: '#C0B4DA',
+                  textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                }}>
+                  {blinkCount}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Chart below webcam */}
+          {(gamePhase === 'playing' || (showGameArea && chartData.length > 1)) && (
+            <div style={{
+              width: '100%',
+              maxWidth: '620px',
+              background: '#111',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.06)',
+              padding: isMobile ? '12px 8px' : '16px 16px',
+            }}>
+              <p style={{
+                fontSize: '11px', fontWeight: 700, color: '#555',
+                margin: '0 0 8px 4px', textTransform: 'uppercase', letterSpacing: '1px',
+              }}>
+                Blink Performance
+              </p>
+              <BlinkChart data={chartData} height={isMobile ? 140 : 180} />
+            </div>
+          )}
+        </div>
+
+        {/* ═══ RESULT PHASE ═══ */}
+        {gamePhase === 'result' && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '24px',
+            width: '100%',
+            maxWidth: '500px',
+            textAlign: 'center',
+          }}>
+            <h2 style={{
+              fontSize: isMobile ? '24px' : '32px',
+              fontWeight: 900,
+              color: '#A6A4A7',
+              margin: 0,
+            }}>
+              Time&apos;s Up!
+            </h2>
+
+            {/* User score */}
+            <div style={{
+              padding: '24px 40px',
+              background: '#141414',
+              borderRadius: '16px',
+              border: '2px solid rgba(192, 180, 218, 0.2)',
+              width: '100%',
+            }}>
+              <p style={{ fontSize: '12px', color: '#666', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                Your Blinks
+              </p>
+              <p style={{
+                fontSize: isMobile ? '48px' : '64px',
+                fontWeight: 900,
+                color: '#C0B4DA',
+                margin: 0,
+                lineHeight: 1,
+              }}>
+                {finalScore}
+              </p>
+            </div>
+
+            {/* Opponent loading */}
+            {!opponentRevealed && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                gap: '12px', padding: '24px',
+              }}>
+                <div className="spinner" />
+                <p style={{ fontSize: '14px', color: '#666', fontWeight: 600 }}>
+                  Waiting for opponent...
+                </p>
+              </div>
+            )}
+
+            {/* Opponent score + result */}
+            {opponentRevealed && opponentScore !== null && (
+              <>
+                <div style={{
+                  padding: '24px 40px',
+                  background: '#141414',
+                  borderRadius: '16px',
+                  border: '2px solid rgba(255,255,255,0.06)',
+                  width: '100%',
+                }}>
+                  <p style={{ fontSize: '12px', color: '#666', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                    Opponent&apos;s Blinks
+                  </p>
+                  <p style={{
+                    fontSize: isMobile ? '48px' : '64px',
+                    fontWeight: 900,
+                    color: '#A6A4A7',
+                    margin: 0,
+                    lineHeight: 1,
+                  }}>
+                    {opponentScore}
+                  </p>
+                </div>
+
+                {/* Win/Lose/Draw banner */}
+                <div style={{
+                  padding: '20px 32px',
+                  borderRadius: '16px',
+                  background: isWinner
+                    ? 'rgba(34, 197, 94, 0.1)'
+                    : isDraw
+                      ? 'rgba(245, 158, 11, 0.1)'
+                      : 'rgba(239, 68, 68, 0.1)',
+                  border: `2px solid ${isWinner
+                    ? 'rgba(34, 197, 94, 0.3)'
+                    : isDraw
+                      ? 'rgba(245, 158, 11, 0.3)'
+                      : 'rgba(239, 68, 68, 0.3)'}`,
+                  width: '100%',
+                }}>
+                  <p style={{
+                    fontSize: isMobile ? '24px' : '32px',
+                    fontWeight: 900,
+                    color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444',
+                    margin: 0,
+                  }}>
+                    {isWinner ? 'YOU WIN!' : isDraw ? 'DRAW!' : 'YOU LOSE'}
+                  </p>
+                  {isWinner && (
+                    <p style={{ fontSize: '16px', color: '#22c55e', fontWeight: 700, margin: '8px 0 0' }}>
+                      +${(selectedBet * 2 * 0.95).toFixed(2)} USDC
+                    </p>
+                  )}
+                  {isDraw && (
+                    <p style={{ fontSize: '16px', color: '#f59e0b', fontWeight: 700, margin: '8px 0 0' }}>
+                      Bet returned
+                    </p>
+                  )}
+                  {isLoser && (
+                    <p style={{ fontSize: '16px', color: '#ef4444', fontWeight: 700, margin: '8px 0 0' }}>
+                      -${selectedBet} USDC
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Performance chart */}
+            {chartData.length > 1 && (
+              <div style={{
+                width: '100%',
+                background: '#141414',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.06)',
+                padding: '16px',
+              }}>
+                <p style={{
+                  fontSize: '11px', color: '#555', fontWeight: 700,
+                  margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '1px',
+                }}>
+                  Your Performance
+                </p>
+                <BlinkChart data={chartData} height={isMobile ? 130 : 160} />
+              </div>
+            )}
+
+            {/* Play again */}
+            <button
+              onClick={handlePlayAgain}
+              style={{
+                padding: '16px 48px',
+                background: '#C0B4DA',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '18px',
+                fontWeight: 800,
+                fontFamily: "'Manrope', sans-serif",
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 20px rgba(192, 180, 218, 0.4)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              Play Again
+            </button>
+          </div>
+        )}
+
+        {/* Error banner */}
+        {error && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '12px 24px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            color: '#ef4444',
+            fontSize: '14px',
+            fontWeight: 600,
+            fontFamily: "'Manrope', sans-serif",
+            zIndex: 100,
+            maxWidth: '90vw',
+          }}>
+            {error}
+            <button
+              onClick={() => setError(null)}
+              style={{
+                marginLeft: '12px',
+                background: 'none',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 800,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

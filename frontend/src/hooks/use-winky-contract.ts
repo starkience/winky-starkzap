@@ -10,7 +10,7 @@
 import { useCallback, useState, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
 import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
-import type { WalletInterface } from '@starkware-ecosystem/starkzap';
+import type { WalletInterface } from 'starkzap';
 
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
 const EVENT_START_BLOCK: Record<string, number> = {

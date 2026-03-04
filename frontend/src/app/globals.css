@@ -106,16 +106,8 @@ body {
     Ubuntu, Cantarell, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
-  zoom: 0.85;
-  /* Prevent pull-to-refresh and bounce on mobile */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-}
-
-@media (max-width: 768px) {
-  body {
-    zoom: 1; /* Remove zoom on mobile — we handle sizing directly */
-  }
 }
 
 /* Shared header button style — adaptive, never squish */
