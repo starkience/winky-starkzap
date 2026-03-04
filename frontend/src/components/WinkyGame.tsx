@@ -542,17 +542,17 @@ export function WinkyGame() {
           </div>
         )}
 
-        {/* ─── GAME PHASES: left column (webcam + tx log) + right area (chart/content) ─── */}
+        {/* ─── GAME PHASES: top bar (webcam + stats) + bottom row (tx log + chart) ─── */}
         <div style={showGameArea ? {
-          display: 'flex', flex: 1, minHeight: 0, position: 'relative',
+          display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative',
         } : {
           position: 'fixed' as const, top: '-9999px', left: '-9999px',
           width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' as const,
         }}>
-          {/* Left column: webcam + stats + tx log */}
+          {/* Top bar: webcam + stats/controls to the right */}
           <div style={{
-            width: '192px', minWidth: '192px', display: 'flex', flexDirection: 'column',
-            padding: '12px 0 12px 12px', gap: '8px', flexShrink: 0, overflow: 'hidden',
+            display: 'flex', alignItems: 'flex-start', gap: '16px',
+            padding: '12px 16px', flexShrink: 0,
           }}>
             {/* Webcam */}
             <div style={{
@@ -578,130 +578,128 @@ export function WinkyGame() {
               )}
             </div>
 
-            {/* Stats below webcam */}
-            <div style={{ padding: '4px 2px', flexShrink: 0 }}>
+            {/* Stats / controls to the right of webcam */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '132px', gap: '8px' }}>
               {gamePhase === 'playing' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <span style={{ fontSize: '40px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
                       {blinkCount}
                     </span>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>blinks</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>blinks</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <span style={{
-                      fontSize: '16px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                      fontSize: '22px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
                       color: timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#A6A4A7',
+                      transition: 'color 0.3s',
                     }}>
                       0:{timeLeft.toString().padStart(2, '0')}
                     </span>
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#C0B4DA' }}>${selectedBet}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
+                    <span style={{ fontSize: '14px', fontWeight: 800, color: '#C0B4DA' }}>${selectedBet} USDC</span>
                   </div>
                 </div>
               )}
               {gamePhase === 'ready' && cameraReady && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
-                  <button
-                    onClick={handleStart}
-                    style={{
-                      width: '100%', padding: '10px', background: '#C0B4DA', border: 'none',
-                      borderRadius: '10px', color: '#fff', fontSize: '16px', fontWeight: 900,
-                      fontFamily: "'Manrope', sans-serif", cursor: 'pointer', letterSpacing: '3px',
-                      boxShadow: '0 4px 16px rgba(192,180,218,0.4)',
-                    }}
-                  >
+                <>
+                  <button onClick={handleStart} style={{
+                    padding: '14px 40px', background: '#C0B4DA', border: 'none',
+                    borderRadius: '12px', color: '#fff', fontSize: '20px', fontWeight: 900,
+                    fontFamily: "'Manrope', sans-serif", cursor: 'pointer', letterSpacing: '3px',
+                    boxShadow: '0 4px 20px rgba(192,180,218,0.4)',
+                  }}>
                     START
                   </button>
-                  <span style={{ fontSize: '11px', color: '#555', fontWeight: 600 }}>Press to begin</span>
-                </div>
+                  <span style={{ fontSize: '13px', color: '#555', fontWeight: 600 }}>Press to begin your 30s duel</span>
+                </>
               )}
               {gamePhase === 'ready' && !cameraReady && (
-                <span style={{ fontSize: '12px', color: '#555', fontWeight: 600 }}>Starting camera...</span>
+                <span style={{ fontSize: '14px', color: '#555', fontWeight: 600 }}>Starting camera...</span>
               )}
               {gamePhase === 'countdown' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '36px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '64px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1, textShadow: '0 0 30px rgba(192,180,218,0.4)', animation: 'pulse 1s ease-in-out infinite' }}>
                     {countdownNumber}
                   </span>
-                  <span style={{ fontSize: '12px', color: '#666', fontWeight: 700 }}>Get ready...</span>
+                  <span style={{ fontSize: '16px', color: '#666', fontWeight: 700 }}>Get ready...</span>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Transaction log below webcam (playing phase only) */}
+          {/* Bottom row: tx log (left, under webcam) + chart (right, fills space) */}
+          <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+            {/* Tx log column (same width as webcam, only during playing) */}
             {gamePhase === 'playing' && (
               <div style={{
-                flex: 1, borderRadius: '10px', background: '#111',
-                border: '1px solid rgba(255,255,255,0.06)',
-                display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                minHeight: 0,
+                width: '192px', minWidth: '192px', padding: '0 0 12px 12px', flexShrink: 0,
+                display: 'flex', flexDirection: 'column',
               }}>
                 <div style={{
-                  padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+                  flex: 1, borderRadius: '10px', background: '#111',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                  minHeight: 0,
                 }}>
-                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Transactions
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8px', fontWeight: 700, color: '#22c55e' }}>
-                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
-                    LIVE
+                  <div style={{
+                    padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+                  }}>
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      Transactions
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8px', fontWeight: 700, color: '#22c55e' }}>
+                      <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
+                      LIVE
+                    </div>
                   </div>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0' }}>
-                  {feedLoading && liveEvents.length === 0 && (
-                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>Loading...</div>
-                  )}
-                  {!feedLoading && liveEvents.length === 0 && (
-                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>No transactions yet</div>
-                  )}
-                  {liveEvents.map((ev) => {
-                    const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
-                    const timeStr = timeAgo < 60 ? `${timeAgo}s` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m` : `${Math.floor(timeAgo / 3600)}h`;
-                    return (
-                      <div key={ev.id} style={{
-                        padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
-                      }}>
-                        <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {ev.twitterUsername ? `@${ev.twitterUsername}` : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`}
-                          </span>
-                          <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                            #{ev.userTotal} · {timeStr}
-                          </span>
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                    {feedLoading && liveEvents.length === 0 && (
+                      <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>Loading...</div>
+                    )}
+                    {!feedLoading && liveEvents.length === 0 && (
+                      <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>No transactions yet</div>
+                    )}
+                    {[...liveEvents].reverse().map((ev, idx, arr) => {
+                      const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
+                      const timeStr = timeAgo < 60 ? `${timeAgo}s` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m` : `${Math.floor(timeAgo / 3600)}h`;
+                      const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
+                      return (
+                        <div key={ev.id} style={{
+                          padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
+                          opacity,
+                        }}>
+                          <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {ev.twitterUsername ? `@${ev.twitterUsername}` : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`}
+                            </span>
+                            <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                              #{ev.userTotal} · {timeStr}
+                            </span>
+                          </div>
+                          {VOYAGER_TX_URL && ev.txHash && (
+                            <a href={`${VOYAGER_TX_URL}/${ev.txHash}`} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize: '8px', fontWeight: 700, color: '#C0B4DA', textDecoration: 'none', padding: '2px 5px', border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px', flexShrink: 0 }}>
+                              ↗
+                            </a>
+                          )}
                         </div>
-                        {VOYAGER_TX_URL && ev.txHash && (
-                          <a
-                            href={`${VOYAGER_TX_URL}/${ev.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              fontSize: '8px', fontWeight: 700, color: '#C0B4DA',
-                              textDecoration: 'none', padding: '2px 5px',
-                              border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px',
-                              flexShrink: 0, whiteSpace: 'nowrap',
-                            }}
-                          >
-                            ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Right area: chart / controls */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
-            <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+            {/* Chart area */}
+            <div style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0 }}>
               {(gamePhase === 'playing' || chartData.length > 1) ? (
-                <div style={{ position: 'absolute', inset: 0, padding: '8px 8px 8px 0' }}>
+                <div style={{ position: 'absolute', inset: 0, padding: '0 8px 8px 0' }}>
                   {gamePhase === 'playing' && (
                     <div style={{
-                      position: 'absolute', right: '20px', top: '16px', zIndex: 2,
+                      position: 'absolute', right: '20px', top: '8px', zIndex: 2,
                       display: 'flex', alignItems: 'center', gap: '6px',
                       fontSize: '10px', fontWeight: 700, color: '#ef4444',
                       textTransform: 'uppercase', letterSpacing: '1px',
@@ -727,10 +725,10 @@ export function WinkyGame() {
         {/* ─── RESULT PHASE ─── */}
         {gamePhase === 'result' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-            {/* Left column: tx log */}
+            {/* Left column: tx log (bottom-up, fading) */}
             <div style={{
               width: '192px', minWidth: '192px', display: 'flex', flexDirection: 'column',
-              padding: '12px 0 12px 12px', gap: '8px', flexShrink: 0, overflow: 'hidden',
+              padding: '12px 0 12px 12px', flexShrink: 0, overflow: 'hidden',
             }}>
               <div style={{
                 flex: 1, borderRadius: '10px', background: '#111',
@@ -746,17 +744,19 @@ export function WinkyGame() {
                     Transactions
                   </span>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0' }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   {liveEvents.length === 0 && (
-                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>No transactions</div>
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>No transactions</div>
                   )}
-                  {liveEvents.map((ev) => {
+                  {[...liveEvents].reverse().map((ev, idx, arr) => {
                     const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
                     const timeStr = timeAgo < 60 ? `${timeAgo}s` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m` : `${Math.floor(timeAgo / 3600)}h`;
+                    const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
                     return (
                       <div key={ev.id} style={{
                         padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
+                        opacity,
                       }}>
                         <div style={{ minWidth: 0, overflow: 'hidden' }}>
                           <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -767,17 +767,8 @@ export function WinkyGame() {
                           </span>
                         </div>
                         {VOYAGER_TX_URL && ev.txHash && (
-                          <a
-                            href={`${VOYAGER_TX_URL}/${ev.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              fontSize: '8px', fontWeight: 700, color: '#C0B4DA',
-                              textDecoration: 'none', padding: '2px 5px',
-                              border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px',
-                              flexShrink: 0, whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <a href={`${VOYAGER_TX_URL}/${ev.txHash}`} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: '8px', fontWeight: 700, color: '#C0B4DA', textDecoration: 'none', padding: '2px 5px', border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px', flexShrink: 0 }}>
                             ↗
                           </a>
                         )}
