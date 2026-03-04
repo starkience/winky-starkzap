@@ -507,129 +507,56 @@ export function WinkyGame() {
         position: 'relative',
       }}>
 
-        {/* ─── IDLE: instructions + transaction log ─── */}
+        {/* ─── IDLE: centered instructions ─── */}
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            overflow: 'hidden',
+            alignItems: 'center', justifyContent: 'center', gap: '24px',
+            padding: '40px',
           }}>
-            {/* Instructions */}
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: '20px', padding: '40px 40px 24px', flexShrink: 0,
-            }}>
-              <div style={{ fontSize: '48px' }}>👁️</div>
-              <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0, textAlign: 'center' }}>
-                Blink Duel
-              </h1>
-              <p style={{ fontSize: '15px', color: '#555', fontWeight: 500, textAlign: 'center', maxWidth: '400px', lineHeight: 1.6 }}>
-                Select a stake from the sidebar and press <strong style={{ color: '#C0B4DA' }}>Play</strong> to start.
-                You have 30 seconds to out-blink your opponent.
-              </p>
-              <div style={{ display: 'flex', gap: '32px' }}>
-                {[
-                  { step: '1', label: 'Connect wallet' },
-                  { step: '2', label: 'Choose stake' },
-                  { step: '3', label: 'Blink to win' },
-                ].map(s => (
-                  <div key={s.step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      width: '36px', height: '36px', borderRadius: '50%',
-                      background: 'rgba(192,180,218,0.1)', border: '2px solid rgba(192,180,218,0.2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '14px', fontWeight: 800, color: '#C0B4DA',
-                    }}>{s.step}</div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Transaction log (fills remaining space) */}
-            <div style={{
-              flex: 1, margin: '0 16px 16px', borderRadius: '12px',
-              background: '#111', border: '1px solid rgba(255,255,255,0.06)',
-              display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            }}>
-              <div style={{
-                padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-              }}>
-                <span style={{ fontSize: '12px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Live Transactions
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontWeight: 700, color: '#22c55e' }}>
-                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
-                  LIVE
+            <div style={{ fontSize: '48px' }}>👁️</div>
+            <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0, textAlign: 'center' }}>
+              Blink Duel
+            </h1>
+            <p style={{ fontSize: '15px', color: '#555', fontWeight: 500, textAlign: 'center', maxWidth: '400px', lineHeight: 1.6 }}>
+              Select a stake from the sidebar and press <strong style={{ color: '#C0B4DA' }}>Play</strong> to start.
+              You have 30 seconds to out-blink your opponent.
+            </p>
+            <div style={{ display: 'flex', gap: '32px' }}>
+              {[
+                { step: '1', label: 'Connect wallet' },
+                { step: '2', label: 'Choose stake' },
+                { step: '3', label: 'Blink to win' },
+              ].map(s => (
+                <div key={s.step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: 'rgba(192,180,218,0.1)', border: '2px solid rgba(192,180,218,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', fontWeight: 800, color: '#C0B4DA',
+                  }}>{s.step}</div>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>{s.label}</span>
                 </div>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-                {feedLoading && liveEvents.length === 0 && (
-                  <div style={{ padding: '24px', textAlign: 'center', color: '#444', fontSize: '13px' }}>Loading transactions...</div>
-                )}
-                {!feedLoading && liveEvents.length === 0 && (
-                  <div style={{ padding: '24px', textAlign: 'center', color: '#444', fontSize: '13px' }}>No transactions yet</div>
-                )}
-                {liveEvents.map((ev) => {
-                  const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
-                  const timeStr = timeAgo < 60 ? `${timeAgo}s ago` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m ago` : `${Math.floor(timeAgo / 3600)}h ago`;
-                  return (
-                    <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                      transition: 'background 0.15s',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                        <span style={{ fontSize: '14px' }}>👁️</span>
-                        <div style={{ minWidth: 0 }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#A6A4A7', display: 'block' }}>
-                            {ev.twitterUsername ? `@${ev.twitterUsername}` : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`}
-                          </span>
-                          <span style={{ fontSize: '10px', color: '#555', fontWeight: 600 }}>
-                            Blink #{ev.userTotal} · {timeStr}
-                          </span>
-                        </div>
-                      </div>
-                      {VOYAGER_TX_URL && ev.txHash && (
-                        <a
-                          href={`${VOYAGER_TX_URL}/${ev.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: '10px', fontWeight: 700, color: '#C0B4DA',
-                            textDecoration: 'none', padding: '4px 8px',
-                            border: '1px solid rgba(192,180,218,0.2)', borderRadius: '6px',
-                            flexShrink: 0, transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(192,180,218,0.1)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          Voyager ↗
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ─── GAME PHASES: webcam top-left + chart fills area ─── */}
+        {/* ─── GAME PHASES: left column (webcam + tx log) + right area (chart/content) ─── */}
         <div style={showGameArea ? {
-          display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative',
+          display: 'flex', flex: 1, minHeight: 0, position: 'relative',
         } : {
           position: 'fixed' as const, top: '-9999px', left: '-9999px',
           width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' as const,
         }}>
-          {/* Top bar: webcam + stats / start controls */}
+          {/* Left column: webcam + stats + tx log */}
           <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: '16px',
-            padding: '12px 16px', zIndex: 3, flexShrink: 0,
+            width: '192px', minWidth: '192px', display: 'flex', flexDirection: 'column',
+            padding: '12px 0 12px 12px', gap: '8px', flexShrink: 0, overflow: 'hidden',
           }}>
-            {/* Webcam (small, top-left) — no overlays */}
+            {/* Webcam */}
             <div style={{
-              position: 'relative', width: '160px', height: '120px',
+              position: 'relative', width: '176px', height: '132px',
               borderRadius: '10px', overflow: 'hidden',
               border: '2px solid rgba(255,255,255,0.1)', background: '#111',
               flexShrink: 0,
@@ -641,7 +568,7 @@ export function WinkyGame() {
               />
               <canvas
                 ref={(el) => { canvasRef.current = el; }}
-                width={160} height={120}
+                width={176} height={132}
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
               />
               {gamePhase === 'ready' && !cameraReady && (
@@ -651,160 +578,276 @@ export function WinkyGame() {
               )}
             </div>
 
-            {/* Right of webcam: controls or stats */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '120px', gap: '8px' }}>
-              {/* Ready phase: START button + instruction */}
-              {gamePhase === 'ready' && cameraReady && (
-                <>
-                  <button
-                    onClick={handleStart}
-                    style={{
-                      padding: '14px 40px', background: '#C0B4DA', border: 'none',
-                      borderRadius: '12px', color: '#fff', fontSize: '20px', fontWeight: 900,
-                      fontFamily: "'Manrope', sans-serif", cursor: 'pointer', letterSpacing: '3px',
-                      boxShadow: '0 4px 20px rgba(192,180,218,0.4)', transition: 'transform 0.15s, box-shadow 0.15s',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(192,180,218,0.5)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(192,180,218,0.4)'; }}
-                  >
-                    START
-                  </button>
-                  <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>
-                    Press to begin your 30s duel
-                  </p>
-                </>
-              )}
-
-              {gamePhase === 'ready' && !cameraReady && (
-                <p style={{ fontSize: '14px', color: '#555', fontWeight: 600, margin: 0 }}>Starting camera...</p>
-              )}
-
-              {/* Countdown phase */}
-              {gamePhase === 'countdown' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{
-                    fontSize: '64px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1,
-                    textShadow: '0 0 30px rgba(192,180,218,0.4)', animation: 'pulse 1s ease-in-out infinite',
-                  }}>
-                    {countdownNumber}
-                  </span>
-                  <span style={{ fontSize: '16px', color: '#666', fontWeight: 700 }}>Get ready...</span>
-                </div>
-              )}
-
-              {/* Playing phase: stats */}
+            {/* Stats below webcam */}
+            <div style={{ padding: '4px 2px', flexShrink: 0 }}>
               {gamePhase === 'playing' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span style={{ fontSize: '40px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                    <span style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
                       {blinkCount}
                     </span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>blinks</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>blinks</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
-                      fontSize: '22px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                      fontSize: '16px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
                       color: timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#A6A4A7',
-                      transition: 'color 0.3s',
                     }}>
                       0:{timeLeft.toString().padStart(2, '0')}
                     </span>
-                    <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
-                    <span style={{ fontSize: '14px', fontWeight: 800, color: '#C0B4DA' }}>${selectedBet} USDC</span>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#C0B4DA' }}>${selectedBet}</span>
                   </div>
                 </div>
               )}
+              {gamePhase === 'ready' && cameraReady && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                  <button
+                    onClick={handleStart}
+                    style={{
+                      width: '100%', padding: '10px', background: '#C0B4DA', border: 'none',
+                      borderRadius: '10px', color: '#fff', fontSize: '16px', fontWeight: 900,
+                      fontFamily: "'Manrope', sans-serif", cursor: 'pointer', letterSpacing: '3px',
+                      boxShadow: '0 4px 16px rgba(192,180,218,0.4)',
+                    }}
+                  >
+                    START
+                  </button>
+                  <span style={{ fontSize: '11px', color: '#555', fontWeight: 600 }}>Press to begin</span>
+                </div>
+              )}
+              {gamePhase === 'ready' && !cameraReady && (
+                <span style={{ fontSize: '12px', color: '#555', fontWeight: 600 }}>Starting camera...</span>
+              )}
+              {gamePhase === 'countdown' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '36px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>
+                    {countdownNumber}
+                  </span>
+                  <span style={{ fontSize: '12px', color: '#666', fontWeight: 700 }}>Get ready...</span>
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* Chart area (fills remaining space) */}
-          <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-            {(gamePhase === 'playing' || chartData.length > 1) ? (
-              <div style={{ position: 'absolute', inset: 0, padding: '0 8px 8px' }}>
-                {gamePhase === 'playing' && (
-                  <div style={{
-                    position: 'absolute', right: '20px', top: '8px', zIndex: 2,
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    fontSize: '10px', fontWeight: 700, color: '#ef4444',
-                    textTransform: 'uppercase', letterSpacing: '1px',
-                  }}>
-                    LIVE
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s ease-in-out infinite' }} />
-                  </div>
-                )}
-                <BlinkChart data={chartData} height={"100%"} />
-              </div>
-            ) : (
+            {/* Transaction log below webcam (playing phase only) */}
+            {gamePhase === 'playing' && (
               <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: '100%', color: '#333', fontSize: '14px', fontWeight: 600,
+                flex: 1, borderRadius: '10px', background: '#111',
+                border: '1px solid rgba(255,255,255,0.06)',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                minHeight: 0,
               }}>
-                {gamePhase === 'ready' ? 'Chart will appear when you start' : ''}
+                <div style={{
+                  padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Transactions
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8px', fontWeight: 700, color: '#22c55e' }}>
+                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
+                    LIVE
+                  </div>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0' }}>
+                  {feedLoading && liveEvents.length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>Loading...</div>
+                  )}
+                  {!feedLoading && liveEvents.length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>No transactions yet</div>
+                  )}
+                  {liveEvents.map((ev) => {
+                    const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
+                    const timeStr = timeAgo < 60 ? `${timeAgo}s` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m` : `${Math.floor(timeAgo / 3600)}h`;
+                    return (
+                      <div key={ev.id} style={{
+                        padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
+                      }}>
+                        <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ev.twitterUsername ? `@${ev.twitterUsername}` : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`}
+                          </span>
+                          <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                            #{ev.userTotal} · {timeStr}
+                          </span>
+                        </div>
+                        {VOYAGER_TX_URL && ev.txHash && (
+                          <a
+                            href={`${VOYAGER_TX_URL}/${ev.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '8px', fontWeight: 700, color: '#C0B4DA',
+                              textDecoration: 'none', padding: '2px 5px',
+                              border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px',
+                              flexShrink: 0, whiteSpace: 'nowrap',
+                            }}
+                          >
+                            ↗
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Right area: chart / controls */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+            <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+              {(gamePhase === 'playing' || chartData.length > 1) ? (
+                <div style={{ position: 'absolute', inset: 0, padding: '8px 8px 8px 0' }}>
+                  {gamePhase === 'playing' && (
+                    <div style={{
+                      position: 'absolute', right: '20px', top: '16px', zIndex: 2,
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      fontSize: '10px', fontWeight: 700, color: '#ef4444',
+                      textTransform: 'uppercase', letterSpacing: '1px',
+                    }}>
+                      LIVE
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s ease-in-out infinite' }} />
+                    </div>
+                  )}
+                  <BlinkChart data={chartData} height={"100%"} />
+                </div>
+              ) : (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  height: '100%', color: '#333', fontSize: '14px', fontWeight: 600,
+                }}>
+                  {gamePhase === 'ready' ? 'Chart will appear when you start' : ''}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ─── RESULT PHASE ─── */}
         {gamePhase === 'result' && (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: '20px',
-            padding: '32px', overflow: 'auto',
-          }}>
-            <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>
-              Time&apos;s Up!
-            </h2>
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+            {/* Left column: tx log */}
+            <div style={{
+              width: '192px', minWidth: '192px', display: 'flex', flexDirection: 'column',
+              padding: '12px 0 12px 12px', gap: '8px', flexShrink: 0, overflow: 'hidden',
+            }}>
               <div style={{
-                padding: '20px 32px', background: '#141414', borderRadius: '14px',
-                border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
+                flex: 1, borderRadius: '10px', background: '#111',
+                border: '1px solid rgba(255,255,255,0.06)',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                minHeight: 0,
               }}>
-                <p style={{ fontSize: '10px', color: '#666', fontWeight: 700, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Your Blinks</p>
-                <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1 }}>{finalScore}</p>
+                <div style={{
+                  padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Transactions
+                  </span>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0' }}>
+                  {liveEvents.length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#444', fontSize: '10px' }}>No transactions</div>
+                  )}
+                  {liveEvents.map((ev) => {
+                    const timeAgo = Math.floor((Date.now() - ev.timestamp) / 1000);
+                    const timeStr = timeAgo < 60 ? `${timeAgo}s` : timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m` : `${Math.floor(timeAgo / 3600)}h`;
+                    return (
+                      <div key={ev.id} style={{
+                        padding: '5px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
+                      }}>
+                        <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ev.twitterUsername ? `@${ev.twitterUsername}` : `${ev.address.slice(0, 6)}...${ev.address.slice(-4)}`}
+                          </span>
+                          <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                            #{ev.userTotal} · {timeStr}
+                          </span>
+                        </div>
+                        {VOYAGER_TX_URL && ev.txHash && (
+                          <a
+                            href={`${VOYAGER_TX_URL}/${ev.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '8px', fontWeight: 700, color: '#C0B4DA',
+                              textDecoration: 'none', padding: '2px 5px',
+                              border: '1px solid rgba(192,180,218,0.2)', borderRadius: '4px',
+                              flexShrink: 0, whiteSpace: 'nowrap',
+                            }}
+                          >
+                            ↗
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              {opponentRevealed && opponentScore !== null && (
+            </div>
+
+            {/* Right area: result content */}
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: '20px',
+              padding: '32px', overflow: 'auto',
+            }}>
+              <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>
+                Time&apos;s Up!
+              </h2>
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <div style={{
                   padding: '20px 32px', background: '#141414', borderRadius: '14px',
-                  border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                  border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
                 }}>
-                  <p style={{ fontSize: '10px', color: '#666', fontWeight: 700, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Opponent</p>
-                  <p style={{ fontSize: '48px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1 }}>{opponentScore}</p>
+                  <p style={{ fontSize: '10px', color: '#666', fontWeight: 700, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Your Blinks</p>
+                  <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1 }}>{finalScore}</p>
+                </div>
+                {opponentRevealed && opponentScore !== null && (
+                  <div style={{
+                    padding: '20px 32px', background: '#141414', borderRadius: '14px',
+                    border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                  }}>
+                    <p style={{ fontSize: '10px', color: '#666', fontWeight: 700, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Opponent</p>
+                    <p style={{ fontSize: '48px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1 }}>{opponentScore}</p>
+                  </div>
+                )}
+              </div>
+              {!opponentRevealed && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="spinner" />
+                  <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>Waiting for opponent...</p>
                 </div>
               )}
-            </div>
-            {!opponentRevealed && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div className="spinner" />
-                <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>Waiting for opponent...</p>
-              </div>
-            )}
-            {opponentRevealed && opponentScore !== null && (
-              <div style={{
-                padding: '16px 28px', borderRadius: '12px', textAlign: 'center',
-                background: isWinner ? 'rgba(34,197,94,0.1)' : isDraw ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                border: `2px solid ${isWinner ? 'rgba(34,197,94,0.3)' : isDraw ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              {opponentRevealed && opponentScore !== null && (
+                <div style={{
+                  padding: '16px 28px', borderRadius: '12px', textAlign: 'center',
+                  background: isWinner ? 'rgba(34,197,94,0.1)' : isDraw ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                  border: `2px solid ${isWinner ? 'rgba(34,197,94,0.3)' : isDraw ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                }}>
+                  <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                    {isWinner ? 'YOU WIN!' : isDraw ? 'DRAW!' : 'YOU LOSE'}
+                  </p>
+                  <p style={{ fontSize: '14px', fontWeight: 700, margin: '6px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                    {isWinner ? `+$${(selectedBet * 2 * 0.95).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `-$${selectedBet} USDC`}
+                  </p>
+                </div>
+              )}
+              {chartData.length > 1 && (
+                <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '12px' }}>
+                  <BlinkChart data={chartData} height={140} />
+                </div>
+              )}
+              <button onClick={handlePlayAgain} style={{
+                padding: '12px 40px', background: '#C0B4DA', border: 'none', borderRadius: '10px',
+                color: '#fff', fontSize: '16px', fontWeight: 800, fontFamily: "'Manrope', sans-serif",
+                cursor: 'pointer', boxShadow: '0 4px 16px rgba(192,180,218,0.4)',
               }}>
-                <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                  {isWinner ? 'YOU WIN!' : isDraw ? 'DRAW!' : 'YOU LOSE'}
-                </p>
-                <p style={{ fontSize: '14px', fontWeight: 700, margin: '6px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                  {isWinner ? `+$${(selectedBet * 2 * 0.95).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `-$${selectedBet} USDC`}
-                </p>
-              </div>
-            )}
-            {chartData.length > 1 && (
-              <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', padding: '12px' }}>
-                <BlinkChart data={chartData} height={140} />
-              </div>
-            )}
-            <button onClick={handlePlayAgain} style={{
-              padding: '12px 40px', background: '#C0B4DA', border: 'none', borderRadius: '10px',
-              color: '#fff', fontSize: '16px', fontWeight: 800, fontFamily: "'Manrope', sans-serif",
-              cursor: 'pointer', boxShadow: '0 4px 16px rgba(192,180,218,0.4)',
-            }}>
-              Play Again
-            </button>
+                Play Again
+              </button>
+            </div>
           </div>
         )}
       </div>
