@@ -17,12 +17,12 @@ interface ChartDataPoint {
 
 interface BlinkChartProps {
   data: ChartDataPoint[];
-  height?: number;
+  height?: number | string;
 }
 
 export function BlinkChart({ data, height = 200 }: BlinkChartProps) {
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height as number | `${number}%`}>
       <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
         <defs>
           <linearGradient id="blinkGradient" x1="0" y1="0" x2="0" y2="1">
