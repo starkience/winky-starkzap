@@ -1,3 +1,5 @@
+pub mod escrow;
+
 use starknet::ContractAddress;
 
 #[starknet::interface]

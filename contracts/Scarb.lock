@@ -2,6 +2,21 @@
 version = 1
 
 [[package]]
+name = "openzeppelin_access"
+version = "0.20.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:7734901a0ca7a7065e69416fea615dd1dc586c8dc9e76c032f25ee62e8b2a06c"
+dependencies = [
+ "openzeppelin_introspection",
+]
+
+[[package]]
+name = "openzeppelin_introspection"
+version = "0.20.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:13e04a2190684e6804229a77a6c56de7d033db8b9ef519e5e8dee400a70d8a3d"
+
+[[package]]
 name = "snforge_scarb_plugin"
 version = "0.56.0"
 source = "registry+https://scarbs.xyz/"
@@ -20,5 +35,6 @@ dependencies = [
 name = "winky_starkzap"
 version = "0.1.0"
 dependencies = [
+ "openzeppelin_access",
  "snforge_std",
 ]

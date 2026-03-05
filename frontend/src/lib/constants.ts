@@ -46,6 +46,25 @@ export const TOKENS = {
   USDC: '0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8',
 } as const;
 
+// USDC decimals (6 on Starknet mainnet)
+export const USDC_DECIMALS = 6;
+
+// BlinkEscrow contract (PVP duel betting)
+export const ESCROW_CONTRACT_ADDRESSES = {
+  mainnet: '0xf999e4b5c7c32e7c5e0fe12c55993ef16503c2172ce70282d61a94b51de960',
+  sepolia: '',
+  devnet: '',
+} as const;
+
+export const ESCROW_CONTRACT_ADDRESS = (
+  process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS ||
+  ESCROW_CONTRACT_ADDRESSES[NETWORK] ||
+  ''
+).trim();
+
+export const ESCROW_OWNER = '0x3d9115d5e585ecadd25b64e7c4dd80a00130077255a73b9ab89e93bbc9da550';
+export const ESCROW_FEE_BPS = 500; // 5%
+
 // Game configuration
 export const GAME_CONFIG = {
   EAR_THRESHOLD: 0.21,

@@ -1,0 +1,9 @@
+{
+  "network": "mainnet",
+  "address": "0xf999e4b5c7c32e7c5e0fe12c55993ef16503c2172ce70282d61a94b51de960",
+  "classHash": "0x7433f16091601fef17467c308ac6063526bfcb53c76f7718990eac41d6477a3",
+  "owner": "0x3d9115d5e585ecadd25b64e7c4dd80a00130077255a73b9ab89e93bbc9da550",
+  "token": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+  "feeBps": 500,
+  "deployedAt": "2026-03-04T23:58:38.682Z"
+}
