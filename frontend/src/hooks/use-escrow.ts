@@ -102,9 +102,17 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
       setLastTx(result);
       return result;
     } catch (err: any) {
-      const msg = err.message || 'Failed to create duel';
-      console.error('[createDuel]', msg);
-      setEscrowError(msg.length > 150 ? msg.slice(0, 150) + '\u2026' : msg);
+      const raw = err.message || 'Failed to create duel';
+      console.error('[createDuel]', raw);
+
+      let msg: string;
+      if (raw.includes('u256_sub Overflow') || raw.includes('insufficient') || raw.includes('balance')) {
+        msg = `Insufficient USDC balance. Send at least $${stakeDollars} USDC to your wallet to play.`;
+      } else {
+        msg = raw.length > 150 ? raw.slice(0, 150) + '\u2026' : raw;
+      }
+
+      setEscrowError(msg);
       return null;
     } finally {
       setIsCreating(false);
