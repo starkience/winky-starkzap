@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPrivyClient } from '@/lib/privyServer';
+import { getPrivyClient, getAuthorizationContext } from '@/lib/privyServer';
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,11 @@ export async function POST(request: Request) {
     }
 
     const privy = getPrivyClient();
-    const result = await privy.wallets().rawSign(walletId, { params: { hash } });
+    const authorization_context = getAuthorizationContext();
+    const result = await privy.wallets().rawSign(walletId, {
+      params: { hash },
+      ...(authorization_context ? { authorization_context } : {}),
+    });
     return NextResponse.json({ signature: (result as any).signature });
   } catch (error: any) {
     console.error('Error signing:', error?.message);

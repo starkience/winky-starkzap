@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { getPrivyClient } from '../lib/privyClient'
+import { getPrivyClient, getAuthorizationContext } from '../lib/privyClient'
 
 const router = Router()
 
@@ -45,7 +45,11 @@ router.post('/sign', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'walletId and hash are required' })
     }
     const privy = getPrivyClient()
-    const result = await privy.wallets().rawSign(walletId, { params: { hash } })
+    const authorization_context = getAuthorizationContext()
+    const result = await privy.wallets().rawSign(walletId, {
+      params: { hash },
+      ...(authorization_context ? { authorization_context } : {}),
+    })
     return res.status(200).json({ signature: (result as any).signature })
   } catch (error: any) {
     console.error('Error signing:', error?.message)
