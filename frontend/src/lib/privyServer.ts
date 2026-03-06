@@ -14,12 +14,19 @@ export function getPrivyClient(): PrivyClient {
 export async function extractUserId(request: Request): Promise<string | undefined> {
   const header = request.headers.get('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return undefined;
+  if (!token) {
+    console.log('[extractUserId] No Bearer token in request');
+    return undefined;
+  }
   try {
     const privy = getPrivyClient();
     const claims = await privy.utils().auth().verifyAccessToken(token);
-    return (claims as any).userId || (claims as any).sub;
-  } catch {
+    const uid = (claims as any).userId || (claims as any).sub;
+    console.log('[extractUserId] claims keys:', Object.keys(claims as any));
+    console.log('[extractUserId] resolved userId:', uid);
+    return uid;
+  } catch (err: any) {
+    console.error('[extractUserId] Token verification failed:', err?.message);
     return undefined;
   }
 }
