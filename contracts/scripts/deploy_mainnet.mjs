@@ -10,8 +10,8 @@ const RPC_URL = 'https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_
 // OZ Account class hash on mainnet (v0.14.0)
 const OZ_ACCOUNT_CLASS_HASH = '0x061dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f';
 
-// Mainnet USDC address (bridged from Ethereum)
-const USDC_MAINNET = '0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8';
+// Mainnet USDC address (Circle native USDC)
+const USDC_MAINNET = '0x33068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb';
 
 const FEE_BPS = 500; // 5%
 

@@ -53,7 +53,7 @@ function formatAddress(addr: string | null | undefined): string {
 // ─── Component ───
 
 export function WinkyGame() {
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
 
   // Wallet state (Starkzap SDK)
   const [sdkWallet, setSdkWallet] = useState<WalletInterface | null>(null);
@@ -127,7 +127,8 @@ export function WinkyGame() {
     isAuthenticated: ready && authenticated,
   });
 
-  const isConnected = ready && authenticated && !!sdkWallet;
+  const [loggingOut, setLoggingOut] = useState(false);
+  const isConnected = ready && authenticated && !!sdkWallet && !loggingOut;
   const isPlaying = gamePhase === 'playing';
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
 
@@ -283,9 +284,13 @@ export function WinkyGame() {
         let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
 
         if (!wId || !wPk) {
+          const token = await getAccessToken();
           const resp = await fetch(`${API_URL}/api/wallet/starknet`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
           });
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');
@@ -334,16 +339,18 @@ export function WinkyGame() {
     login({ loginMethods: ['email', 'twitter'] });
   }, [login]);
 
-  const handleLogout = useCallback(async () => {
+  const handleLogout = useCallback(() => {
+    setLoggingOut(true);
+    setSdkWallet(null);
+    setWalletAddress(null);
+    setUsdcBalance(null);
+    setupAttemptedRef.current = false;
     try {
       Object.values(STORAGE_KEYS).forEach(k => {
         try { window.localStorage.removeItem(k); } catch {}
       });
     } catch {}
-    setSdkWallet(null);
-    setWalletAddress(null);
-    setupAttemptedRef.current = false;
-    try { await logout(); } catch {}
+    logout().catch(() => {}).finally(() => setLoggingOut(false));
   }, [logout]);
 
   // ─── Blink detection ───
