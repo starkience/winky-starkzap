@@ -7,7 +7,7 @@ import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useEscrow } from '@/hooks/use-escrow';
-import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS } from '@/lib/constants';
+import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS, TOKENS, USDC_DECIMALS } from '@/lib/constants';
 import { BlinkChart } from '@/components/BlinkChart';
 
 interface PendingChallenge {
@@ -104,6 +104,14 @@ export function WinkyGame() {
 
   // Challenge state (incoming only)
   const [pendingChallenges, setPendingChallenges] = useState<PendingChallenge[]>([]);
+
+  // Withdraw modal state
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawRecipient, setWithdrawRecipient] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [blinkerSearch, setBlinkerSearch] = useState('');
   const [activeBlinkers, setActiveBlinkers] = useState<BlinkerCard[]>([]);
 
@@ -193,6 +201,47 @@ export function WinkyGame() {
       }
     };
   }, [twitterUsername]);
+
+  // ─── Withdraw USDC handler ───
+  const handleWithdraw = useCallback(async () => {
+    if (!sdkWallet || !withdrawRecipient || !withdrawAmount) return;
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setWithdrawError('Enter a valid amount');
+      return;
+    }
+    setWithdrawing(true);
+    setWithdrawError(null);
+    setWithdrawTxHash(null);
+    try {
+      const raw = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
+      const mask = (BigInt(1) << BigInt(128)) - BigInt(1);
+      const low = (raw & mask).toString();
+      const high = (raw >> BigInt(128)).toString();
+
+      const tx = await sdkWallet.execute(
+        [{
+          contractAddress: TOKENS.USDC,
+          entrypoint: 'transfer',
+          calldata: [withdrawRecipient, low, high],
+        }],
+        { feeMode: 'sponsored' },
+      );
+      setWithdrawTxHash(tx.hash);
+      setWithdrawAmount('');
+      setWithdrawRecipient('');
+      getUsdcBalance().then(setUsdcBalance);
+    } catch (err: any) {
+      const msg = err.message || 'Transfer failed';
+      if (msg.includes('u256_sub Overflow')) {
+        setWithdrawError('Insufficient USDC balance');
+      } else {
+        setWithdrawError(msg.length > 100 ? msg.slice(0, 100) + '\u2026' : msg);
+      }
+    } finally {
+      setWithdrawing(false);
+    }
+  }, [sdkWallet, withdrawRecipient, withdrawAmount, getUsdcBalance]);
 
   const handleDismissChallenge = useCallback((id: string) => {
     setPendingChallenges(prev => prev.filter(c => c.id !== id));
@@ -534,24 +583,32 @@ export function WinkyGame() {
 
         {/* Connect / Address */}
         {isConnected && walletAddress ? (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={handleCopyAddress}
-              className="sidebar-wallet-btn"
-              aria-label={copied ? 'Address copied' : 'Copy wallet address'}
-            >
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} aria-hidden="true" />
-              <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px', letterSpacing: '0.3px' }}>
-                {copied ? 'Copied!' : formatAddress(walletAddress)}
-              </span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="sidebar-disconnect-btn"
-              aria-label="Disconnect wallet"
-            >
-              &times;
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleCopyAddress}
+                className="sidebar-wallet-btn"
+                aria-label={copied ? 'Address copied' : 'Copy wallet address'}
+              >
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} aria-hidden="true" />
+                <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px', letterSpacing: '0.3px' }}>
+                  {copied ? 'Copied!' : formatAddress(walletAddress)}
+                </span>
+              </button>
+              <button
+                onClick={() => { setShowWithdraw(true); setWithdrawError(null); setWithdrawTxHash(null); }}
+                className="sidebar-withdraw-btn"
+              >
+                Withdraw
+              </button>
+              <button
+                onClick={handleLogout}
+                className="sidebar-disconnect-btn"
+                aria-label="Disconnect wallet"
+              >
+                &times;
+              </button>
+            </div>
           </div>
         ) : (
           <button
@@ -1166,6 +1223,94 @@ export function WinkyGame() {
 
       {/* ═══ SIDEBAR ═══ */}
       {sidebarContent}
+
+      {/* Withdraw modal */}
+      {showWithdraw && (
+        <div className="withdraw-backdrop" onClick={() => setShowWithdraw(false)}>
+          <div className="withdraw-modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>Send USDC</h2>
+              <button
+                onClick={() => setShowWithdraw(false)}
+                style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '20px', fontWeight: 800, lineHeight: 1 }}
+              >&times;</button>
+            </div>
+
+            {usdcBalance !== null && (
+              <div className="withdraw-balance">
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#555' }}>Available balance</span>
+                <span style={{ fontSize: '28px', fontWeight: 900, color: '#C0B4DA' }}>${usdcBalance.toFixed(2)}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '10px', fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Recipient Address</label>
+              <input
+                type="text"
+                value={withdrawRecipient}
+                onChange={(e) => setWithdrawRecipient(e.target.value)}
+                placeholder="0x..."
+                className="withdraw-input"
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '10px', fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Amount (USDC)</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="0.00"
+                  className="withdraw-input"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={() => { if (usdcBalance) setWithdrawAmount(usdcBalance.toFixed(2)); }}
+                  className="withdraw-max-btn"
+                >
+                  MAX
+                </button>
+              </div>
+            </div>
+
+            {withdrawError && (
+              <p style={{ fontSize: '12px', fontWeight: 600, color: '#ef4444', margin: 0, textAlign: 'center' }}>
+                {withdrawError}
+              </p>
+            )}
+
+            {withdrawTxHash && (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '12px', fontWeight: 600, color: '#22c55e', margin: '0 0 4px' }}>Transfer sent!</p>
+                <a
+                  href={`${VOYAGER_TX_URL}/${withdrawTxHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '11px', fontWeight: 600, color: '#C0B4DA', textDecoration: 'underline' }}
+                >
+                  View on Voyager \u2197
+                </a>
+              </div>
+            )}
+
+            <button
+              onClick={handleWithdraw}
+              disabled={withdrawing || !withdrawRecipient || !withdrawAmount}
+              className="withdraw-send-btn"
+            >
+              {withdrawing ? 'Sending\u2026' : '\u2197 Send USDC'}
+            </button>
+
+            <p style={{ fontSize: '10px', fontWeight: 500, color: '#444', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+              Transfer your USDC to Argent, Braavos, or any Starknet wallet
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (

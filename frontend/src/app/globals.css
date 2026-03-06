@@ -1631,6 +1631,117 @@ a:focus-visible,
   color: #1d9bf0;
 }
 
+/* ─── Withdraw button ─── */
+.sidebar-withdraw-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1.5px solid rgba(192, 180, 218, 0.2);
+  border-radius: 8px;
+  color: #C0B4DA;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sidebar-withdraw-btn:hover {
+  background: rgba(192, 180, 218, 0.08);
+  border-color: rgba(192, 180, 218, 0.4);
+}
+
+/* ─── Withdraw modal ─── */
+.withdraw-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.withdraw-modal {
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.withdraw-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+  background: rgba(192, 180, 218, 0.04);
+  border: 1px solid rgba(192, 180, 218, 0.1);
+  border-radius: 12px;
+}
+.withdraw-input {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #A6A4A7;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'SF Mono', Monaco, monospace;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.withdraw-input::placeholder {
+  color: #333;
+}
+.withdraw-input:focus {
+  border-color: rgba(192, 180, 218, 0.4);
+}
+.withdraw-max-btn {
+  padding: 10px 16px;
+  background: rgba(192, 180, 218, 0.08);
+  border: 1.5px solid rgba(192, 180, 218, 0.15);
+  border-radius: 10px;
+  color: #C0B4DA;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.withdraw-max-btn:hover {
+  background: rgba(192, 180, 218, 0.15);
+}
+.withdraw-send-btn {
+  padding: 14px;
+  background: linear-gradient(135deg, #C0B4DA 0%, #8a7aa8 100%);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  text-align: center;
+}
+.withdraw-send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.withdraw-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ─── Idle screen sections ─── */
 .idle-section-title {
   font-size: 14px;
