@@ -291,6 +291,7 @@ export function WinkyGame() {
               'Content-Type': 'application/json',
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
+            body: JSON.stringify({ privyUserId: user.id }),
           });
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');
