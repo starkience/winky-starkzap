@@ -13,8 +13,8 @@ export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ||
   'https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/yR5Pmn0DMRTd2lhPE-sh3';
 
-// Backend API URL
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+// Backend API URL (empty = same origin, used for Next.js API routes)
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 
 // Block explorer URLs
 export const EXPLORER_URLS = {
