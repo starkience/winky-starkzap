@@ -54,12 +54,12 @@ interface BlinkerCard {
 }
 
 const SAMPLE_BLINKERS: BlinkerCard[] = [
-  { id: 'b1', twitter: 'BlinkMaster', blinks: 87, stake: 50 },
-  { id: 'b2', twitter: 'EyeStorm', blinks: 72, stake: 25 },
-  { id: 'b3', twitter: 'CryptoWinker', blinks: 65, stake: 50 },
-  { id: 'b4', twitter: 'WinkKing', blinks: 58, stake: 10 },
-  { id: 'b5', twitter: 'StarkBlinker', blinks: 45, stake: 5 },
-  { id: 'b6', twitter: 'NeonWink', blinks: 41, stake: 25 },
+  { id: 'b1', twitter: 'BlinkMaster', blinks: 87, stake: 50, profileImage: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
+  { id: 'b2', twitter: 'EyeStorm', blinks: 72, stake: 25, profileImage: 'https://pbs.twimg.com/profile_images/1780044069882368000/NwsmQIr5_400x400.jpg' },
+  { id: 'b3', twitter: 'CryptoWinker', blinks: 65, stake: 50, profileImage: 'https://pbs.twimg.com/profile_images/1760101604832280576/JbwBO1xd_400x400.jpg' },
+  { id: 'b4', twitter: 'WinkKing', blinks: 58, stake: 10, profileImage: 'https://pbs.twimg.com/profile_images/1590968738642079744/dG3MlRz6_400x400.jpg' },
+  { id: 'b5', twitter: 'StarkBlinker', blinks: 45, stake: 5, profileImage: 'https://pbs.twimg.com/profile_images/1696931646816247808/eJgo1IN3_400x400.jpg' },
+  { id: 'b6', twitter: 'NeonWink', blinks: 41, stake: 25, profileImage: 'https://pbs.twimg.com/profile_images/1657463800311214080/pruVMU9d_400x400.jpg' },
 ];
 
 function formatAddress(addr: string | null | undefined): string {
@@ -125,6 +125,7 @@ export function WinkyGame() {
   const [isSendingChallenge, setIsSendingChallenge] = useState(false);
   const [challengeSent, setChallengeSent] = useState<string | null>(null);
   const [pendingChallenges, setPendingChallenges] = useState<PendingChallenge[]>([]);
+  const [blinkerSearch, setBlinkerSearch] = useState('');
 
   // On-chain blink counter (1 blink = 1 Starknet tx)
   const {
@@ -805,12 +806,12 @@ export function WinkyGame() {
           </div>
         )}
 
-        {/* ─── IDLE: challenge + battle blinkers ─── */}
+        {/* ─── IDLE: battle blinkers ─── */}
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', gap: '36px',
-            padding: '48px 32px',
+            gap: '24px',
+            padding: '36px 32px',
             overflowY: 'auto',
           }}>
             <div style={{ textAlign: 'center' }}>
@@ -819,74 +820,62 @@ export function WinkyGame() {
               </h1>
             </div>
 
-            {/* Direct challenge */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', width: '100%', maxWidth: '440px' }}>
-              <p className="idle-section-title">Directly challenge</p>
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                <input
-                  type="text"
-                  value={challengeTarget}
-                  onChange={(e) => setChallengeTarget(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendChallenge(); }}
-                  placeholder="@twitter_username"
-                  className="challenge-input"
-                  spellCheck={false}
-                  autoComplete="off"
-                  style={{ flex: 1, padding: '12px 16px', fontSize: '14px' }}
-                />
-                <button
-                  onClick={handleSendChallenge}
-                  disabled={isSendingChallenge || !challengeTarget.trim() || !twitterUsername}
-                  className="challenge-send-btn"
-                  style={{ padding: '12px 24px', fontSize: '14px' }}
-                >
-                  {isSendingChallenge ? '\u2026' : 'Challenge'}
-                </button>
-              </div>
-              {challengeSent && (
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#22c55e' }}>
-                  Challenge sent to @{challengeSent}!
-                </span>
-              )}
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I just challenged you to a Blink Duel on @WinkyStarkzap! 👁️⚡ Think you can out-blink me in 30 seconds? Accept my challenge: https://wink-with-starkzap.netlify.app')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '11px', color: '#1d9bf0', textDecoration: 'underline', fontWeight: 600 }}
-              >
-                Call them out on Twitter
-              </a>
+            {/* Header row: title + search */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+              <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
+              <input
+                type="text"
+                value={blinkerSearch}
+                onChange={(e) => setBlinkerSearch(e.target.value)}
+                placeholder="Search @username\u2026"
+                className="challenge-input"
+                spellCheck={false}
+                autoComplete="off"
+                style={{ maxWidth: '220px', padding: '9px 14px', fontSize: '12px' }}
+              />
             </div>
 
-            <p className="idle-or">Or</p>
-
-            {/* Battle These Blinkers */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px', width: '100%' }}>
-              <p className="idle-section-title">Battle these blinkers</p>
-              <div className="blinker-grid">
-                {SAMPLE_BLINKERS.map(b => (
-                  <div key={b.id} className="blinker-card" onClick={() => {
-                    setChallengeTarget(b.twitter);
-                  }}>
-                    <div className="blinker-avatar-placeholder">👁️</div>
+            {/* Blinker cards */}
+            <div className="blinker-grid">
+              {SAMPLE_BLINKERS
+                .filter(b => !blinkerSearch || b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase()))
+                .map(b => (
+                <div key={b.id} className="blinker-card" onClick={() => setChallengeTarget(b.twitter)}>
+                  {b.profileImage ? (
+                    <img src={b.profileImage} alt="" className="blinker-card-bg" />
+                  ) : (
+                    <div className="blinker-card-bg blinker-card-bg--placeholder" />
+                  )}
+                  <div className="blinker-card-overlay" />
+                  <div className="blinker-card-content">
+                    <span className="blinker-card-stat">Blinked {b.blinks} times</span>
+                    <span className="blinker-card-stake">Take ${b.stake}</span>
                     <a
                       href={`https://x.com/${b.twitter}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="blinker-name"
+                      className="blinker-card-name"
                       onClick={(e) => e.stopPropagation()}
-                      style={{ color: '#A6A4A7', textDecoration: 'none' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = '#1d9bf0'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = '#A6A4A7'; }}
                     >
                       @{b.twitter}
                     </a>
-                    <span className="blinker-stat">Blinked {b.blinks} times</span>
-                    <span className="blinker-stake">Take ${b.stake}</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+              {blinkerSearch && SAMPLE_BLINKERS.filter(b => b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())).length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>
+                    No blinkers found for &ldquo;{blinkerSearch}&rdquo;
+                  </p>
+                </div>
+              )}
             </div>
+
+            {challengeSent && (
+              <p style={{ fontSize: '12px', fontWeight: 600, color: '#22c55e', textAlign: 'center', margin: 0 }}>
+                Challenge sent to @{challengeSent}!
+              </p>
+            )}
           </div>
         )}
 
