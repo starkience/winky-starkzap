@@ -12,9 +12,9 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
   return (
     <div className="landing-page">
       <div className="landing-content">
-        <img src="/logo.png" alt="Winky" width={80} height={80} className="landing-logo" />
+        <img src="/logo.png" alt="Winky" width={120} height={120} className="landing-logo" />
         <h1 className="landing-headline">
-          Bet. Blink.<br />Winner wins it all.
+          Bet. Blink.<br />Winner takes it all.
         </h1>
         <p className="landing-sub">
           Challenge anyone to a 30-second blink duel on Starknet.

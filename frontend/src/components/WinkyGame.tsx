@@ -572,7 +572,7 @@ export function WinkyGame() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="Winky" width={44} height={44} style={{ objectFit: 'contain' }} />
+            <img src="/logo.png" alt="Winky" width={56} height={56} style={{ objectFit: 'contain' }} />
           </div>
           {NETWORK === 'sepolia' && (
             <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
@@ -621,17 +621,6 @@ export function WinkyGame() {
         )}
       </div>
 
-      {/* Twitter handle display */}
-      {isConnected && twitterUsername && (
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#1d9bf0" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#1d9bf0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            @{twitterUsername}
-          </span>
-        </div>
-      )}
 
       {/* Bet + Play */}
       <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -824,7 +813,7 @@ export function WinkyGame() {
           }}>
             <div style={{ textAlign: 'center' }}>
               <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
-                Bet. Blink.<br />Winner wins it all.
+                Bet. Blink.<br />Winner takes it all.
               </h1>
             </div>
 
@@ -851,7 +840,6 @@ export function WinkyGame() {
               if (activeBlinkers.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                    <p style={{ fontSize: '48px', lineHeight: 1, margin: '0 0 16px' }}>👁️</p>
                     <p style={{ fontSize: '15px', fontWeight: 700, color: '#444', margin: 0 }}>No blinkers yet</p>
                     <p style={{ fontSize: '13px', fontWeight: 500, color: '#333', margin: '8px 0 0' }}>
                       Connect your wallet, place a bet, and be the first to blink!
@@ -1306,7 +1294,7 @@ export function WinkyGame() {
             </button>
 
             <p style={{ fontSize: '10px', fontWeight: 500, color: '#444', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-              Transfer your USDC to Argent, Braavos, or any Starknet wallet
+              Transfer your USDC to your Ready wallet or any Starknet wallet
             </p>
           </div>
         </div>
