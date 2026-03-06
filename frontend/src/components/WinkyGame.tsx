@@ -265,6 +265,7 @@ export function WinkyGame() {
   // ─── Wallet setup via Starkzap SDK ───
   useEffect(() => {
     if (!ready || !authenticated || !user?.id) return;
+    if (loggingOut) setLoggingOut(false);
     if (sdkWallet) return;
     if (setupAttemptedRef.current || walletLoading) return;
     setupAttemptedRef.current = true;
@@ -345,13 +346,14 @@ export function WinkyGame() {
     setSdkWallet(null);
     setWalletAddress(null);
     setUsdcBalance(null);
+    setGamePhase('idle');
     setupAttemptedRef.current = false;
     try {
       Object.values(STORAGE_KEYS).forEach(k => {
         try { window.localStorage.removeItem(k); } catch {}
       });
     } catch {}
-    logout().catch(() => {}).finally(() => setLoggingOut(false));
+    logout().catch(() => {});
   }, [logout]);
 
   // ─── Blink detection ───

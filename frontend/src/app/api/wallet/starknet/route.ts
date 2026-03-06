@@ -1,45 +1,47 @@
 import { NextResponse } from 'next/server';
-import { getPrivyClient, extractUserId } from '@/lib/privyServer';
+import { getPrivyClient } from '@/lib/privyServer';
+
+function toWalletResponse(w: any) {
+  return {
+    wallet: {
+      id: w.id,
+      address: w.address,
+      publicKey: w.public_key || w.publicKey,
+    },
+  };
+}
 
 export async function POST(request: Request) {
   try {
     const privy = getPrivyClient();
 
-    // Get user ID from Bearer token or request body
-    let userId = await extractUserId(request);
-    if (!userId) {
-      try {
-        const body = await request.clone().json();
-        if (body?.privyUserId && typeof body.privyUserId === 'string' &&
-            body.privyUserId.startsWith('did:privy:')) {
-          userId = body.privyUserId;
-        }
-      } catch {}
-    }
+    // Read body to get the Privy user ID
+    let userId: string | undefined;
+    try {
+      const body = await request.json();
+      const candidate = body?.privyUserId;
+      if (typeof candidate === 'string' && candidate.startsWith('did:privy:')) {
+        userId = candidate;
+      }
+    } catch {}
 
+    // If we have a user ID, look for an existing starknet wallet
     if (userId) {
       for await (const w of privy.wallets().list({ chain_type: 'starknet', user_id: userId })) {
-        return NextResponse.json({
-          wallet: {
-            id: w.id,
-            address: w.address,
-            publicKey: (w as any).public_key || (w as any).publicKey,
-          },
-        });
+        return NextResponse.json(toWalletResponse(w));
       }
+
+      // No existing wallet — create one owned by this user
+      const wallet = await privy.wallets().create({
+        chain_type: 'starknet',
+        owner: { user_id: userId },
+      } as any);
+      return NextResponse.json(toWalletResponse(wallet));
     }
 
-    const createOpts: Record<string, unknown> = { chain_type: 'starknet' };
-    if (userId) createOpts.owner = { user_id: userId };
-
-    const wallet = await privy.wallets().create(createOpts as any);
-    return NextResponse.json({
-      wallet: {
-        id: wallet.id,
-        address: wallet.address,
-        publicKey: (wallet as any).public_key || (wallet as any).publicKey,
-      },
-    });
+    // No user ID — create an unowned wallet (fallback)
+    const wallet = await privy.wallets().create({ chain_type: 'starknet' });
+    return NextResponse.json(toWalletResponse(wallet));
   } catch (error: any) {
     console.error('[wallet/starknet] Error:', error?.message);
     return NextResponse.json(
