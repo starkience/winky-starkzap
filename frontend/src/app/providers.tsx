@@ -27,10 +27,10 @@ export function Providers({ children }: ProvidersProps) {
     },
   }));
 
-  const loginMethods = (process.env.NEXT_PUBLIC_PRIVY_LOGIN_METHODS || 'email')
+  const loginMethods = (process.env.NEXT_PUBLIC_PRIVY_LOGIN_METHODS || 'email,twitter')
     .split(',')
     .map((s) => s.trim())
-    .filter((s) => s && s !== 'twitter') as any;
+    .filter(Boolean) as any;
 
   return (
     <PrivyProvider
