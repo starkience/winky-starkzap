@@ -313,7 +313,9 @@ export function WinkyGame() {
     setupWallet();
   }, [ready, authenticated, user?.id, sdkWallet, walletLoading]);
 
-  const handleLogin = useCallback(() => { login(); }, [login]);
+  const handleLogin = useCallback(() => {
+    login({ loginMethods: ['email', 'twitter'] });
+  }, [login]);
 
   const handleLogout = useCallback(async () => {
     try {
