@@ -7,7 +7,6 @@ import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useEscrow } from '@/hooks/use-escrow';
-import { useTwitterAuth } from '@/hooks/use-twitter-auth';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS } from '@/lib/constants';
 import { BlinkChart } from '@/components/BlinkChart';
 
@@ -99,13 +98,9 @@ export function WinkyGame() {
   const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
   const [duelTxHash, setDuelTxHash] = useState<string | null>(null);
 
-  // Twitter auth
-  const {
-    profile: twitterProfile,
-    isConnected: isTwitterConnected,
-    connect: connectTwitter,
-    disconnect: disconnectTwitter,
-  } = useTwitterAuth(walletAddress ?? undefined);
+  // Twitter profile from Privy
+  const twitterProfile = user?.twitter ?? null;
+  const twitterUsername = twitterProfile?.username ?? null;
 
   // Challenge state
   const [challengeTarget, setChallengeTarget] = useState('');
@@ -152,12 +147,11 @@ export function WinkyGame() {
 
   // ─── Poll for incoming challenges ───
   useEffect(() => {
-    if (!twitterProfile?.username) return;
-    const username = twitterProfile.username;
+    if (!twitterUsername) return;
 
     const fetchChallenges = async () => {
       try {
-        const res = await fetch(`/api/challenge?username=${encodeURIComponent(username)}`);
+        const res = await fetch(`/api/challenge?username=${encodeURIComponent(twitterUsername)}`);
         const data = await res.json();
         if (data.challenges?.length > 0) {
           setPendingChallenges(data.challenges);
@@ -168,11 +162,11 @@ export function WinkyGame() {
     fetchChallenges();
     const interval = setInterval(fetchChallenges, 10_000);
     return () => clearInterval(interval);
-  }, [twitterProfile?.username]);
+  }, [twitterUsername]);
 
   // ─── Subscribe to Pusher for real-time challenges ───
   useEffect(() => {
-    if (!twitterProfile?.username) return;
+    if (!twitterUsername) return;
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';
     if (!pusherKey) return;
@@ -183,7 +177,7 @@ export function WinkyGame() {
     import('pusher-js').then((PusherModule) => {
       const PusherClass = PusherModule.default;
       pusher = new PusherClass(pusherKey, { cluster: pusherCluster });
-      channel = pusher.subscribe(`challenges-${twitterProfile.username.toLowerCase()}`);
+      channel = pusher.subscribe(`challenges-${twitterUsername.toLowerCase()}`);
       channel.bind('new-challenge', (data: PendingChallenge) => {
         setPendingChallenges(prev => {
           if (prev.some(c => c.id === data.id)) return prev;
@@ -195,15 +189,15 @@ export function WinkyGame() {
     return () => {
       if (channel) channel.unbind_all();
       if (pusher) {
-        pusher.unsubscribe(`challenges-${twitterProfile.username.toLowerCase()}`);
+        pusher.unsubscribe(`challenges-${twitterUsername.toLowerCase()}`);
         pusher.disconnect();
       }
     };
-  }, [twitterProfile?.username]);
+  }, [twitterUsername]);
 
   // ─── Send challenge handler ───
   const handleSendChallenge = useCallback(async () => {
-    if (!twitterProfile?.username || !challengeTarget.trim()) return;
+    if (!twitterUsername || !challengeTarget.trim()) return;
     setIsSendingChallenge(true);
     setChallengeSent(null);
     try {
@@ -212,7 +206,7 @@ export function WinkyGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          challengerUsername: twitterProfile.username,
+          challengerUsername: twitterUsername,
           challengerAddress: walletAddress || '',
           targetUsername: target,
           stake: selectedBet,
@@ -228,7 +222,7 @@ export function WinkyGame() {
     } finally {
       setIsSendingChallenge(false);
     }
-  }, [twitterProfile?.username, challengeTarget, walletAddress, selectedBet]);
+  }, [twitterUsername, challengeTarget, walletAddress, selectedBet]);
 
   const handleDismissChallenge = useCallback((id: string) => {
     setPendingChallenges(prev => prev.filter(c => c.id !== id));
@@ -533,10 +527,7 @@ export function WinkyGame() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="Winky" width={28} height={28} style={{ objectFit: 'contain' }} />
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#555', letterSpacing: '2px', textTransform: 'uppercase' }}>
-              PVP Duel
-            </span>
+            <img src="/logo.png" alt="Winky" width={44} height={44} style={{ objectFit: 'contain' }} />
           </div>
           {NETWORK === 'sepolia' && (
             <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
@@ -577,60 +568,36 @@ export function WinkyGame() {
         )}
       </div>
 
-      {/* Twitter + Challenge (only when wallet connected) */}
-      {isConnected && (
+      {/* Challenge (only when wallet connected + Twitter linked via Privy) */}
+      {isConnected && twitterUsername && (
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* Twitter login */}
-          {isTwitterConnected && twitterProfile ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#1d9bf0" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#1d9bf0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              @{twitterUsername}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              value={challengeTarget}
+              onChange={(e) => setChallengeTarget(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSendChallenge(); }}
+              placeholder="@username"
+              className="challenge-input"
+              spellCheck={false}
+              autoComplete="off"
+            />
             <button
-              onClick={disconnectTwitter}
-              className="sidebar-twitter-btn sidebar-twitter-btn--connected"
+              onClick={handleSendChallenge}
+              disabled={isSendingChallenge || !challengeTarget.trim()}
+              className="challenge-send-btn"
             >
-              {twitterProfile.profileImageUrl && (
-                <img
-                  src={twitterProfile.profileImageUrl}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="sidebar-twitter-avatar"
-                />
-              )}
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                @{twitterProfile.username}
-              </span>
-              <span style={{ fontSize: '9px', color: '#555', flexShrink: 0 }}>&times;</span>
+              {isSendingChallenge ? '\u2026' : 'Challenge'}
             </button>
-          ) : (
-            <button onClick={connectTwitter} className="sidebar-twitter-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              Connect Twitter
-            </button>
-          )}
-
-          {/* Challenge input */}
-          {isTwitterConnected && (
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                value={challengeTarget}
-                onChange={(e) => setChallengeTarget(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSendChallenge(); }}
-                placeholder="@username"
-                className="challenge-input"
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <button
-                onClick={handleSendChallenge}
-                disabled={isSendingChallenge || !challengeTarget.trim()}
-                className="challenge-send-btn"
-              >
-                {isSendingChallenge ? '\u2026' : 'Challenge'}
-              </button>
-            </div>
-          )}
+          </div>
           {challengeSent && (
             <span style={{ fontSize: '10px', fontWeight: 600, color: '#22c55e', textAlign: 'center' }}>
               Challenge sent to @{challengeSent}!
