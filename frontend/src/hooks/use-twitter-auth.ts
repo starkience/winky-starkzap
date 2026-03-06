@@ -197,7 +197,7 @@ export function useTwitterAuth(walletAddress?: string) {
   /** Redirect to Twitter OAuth flow */
   const connect = useCallback(() => {
     if (!walletAddress) return;
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).trim();
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).trim().replace(/\/+$/, '');
     window.location.href = `${appUrl}/api/auth/twitter?wallet=${encodeURIComponent(walletAddress)}`;
   }, [walletAddress]);
 

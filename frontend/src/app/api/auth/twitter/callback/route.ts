@@ -13,7 +13,7 @@ const TWITTER_CLIENT_ID = (process.env.TWITTER_CLIENT_ID || '').trim();
 const TWITTER_CLIENT_SECRET = (process.env.TWITTER_CLIENT_SECRET || '').trim();
 
 function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'https://wink-on-starknet.com').trim();
+  return (process.env.NEXT_PUBLIC_APP_URL || 'https://wink-with-starkzap.netlify.app').trim().replace(/\/+$/, '');
 }
 
 export async function GET(request: NextRequest) {

@@ -135,10 +135,17 @@ export function WinkyGame() {
     getUsdcBalance().then(setUsdcBalance);
   }, [isConnected, walletAddress, getUsdcBalance]);
 
+  // Insufficient USDC flag (shown inline next to Play button)
+  const [needsFunding, setNeedsFunding] = useState(false);
+
   // Surface escrow errors
   useEffect(() => {
     if (escrowError) {
-      setError(escrowError);
+      if (escrowError === 'INSUFFICIENT_USDC') {
+        setNeedsFunding(true);
+      } else {
+        setError(escrowError);
+      }
       clearEscrowError();
     }
   }, [escrowError, clearEscrowError]);
@@ -443,6 +450,7 @@ export function WinkyGame() {
     setOpponentScore(null);
     setOpponentRevealed(false);
     setError(null);
+    setNeedsFunding(false);
     setDuelTxHash(null);
     clearBlinkLog();
 
@@ -660,6 +668,23 @@ export function WinkyGame() {
         >
           {isDuelCreating ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Play ($${selectedBet})` : 'Connect to Play'}
         </button>
+        {needsFunding && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 14px', background: 'rgba(250,204,21,0.06)',
+            border: '1px solid rgba(250,204,21,0.18)', borderRadius: '10px',
+          }}>
+            <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>&#9888;</span>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#facc15', lineHeight: 1.5 }}>
+              Send USDC to your address to place bets
+            </span>
+            <button
+              onClick={() => setNeedsFunding(false)}
+              style={{ background: 'none', border: 'none', color: '#facc15', cursor: 'pointer', fontSize: '14px', fontWeight: 800, lineHeight: 1, marginLeft: 'auto', flexShrink: 0, opacity: 0.5 }}
+              aria-label="Dismiss"
+            >&times;</button>
+          </div>
+        )}
         {duelTx && (
           <a
             href={duelTx.voyagerUrl}
