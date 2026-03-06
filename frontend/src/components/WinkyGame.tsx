@@ -616,7 +616,7 @@ export function WinkyGame() {
             disabled={loginBusy}
             className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
           >
-            {walletLoading ? 'Setting Up\u2026' : !ready ? 'Loading\u2026' : 'Connect Wallet'}
+            {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
           </button>
         )}
       </div>

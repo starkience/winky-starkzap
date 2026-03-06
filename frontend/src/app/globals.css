@@ -1628,6 +1628,22 @@ a:focus-visible,
   color: #1d9bf0;
 }
 
+/* ─── Animated dots ─── */
+.dots-anim::after {
+  content: '';
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: dots-cycle 1.2s steps(4, end) infinite;
+}
+@keyframes dots-cycle {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
 /* ─── Withdraw button ─── */
 .sidebar-withdraw-btn {
   padding: 6px 12px;
