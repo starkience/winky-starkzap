@@ -284,9 +284,11 @@ export function WinkyGame() {
         let wId = window.localStorage.getItem(STORAGE_KEYS.walletId);
         let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
 
+        const baseUrl = API_URL || window.location.origin;
+
         if (!wId || !wPk) {
           const token = await getAccessToken();
-          const resp = await fetch(`${API_URL}/api/wallet/starknet`, {
+          const resp = await fetch(`${baseUrl}/api/wallet/starknet`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -307,7 +309,7 @@ export function WinkyGame() {
 
         const sdk = new StarkSDK({
           network: NETWORK === 'mainnet' ? 'mainnet' : 'sepolia',
-          paymaster: { nodeUrl: `${API_URL}/api/paymaster` },
+          paymaster: { nodeUrl: `${baseUrl}/api/paymaster` },
         });
 
         const { wallet } = await sdk.onboard({
@@ -318,7 +320,7 @@ export function WinkyGame() {
             resolve: async () => ({
               walletId: wId!,
               publicKey: wPk!,
-              serverUrl: `${API_URL}/api/wallet/sign`,
+              serverUrl: `${baseUrl}/api/wallet/sign`,
             }),
           },
         });
