@@ -31,17 +31,35 @@ interface LeaderboardEntry {
   name: string;
   blinks: number;
   earnings: number;
+  twitter?: string;
 }
 
 const INITIAL_LEADERBOARD: LeaderboardEntry[] = [
-  { id: '1', name: 'BlinkMaster.stark', blinks: 87, earnings: 150 },
-  { id: '2', name: 'EyeStorm', blinks: 72, earnings: 95 },
-  { id: '3', name: '0x7a3f...d912', blinks: 65, earnings: 80 },
-  { id: '4', name: 'WinkKing', blinks: 58, earnings: 60 },
-  { id: '5', name: '0x9b2c...e4a1', blinks: 45, earnings: 35 },
-  { id: '6', name: 'StarkBlinker', blinks: 41, earnings: 25 },
-  { id: '7', name: '0x3d1e...f7b2', blinks: 38, earnings: 20 },
-  { id: '8', name: 'NeonWink', blinks: 33, earnings: 15 },
+  { id: '1', name: '@BlinkMaster', blinks: 87, earnings: 150, twitter: 'BlinkMaster' },
+  { id: '2', name: '@EyeStorm', blinks: 72, earnings: 95, twitter: 'EyeStorm' },
+  { id: '3', name: '@CryptoWinker', blinks: 65, earnings: 80, twitter: 'CryptoWinker' },
+  { id: '4', name: '@WinkKing', blinks: 58, earnings: 60, twitter: 'WinkKing' },
+  { id: '5', name: '@StarkBlinker', blinks: 45, earnings: 35, twitter: 'StarkBlinker' },
+  { id: '6', name: '@NeonWink', blinks: 41, earnings: 25, twitter: 'NeonWink' },
+  { id: '7', name: '@BlinkQueen', blinks: 38, earnings: 20, twitter: 'BlinkQueen' },
+  { id: '8', name: '@DuelChamp', blinks: 33, earnings: 15, twitter: 'DuelChamp' },
+];
+
+interface BlinkerCard {
+  id: string;
+  twitter: string;
+  blinks: number;
+  stake: number;
+  profileImage?: string;
+}
+
+const SAMPLE_BLINKERS: BlinkerCard[] = [
+  { id: 'b1', twitter: 'BlinkMaster', blinks: 87, stake: 50 },
+  { id: 'b2', twitter: 'EyeStorm', blinks: 72, stake: 25 },
+  { id: 'b3', twitter: 'CryptoWinker', blinks: 65, stake: 50 },
+  { id: 'b4', twitter: 'WinkKing', blinks: 58, stake: 10 },
+  { id: 'b5', twitter: 'StarkBlinker', blinks: 45, stake: 5 },
+  { id: 'b6', twitter: 'NeonWink', blinks: 41, stake: 25 },
 ];
 
 function formatAddress(addr: string | null | undefined): string {
@@ -693,12 +711,29 @@ export function WinkyGame() {
                 }} aria-hidden="true">
                   {idx === 0 ? '\u{1F947}' : idx === 1 ? '\u{1F948}' : idx === 2 ? '\u{1F949}' : `${idx + 1}`}
                 </span>
-                <span style={{
-                  fontSize: '12px', fontWeight: 600, color: '#A6A4A7',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {entry.name}
-                </span>
+                {entry.twitter ? (
+                  <a
+                    href={`https://x.com/${entry.twitter}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '12px', fontWeight: 600, color: '#A6A4A7',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      textDecoration: 'none', transition: 'color 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#1d9bf0'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#A6A4A7'; }}
+                  >
+                    {entry.name}
+                  </a>
+                ) : (
+                  <span style={{
+                    fontSize: '12px', fontWeight: 600, color: '#A6A4A7',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {entry.name}
+                  </span>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums' }}>
@@ -770,58 +805,87 @@ export function WinkyGame() {
           </div>
         )}
 
-        {/* ─── IDLE: centered instructions ─── */}
+        {/* ─── IDLE: challenge + battle blinkers ─── */}
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: '28px',
+            alignItems: 'center', gap: '36px',
             padding: '48px 32px',
+            overflowY: 'auto',
           }}>
-            <div style={{ fontSize: '56px', lineHeight: 1 }} aria-hidden="true">👁️</div>
-            <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#A6A4A7', margin: 0, textAlign: 'center', textWrap: 'balance' }}>
-              Blink Duel
-            </h1>
-            <p style={{ fontSize: '15px', color: '#555', fontWeight: 500, textAlign: 'center', maxWidth: '420px', lineHeight: 1.7, textWrap: 'pretty' }}>
-              Select a stake from the sidebar and press <strong style={{ color: '#C0B4DA' }}>Play</strong> to start.
-              You have 30 seconds to out-blink your opponent.
-            </p>
-            <div style={{
-              marginTop: '6px', padding: '14px 20px', background: 'rgba(29,155,240,0.04)',
-              border: '1px solid rgba(29,155,240,0.12)', borderRadius: '12px',
-              maxWidth: '440px', textAlign: 'center',
-            }}>
-              <p style={{ fontSize: '13px', color: '#666', fontWeight: 600, margin: 0, lineHeight: 1.7, textWrap: 'pretty' }}>
-                <strong style={{ color: '#1d9bf0' }}>Want to challenge a friend?</strong>{' '}
-                Connect your Twitter in the sidebar, type their @username, pick your stake, and hit{' '}
-                <strong style={{ color: '#C0B4DA' }}>Challenge</strong>.
-                Then{' '}
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I just challenged you to a Blink Duel on @WinkyStarkzap! 👁️⚡ Think you can out-blink me in 30 seconds? Accept my challenge: https://wink-with-starkzap.netlify.app')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#1d9bf0', textDecoration: 'underline', fontWeight: 700 }}
-                >
-                  call them out on Twitter
-                </a>{' '}
-                so they know it&apos;s on.
-              </p>
+            <div style={{ textAlign: 'center' }}>
+              <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
+                Bet. Blink.<br />Winner wins it all.
+              </h1>
             </div>
-            <div style={{ display: 'flex', gap: '36px', marginTop: '4px' }}>
-              {[
-                { step: '1', label: 'Connect Wallet' },
-                { step: '2', label: 'Choose Stake' },
-                { step: '3', label: 'Blink to Win' },
-              ].map(s => (
-                <div key={s.step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '50%',
-                    background: 'rgba(192,180,218,0.08)', border: '2px solid rgba(192,180,218,0.18)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '15px', fontWeight: 800, color: '#C0B4DA',
-                  }}>{s.step}</div>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#555' }}>{s.label}</span>
-                </div>
-              ))}
+
+            {/* Direct challenge */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', width: '100%', maxWidth: '440px' }}>
+              <p className="idle-section-title">Directly challenge</p>
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <input
+                  type="text"
+                  value={challengeTarget}
+                  onChange={(e) => setChallengeTarget(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendChallenge(); }}
+                  placeholder="@twitter_username"
+                  className="challenge-input"
+                  spellCheck={false}
+                  autoComplete="off"
+                  style={{ flex: 1, padding: '12px 16px', fontSize: '14px' }}
+                />
+                <button
+                  onClick={handleSendChallenge}
+                  disabled={isSendingChallenge || !challengeTarget.trim() || !twitterUsername}
+                  className="challenge-send-btn"
+                  style={{ padding: '12px 24px', fontSize: '14px' }}
+                >
+                  {isSendingChallenge ? '\u2026' : 'Challenge'}
+                </button>
+              </div>
+              {challengeSent && (
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#22c55e' }}>
+                  Challenge sent to @{challengeSent}!
+                </span>
+              )}
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I just challenged you to a Blink Duel on @WinkyStarkzap! 👁️⚡ Think you can out-blink me in 30 seconds? Accept my challenge: https://wink-with-starkzap.netlify.app')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '11px', color: '#1d9bf0', textDecoration: 'underline', fontWeight: 600 }}
+              >
+                Call them out on Twitter
+              </a>
+            </div>
+
+            <p className="idle-or">Or</p>
+
+            {/* Battle These Blinkers */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px', width: '100%' }}>
+              <p className="idle-section-title">Battle these blinkers</p>
+              <div className="blinker-grid">
+                {SAMPLE_BLINKERS.map(b => (
+                  <div key={b.id} className="blinker-card" onClick={() => {
+                    setChallengeTarget(b.twitter);
+                  }}>
+                    <div className="blinker-avatar-placeholder">👁️</div>
+                    <a
+                      href={`https://x.com/${b.twitter}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="blinker-name"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ color: '#A6A4A7', textDecoration: 'none' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#1d9bf0'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#A6A4A7'; }}
+                    >
+                      @{b.twitter}
+                    </a>
+                    <span className="blinker-stat">Blinked {b.blinks} times</span>
+                    <span className="blinker-stake">Take ${b.stake}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
