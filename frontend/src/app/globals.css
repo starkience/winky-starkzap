@@ -1547,8 +1547,11 @@ a:focus-visible,
 .blinker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 12px;
   width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px;
 }
 @media (max-width: 700px) {
   .blinker-grid {
@@ -1557,12 +1560,13 @@ a:focus-visible,
 }
 .blinker-card {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 3 / 4;
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.06);
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  max-height: 220px;
 }
 .blinker-card:hover {
   border-color: rgba(192, 180, 218, 0.3);
@@ -1595,32 +1599,32 @@ a:focus-visible,
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px 14px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   z-index: 1;
 }
 .blinker-card-stat {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 900;
   color: #fff;
   line-height: 1.3;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 .blinker-card-stake {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 800;
   color: #C0B4DA;
   line-height: 1.3;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 .blinker-card-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
-  margin-top: 4px;
+  margin-top: 3px;
   transition: color 0.15s;
 }
 .blinker-card-name:hover {

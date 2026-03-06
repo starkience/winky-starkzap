@@ -34,16 +34,7 @@ interface LeaderboardEntry {
   twitter?: string;
 }
 
-const INITIAL_LEADERBOARD: LeaderboardEntry[] = [
-  { id: '1', name: '@BlinkMaster', blinks: 87, earnings: 150, twitter: 'BlinkMaster' },
-  { id: '2', name: '@EyeStorm', blinks: 72, earnings: 95, twitter: 'EyeStorm' },
-  { id: '3', name: '@CryptoWinker', blinks: 65, earnings: 80, twitter: 'CryptoWinker' },
-  { id: '4', name: '@WinkKing', blinks: 58, earnings: 60, twitter: 'WinkKing' },
-  { id: '5', name: '@StarkBlinker', blinks: 45, earnings: 35, twitter: 'StarkBlinker' },
-  { id: '6', name: '@NeonWink', blinks: 41, earnings: 25, twitter: 'NeonWink' },
-  { id: '7', name: '@BlinkQueen', blinks: 38, earnings: 20, twitter: 'BlinkQueen' },
-  { id: '8', name: '@DuelChamp', blinks: 33, earnings: 15, twitter: 'DuelChamp' },
-];
+const INITIAL_LEADERBOARD: LeaderboardEntry[] = [];
 
 interface BlinkerCard {
   id: string;
@@ -52,15 +43,6 @@ interface BlinkerCard {
   stake: number;
   profileImage?: string;
 }
-
-const SAMPLE_BLINKERS: BlinkerCard[] = [
-  { id: 'b1', twitter: 'BlinkMaster', blinks: 87, stake: 50, profileImage: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
-  { id: 'b2', twitter: 'EyeStorm', blinks: 72, stake: 25, profileImage: 'https://pbs.twimg.com/profile_images/1780044069882368000/NwsmQIr5_400x400.jpg' },
-  { id: 'b3', twitter: 'CryptoWinker', blinks: 65, stake: 50, profileImage: 'https://pbs.twimg.com/profile_images/1760101604832280576/JbwBO1xd_400x400.jpg' },
-  { id: 'b4', twitter: 'WinkKing', blinks: 58, stake: 10, profileImage: 'https://pbs.twimg.com/profile_images/1590968738642079744/dG3MlRz6_400x400.jpg' },
-  { id: 'b5', twitter: 'StarkBlinker', blinks: 45, stake: 5, profileImage: 'https://pbs.twimg.com/profile_images/1696931646816247808/eJgo1IN3_400x400.jpg' },
-  { id: 'b6', twitter: 'NeonWink', blinks: 41, stake: 25, profileImage: 'https://pbs.twimg.com/profile_images/1657463800311214080/pruVMU9d_400x400.jpg' },
-];
 
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
@@ -126,6 +108,7 @@ export function WinkyGame() {
   const [challengeSent, setChallengeSent] = useState<string | null>(null);
   const [pendingChallenges, setPendingChallenges] = useState<PendingChallenge[]>([]);
   const [blinkerSearch, setBlinkerSearch] = useState('');
+  const [activeBlinkers, setActiveBlinkers] = useState<BlinkerCard[]>([]);
 
   // On-chain blink counter (1 blink = 1 Starknet tx)
   const {
@@ -438,22 +421,48 @@ export function WinkyGame() {
     if (!opponentRevealed || opponentScore === null || leaderboardUpdatedRef.current) return;
     if (finalScore <= opponentScore || !walletAddress) return;
     leaderboardUpdatedRef.current = true;
-    const displayName = formatAddress(walletAddress);
+    const displayName = twitterUsername ? `@${twitterUsername}` : formatAddress(walletAddress);
     setLeaderboard(prev => {
       const existing = prev.find(e => e.name === displayName);
       if (existing) {
         return prev.map(e =>
           e.name === displayName
-            ? { ...e, blinks: finalScore, earnings: Math.round((e.earnings + selectedBet * 2 * 0.95) * 100) / 100 }
+            ? { ...e, blinks: finalScore, earnings: Math.round((e.earnings + selectedBet * 2 * 0.95) * 100) / 100, twitter: twitterUsername || e.twitter }
             : e
         ).sort((a, b) => b.earnings - a.earnings);
       }
       return [
-        { id: `user-${Date.now()}`, name: displayName, blinks: finalScore, earnings: Math.round(selectedBet * 2 * 0.95 * 100) / 100 },
+        { id: `user-${Date.now()}`, name: displayName, blinks: finalScore, earnings: Math.round(selectedBet * 2 * 0.95 * 100) / 100, twitter: twitterUsername || undefined },
         ...prev,
       ].sort((a, b) => b.earnings - a.earnings);
     });
-  }, [opponentRevealed, opponentScore, finalScore, walletAddress, selectedBet]);
+  }, [opponentRevealed, opponentScore, finalScore, walletAddress, selectedBet, twitterUsername]);
+
+  // ─── Add user to active blinkers when they play ───
+  useEffect(() => {
+    if (gamePhase !== 'playing' || !walletAddress) return;
+    const handle = twitterUsername || formatAddress(walletAddress);
+    setActiveBlinkers(prev => {
+      if (prev.some(b => b.twitter === handle)) return prev;
+      const profileImg = user?.twitter?.profilePictureUrl || undefined;
+      return [...prev, {
+        id: `blinker-${Date.now()}`,
+        twitter: handle,
+        blinks: 0,
+        stake: selectedBet,
+        profileImage: profileImg,
+      }];
+    });
+  }, [gamePhase, walletAddress, twitterUsername, selectedBet, user?.twitter?.profilePictureUrl]);
+
+  // ─── Update blinker's score after game ends ───
+  useEffect(() => {
+    if (gamePhase !== 'result' || !walletAddress) return;
+    const handle = twitterUsername || formatAddress(walletAddress);
+    setActiveBlinkers(prev =>
+      prev.map(b => b.twitter === handle ? { ...b, blinks: finalScore } : b)
+    );
+  }, [gamePhase, walletAddress, twitterUsername, finalScore]);
 
   // ─── Handlers ───
   const handlePlay = useCallback(async () => {
@@ -836,40 +845,56 @@ export function WinkyGame() {
             </div>
 
             {/* Blinker cards */}
-            <div className="blinker-grid">
-              {SAMPLE_BLINKERS
-                .filter(b => !blinkerSearch || b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase()))
-                .map(b => (
-                <div key={b.id} className="blinker-card" onClick={() => setChallengeTarget(b.twitter)}>
-                  {b.profileImage ? (
-                    <img src={b.profileImage} alt="" className="blinker-card-bg" />
-                  ) : (
-                    <div className="blinker-card-bg blinker-card-bg--placeholder" />
-                  )}
-                  <div className="blinker-card-overlay" />
-                  <div className="blinker-card-content">
-                    <span className="blinker-card-stat">Blinked {b.blinks} times</span>
-                    <span className="blinker-card-stake">Take ${b.stake}</span>
-                    <a
-                      href={`https://x.com/${b.twitter}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="blinker-card-name"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      @{b.twitter}
-                    </a>
+            {(() => {
+              const filtered = activeBlinkers.filter(b =>
+                !blinkerSearch || b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())
+              );
+              if (activeBlinkers.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                    <p style={{ fontSize: '48px', lineHeight: 1, margin: '0 0 16px' }}>👁️</p>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#444', margin: 0 }}>No blinkers yet</p>
+                    <p style={{ fontSize: '13px', fontWeight: 500, color: '#333', margin: '8px 0 0' }}>
+                      Connect your wallet, place a bet, and be the first to blink!
+                    </p>
                   </div>
+                );
+              }
+              return (
+                <div className="blinker-grid">
+                  {filtered.map(b => (
+                    <div key={b.id} className="blinker-card" onClick={() => setChallengeTarget(b.twitter)}>
+                      {b.profileImage ? (
+                        <img src={b.profileImage} alt="" className="blinker-card-bg" />
+                      ) : (
+                        <div className="blinker-card-bg blinker-card-bg--placeholder" />
+                      )}
+                      <div className="blinker-card-overlay" />
+                      <div className="blinker-card-content">
+                        <span className="blinker-card-stat">Blinked {b.blinks} times</span>
+                        <span className="blinker-card-stake">Take ${b.stake}</span>
+                        <a
+                          href={`https://x.com/${b.twitter}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="blinker-card-name"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          @{b.twitter}
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                  {blinkerSearch && filtered.length === 0 && (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>
+                        No blinkers found for &ldquo;{blinkerSearch}&rdquo;
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {blinkerSearch && SAMPLE_BLINKERS.filter(b => b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())).length === 0 && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>
-                    No blinkers found for &ldquo;{blinkerSearch}&rdquo;
-                  </p>
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {challengeSent && (
               <p style={{ fontSize: '12px', fontWeight: 600, color: '#22c55e', textAlign: 'center', margin: 0 }}>
