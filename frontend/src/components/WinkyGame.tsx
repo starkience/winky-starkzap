@@ -131,10 +131,14 @@ export function WinkyGame() {
   const isPlaying = gamePhase === 'playing';
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
 
-  // Fetch USDC balance when wallet connects
+  // Fetch USDC balance when wallet connects + poll every 15s
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
     getUsdcBalance().then(setUsdcBalance);
+    const interval = setInterval(() => {
+      getUsdcBalance().then(setUsdcBalance);
+    }, 15_000);
+    return () => clearInterval(interval);
   }, [isConnected, walletAddress, getUsdcBalance]);
 
   // Insufficient USDC flag (shown inline next to Play button)
