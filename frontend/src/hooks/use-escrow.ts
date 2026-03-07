@@ -89,7 +89,10 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
       const txHash = tx.hash;
       const voyagerUrl = VOYAGER_TX_URL ? `${VOYAGER_TX_URL}/${txHash}` : '';
 
+      // Wait for tx confirmation before reading the new duel count
       const provider = getProvider();
+      await provider.waitForTransaction(txHash);
+
       const count = await provider.callContract({
         contractAddress: ESCROW_CONTRACT_ADDRESS,
         entrypoint: 'get_duel_count',
