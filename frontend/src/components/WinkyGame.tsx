@@ -549,14 +549,28 @@ export function WinkyGame() {
 
     if (ESCROW_CONTRACT_ADDRESS) {
       const result = await joinDuel(challenge.duelId, challenge.stake);
-      if (!result) return;
+      if (!result) {
+        // If duel is no longer open, remove it from the directory
+        if (escrowError === 'DUEL_NOT_OPEN') {
+          fetch('/api/challenge', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duelId: challenge.duelId }),
+          }).then(() => fetchOpenChallenges()).catch(() => {});
+          setError('This challenge is no longer available — it may have been cancelled or already accepted.');
+          clearEscrowError();
+        }
+        setChallengeTarget(null);
+        setGameMode('create');
+        return;
+      }
       setDuelTxHash(result.txHash);
       setSelectedBet(challenge.stake);
       getUsdcBalance().then(setUsdcBalance);
     }
 
     setGamePhase('ready');
-  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog]);
+  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog, escrowError, clearEscrowError, fetchOpenChallenges]);
 
   const handleStart = useCallback(() => {
     setGamePhase('countdown');
