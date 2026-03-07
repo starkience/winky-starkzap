@@ -211,7 +211,9 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
       const isInsufficientFunds =
         raw.includes('u256_sub Overflow') || raw.includes('insufficient') || raw.includes('balance');
       const isDuelNotOpen = raw.includes('Duel not open');
+      const isOwnDuel = raw.includes('Cannot join own duel');
       setEscrowError(
+        isOwnDuel ? 'OWN_DUEL' :
         isDuelNotOpen ? 'DUEL_NOT_OPEN' :
         isInsufficientFunds ? 'INSUFFICIENT_USDC' :
         raw.length > 120 ? raw.slice(0, 120) + '\u2026' : raw

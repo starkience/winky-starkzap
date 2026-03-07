@@ -550,7 +550,6 @@ export function WinkyGame() {
     if (ESCROW_CONTRACT_ADDRESS) {
       const result = await joinDuel(challenge.duelId, challenge.stake);
       if (!result) {
-        // If duel is no longer open, remove it from the directory
         if (escrowError === 'DUEL_NOT_OPEN') {
           fetch('/api/challenge', {
             method: 'PATCH',
@@ -558,8 +557,13 @@ export function WinkyGame() {
             body: JSON.stringify({ duelId: challenge.duelId }),
           }).then(() => fetchOpenChallenges()).catch(() => {});
           setError('This challenge is no longer available — it may have been cancelled or already accepted.');
-          clearEscrowError();
+        } else if (escrowError === 'OWN_DUEL') {
+          setError('You can\u2019t accept your own challenge — you need a different wallet to play against yourself.');
+        } else if (escrowError === 'INSUFFICIENT_USDC') {
+          setError('Not enough USDC to match this bet. Fund your wallet first.');
+          setNeedsFunding(true);
         }
+        clearEscrowError();
         setChallengeTarget(null);
         setGameMode('create');
         return;
