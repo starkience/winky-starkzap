@@ -11,7 +11,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { get, getAll } from '@vercel/edge-config';
 
 const EDGE_CONFIG_ID = process.env.EDGE_CONFIG_ID || '';
 const VERCEL_API_TOKEN = process.env.VERCEL_API_TOKEN || '';
@@ -27,39 +26,52 @@ function profileKey(addr: string): string {
   return `tw_${normalizeAddress(addr).replace('0x', '')}`;
 }
 
+/** Read all items from Edge Config via REST API (no SDK connection string needed). */
+async function edgeConfigReadAll(): Promise<Array<{ key: string; value: any }>> {
+  if (!EDGE_CONFIG_ID || !VERCEL_API_TOKEN) return [];
+
+  const teamParam = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
+  const res = await fetch(
+    `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamParam}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${VERCEL_API_TOKEN}` },
+      cache: 'no-store',
+    },
+  );
+
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const addressesParam = request.nextUrl.searchParams.get('addresses');
 
+    const allItems = await edgeConfigReadAll();
+    const itemMap = new Map<string, any>();
+    for (const item of allItems) {
+      itemMap.set(item.key, item.value);
+    }
+
     if (!addressesParam) {
-      // Return all profiles
-      const allItems = await getAll<Record<string, any>>();
       const profiles: Record<string, any> = {};
-      if (allItems) {
-        for (const [key, value] of Object.entries(allItems)) {
-          if (key.startsWith('tw_') && value) {
-            const addr = '0x' + key.replace('tw_', '');
-            profiles[addr] = value;
-          }
+      itemMap.forEach((value, key) => {
+        if (key.startsWith('tw_') && value) {
+          const addr = '0x' + key.replace('tw_', '');
+          profiles[addr] = value;
         }
-      }
+      });
       return NextResponse.json({ profiles });
     }
 
-    // Return profiles for specific addresses
     const addresses = addressesParam.split(',').map((a) => normalizeAddress(a.trim()));
-    const keys = addresses.map((a) => profileKey(a));
-
-    // Fetch each key from Edge Config
     const profiles: Record<string, any> = {};
     for (let i = 0; i < addresses.length; i++) {
-      try {
-        const value = await get(keys[i]);
-        if (value) {
-          profiles[addresses[i]] = value;
-        }
-      } catch {
-        // Key doesn't exist, skip
+      const key = profileKey(addresses[i]);
+      const value = itemMap.get(key);
+      if (value) {
+        profiles[addresses[i]] = value;
       }
     }
 
@@ -87,7 +99,6 @@ export async function POST(request: NextRequest) {
     const key = profileKey(address);
     const profile = { username, name: name || username, profileImageUrl: profileImageUrl || '' };
 
-    // Upsert into Edge Config via Vercel REST API
     const teamParam = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
     const res = await fetch(
       `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamParam}`,

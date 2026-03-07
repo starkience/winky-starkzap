@@ -7,7 +7,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAll } from '@vercel/edge-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +93,40 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function edgeConfigReadAll(): Promise<Record<string, any> | null> {
+  if (!EDGE_CONFIG_ID || !VERCEL_API_TOKEN) {
+    console.error('[challenge] Missing EDGE_CONFIG_ID or VERCEL_API_TOKEN');
+    return null;
+  }
+
+  const teamParam = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
+  const res = await fetch(
+    `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamParam}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${VERCEL_API_TOKEN}` },
+      cache: 'no-store',
+    },
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error('[challenge] Edge Config read failed:', res.status, errText);
+    return null;
+  }
+
+  const items: Array<{ key: string; value: any }> = await res.json();
+  const result: Record<string, any> = {};
+  for (const item of items) {
+    result[item.key] = item.value;
+  }
+  return result;
+}
+
 /** GET — List all open challenges */
 export async function GET() {
   try {
-    const allItems = await getAll<Record<string, any>>();
+    const allItems = await edgeConfigReadAll();
     const challenges: OpenChallenge[] = [];
     const now = Date.now();
     const expiredKeys: string[] = [];
@@ -115,7 +144,6 @@ export async function GET() {
       }
     }
 
-    // Clean up expired challenges in the background
     if (expiredKeys.length > 0) {
       edgeConfigWrite(expiredKeys.map((key) => ({ operation: 'delete', key }))).catch(() => {});
     }
