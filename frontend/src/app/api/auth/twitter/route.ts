@@ -12,7 +12,9 @@ import crypto from 'crypto';
 const TWITTER_CLIENT_ID = (process.env.TWITTER_CLIENT_ID || '').trim();
 
 function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'https://wink-with-starkzap.netlify.app').trim().replace(/\/+$/, '');
+  const url = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (url) return url.trim().replace(/\/+$/, '').replace(/^(?!https?:\/\/)/, 'https://');
+  return 'http://localhost:3001';
 }
 
 function base64URLEncode(buffer: Buffer): string {

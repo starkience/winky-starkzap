@@ -51,6 +51,3 @@ contracts/devnet-account.json
 
 # Snfoundry accounts (may contain private keys)
 snfoundry.toml
-
-# Local Netlify folder
-.netlify

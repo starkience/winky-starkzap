@@ -1547,8 +1547,10 @@ a:focus-visible,
 .blinker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 16px;
   width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
 }
 @media (max-width: 600px) {
   .blinker-grid {
@@ -1557,13 +1559,12 @@ a:focus-visible,
 }
 .blinker-card {
   position: relative;
-  aspect-ratio: 3 / 4;
-  border-radius: 6px;
+  aspect-ratio: 5 / 3;
+  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.06);
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-  max-height: 220px;
 }
 .blinker-card:hover {
   border-color: rgba(192, 180, 218, 0.3);
@@ -1596,10 +1597,10 @@ a:focus-visible,
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 12px 10px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   z-index: 1;
 }
 .blinker-card-stat {
