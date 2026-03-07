@@ -30,6 +30,16 @@ interface OpenChallenge {
   createdAt: number;
 }
 
+interface CompletedChallenge {
+  duelId: number;
+  player1: { address: string; username: string; profileImage?: string; score: number };
+  player2: { address: string; username: string; profileImage?: string; score: number };
+  winnerAddress: string;
+  isDraw: boolean;
+  payout: number;
+  completedAt: number;
+}
+
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
   if (!addr.startsWith('0x')) return addr;
@@ -95,8 +105,9 @@ export function WinkyGame() {
   const twitterProfile = user?.twitter ?? null;
   const twitterUsername = twitterProfile?.username ?? null;
 
-  // Open challenges directory (loaded from API)
+  // Challenges directory (loaded from API)
   const [openChallenges, setOpenChallenges] = useState<OpenChallenge[]>([]);
+  const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
   const [blinkerSearch, setBlinkerSearch] = useState('');
 
   // Withdraw modal state
@@ -163,14 +174,13 @@ export function WinkyGame() {
     }
   }, [escrowError, clearEscrowError]);
 
-  // ─── Fetch open challenges for the directory ───
+  // ─── Fetch open + completed challenges for the directory ───
   const fetchOpenChallenges = useCallback(async () => {
     try {
       const res = await fetch('/api/challenge');
       const data = await res.json();
-      if (data.challenges) {
-        setOpenChallenges(data.challenges);
-      }
+      if (data.challenges) setOpenChallenges(data.challenges);
+      if (data.completed) setCompletedChallenges(data.completed);
     } catch {}
   }, []);
 
@@ -463,11 +473,20 @@ export function WinkyGame() {
       })
         .then((res) => res.json())
         .then(() => {
-          // Remove from directory
           fetch('/api/challenge', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ duelId: challengeTarget.duelId }),
+            body: JSON.stringify({
+              duelId: challengeTarget.duelId,
+              winnerAddress,
+              isDraw,
+              challenger: {
+                address: walletAddress,
+                username: twitterUsername || formatAddress(walletAddress),
+                profileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl) || undefined,
+                score: finalScore,
+              },
+            }),
           })
             .then(() => fetchOpenChallenges())
             .catch(() => {});
@@ -869,6 +888,52 @@ export function WinkyGame() {
                 </div>
               );
             })()}
+
+            {/* Past Challenges */}
+            {completedChallenges.length > 0 && (
+              <>
+                <p className="idle-section-title" style={{ margin: 0 }}>Past Challenges</p>
+                <div className="blinker-grid">
+                  {completedChallenges.slice(0, 9).map(c => {
+                    const p1Won = !c.isDraw && c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase() === c.player1.address.replace(/^0x0*/i, '0x').toLowerCase();
+                    const p2Won = !c.isDraw && !p1Won;
+                    const winner = p1Won ? c.player1 : c.player2;
+                    return (
+                      <div key={c.duelId} className="past-card">
+                        <div className={`past-card-half${p1Won ? ' past-card-half--won' : p2Won ? ' past-card-half--lost' : ''}`}>
+                          {c.player1.profileImage ? (
+                            <img src={c.player1.profileImage} alt="" className="past-card-img" />
+                          ) : (
+                            <div className="past-card-img past-card-img--placeholder" />
+                          )}
+                          <div className="past-card-half-overlay" />
+                          <span className="past-card-player-name">{c.player1.username}</span>
+                        </div>
+                        <div className={`past-card-half${p2Won ? ' past-card-half--won' : p1Won ? ' past-card-half--lost' : ''}`}>
+                          {c.player2.profileImage ? (
+                            <img src={c.player2.profileImage} alt="" className="past-card-img" />
+                          ) : (
+                            <div className="past-card-img past-card-img--placeholder" />
+                          )}
+                          <div className="past-card-half-overlay" />
+                          <span className="past-card-player-name">{c.player2.username}</span>
+                        </div>
+                        <div className="past-card-center-label">
+                          <span className="past-card-center-text">
+                            {c.isDraw
+                              ? `Draw \u2014 $${c.payout / 2} returned`
+                              : `${winner.username} won $${c.payout}`}
+                          </span>
+                          <span className="past-card-center-sub">
+                            {c.player1.score} vs {c.player2.score} blinks
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
           </div>
         )}

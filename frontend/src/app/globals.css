@@ -1639,6 +1639,80 @@ a:focus-visible,
   color: #1d9bf0;
 }
 
+/* ─── Past challenge cards ─── */
+.past-card {
+  position: relative;
+  display: flex;
+  aspect-ratio: 5 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
+}
+.past-card-half {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+.past-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.past-card-img--placeholder {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+}
+.past-card-half-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.past-card-half--won .past-card-half-overlay {
+  background: rgba(34, 197, 94, 0.35);
+}
+.past-card-half--lost .past-card-half-overlay {
+  background: rgba(239, 68, 68, 0.35);
+}
+.past-card-player-name {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  z-index: 2;
+}
+.past-card-center-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  pointer-events: none;
+}
+.past-card-center-text {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+.past-card-center-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
 /* ─── Animated dots ─── */
 .dots-anim::after {
   content: '';
