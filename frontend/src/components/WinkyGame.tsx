@@ -7,7 +7,6 @@ import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useEscrow } from '@/hooks/use-escrow';
-import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS, TOKENS, USDC_DECIMALS } from '@/lib/constants';
 import { BlinkChart } from '@/components/BlinkChart';
 
@@ -136,18 +135,24 @@ export function WinkyGame() {
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
   const isBusy = isDuelCreating || isDuelJoining;
 
-  // Sidebar leaderboard (top blinkers)
-  const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard(walletAddress || undefined);
-  const [twitterProfiles, setTwitterProfiles] = useState<Record<string, { username: string; profileImageUrl?: string }>>({});
-
-  useEffect(() => {
-    if (leaderboard.length === 0) return;
-    const addrs = leaderboard.slice(0, 10).map((e) => e.address.replace(/^0x0*/i, '0x').toLowerCase());
-    fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addrs.join(','))}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.profiles) setTwitterProfiles(d.profiles); })
-      .catch(() => {});
-  }, [leaderboard]);
+  // Sidebar leaderboard built from completed challenges
+  interface LeaderboardRow { address: string; username: string; earned: number; topBlinks: number }
+  const sidebarLeaderboard = (() => {
+    const map = new Map<string, LeaderboardRow>();
+    for (const c of completedChallenges) {
+      if (c.isDraw) continue;
+      const winNorm = c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase();
+      const winner = c.player1.address.replace(/^0x0*/i, '0x').toLowerCase() === winNorm ? c.player1 : c.player2;
+      const existing = map.get(winNorm);
+      if (existing) {
+        existing.earned += c.payout;
+        if (winner.score > existing.topBlinks) existing.topBlinks = winner.score;
+      } else {
+        map.set(winNorm, { address: winNorm, username: winner.username, earned: c.payout, topBlinks: winner.score });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.earned - a.earned).slice(0, 10);
+  })();
 
   // Fetch USDC balance when wallet connects + poll every 15s
   useEffect(() => {
@@ -731,25 +736,17 @@ export function WinkyGame() {
         }}>
           <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7' }}>Leaderboard</span>
           <span style={{ fontSize: '9px', fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Blinks
+            Won / Blinks
           </span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {leaderboardLoading && (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#444', fontSize: '12px', fontWeight: 600 }}>
-              Loading<span className="dots-anim" />
-            </div>
-          )}
-          {!leaderboardLoading && leaderboard.length === 0 && (
+          {sidebarLeaderboard.length === 0 && (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-              No players yet
+              No winners yet
             </div>
           )}
-          {leaderboard.slice(0, 10).map((entry) => {
-            const norm = entry.address.replace(/^0x0*/i, '0x').toLowerCase();
-            const profile = twitterProfiles[norm];
-            const displayName = profile?.username ? `@${profile.username}` : entry.username;
-            const isMe = walletAddress && norm === walletAddress.replace(/^0x0*/i, '0x').toLowerCase();
+          {sidebarLeaderboard.map((entry, idx) => {
+            const isMe = walletAddress && entry.address === walletAddress.replace(/^0x0*/i, '0x').toLowerCase();
             return (
               <div
                 key={entry.address}
@@ -757,16 +754,21 @@ export function WinkyGame() {
                 style={isMe ? { background: 'rgba(192,180,218,0.06)' } : undefined}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: entry.rank <= 3 ? '#facc15' : '#555', width: '18px', textAlign: 'center', flexShrink: 0 }}>
-                    {entry.rank}
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: idx < 3 ? '#facc15' : '#555', width: '18px', textAlign: 'center', flexShrink: 0 }}>
+                    {idx + 1}
                   </span>
                   <span style={{ fontSize: '12px', fontWeight: isMe ? 700 : 600, color: isMe ? '#C0B4DA' : '#A6A4A7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {displayName}
+                    {entry.username}
                   </span>
                 </div>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                  {entry.blinks.toLocaleString()}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#22c55e', fontVariantNumeric: 'tabular-nums' }}>
+                    ${entry.earned}
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontVariantNumeric: 'tabular-nums', minWidth: '32px', textAlign: 'right' }}>
+                    {entry.topBlinks}
+                  </span>
+                </div>
               </div>
             );
           })}
