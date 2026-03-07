@@ -1571,6 +1571,16 @@ a:focus-visible,
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
+.blinker-card--own {
+  opacity: 0.5;
+  cursor: default;
+  border-color: rgba(250, 204, 21, 0.2);
+}
+.blinker-card--own:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(250, 204, 21, 0.2);
+}
 .blinker-card-bg {
   position: absolute;
   inset: 0;
