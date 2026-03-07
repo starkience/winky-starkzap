@@ -1,15 +1,13 @@
 /**
- * Challenge API — stores open blink challenges (in-memory MVP).
+ * Challenge API — stores open blink challenges in Vercel Edge Config.
  *
- * POST   /api/challenge          — Create an open challenge after finishing a game
- * GET    /api/challenge           — List all open challenges
- * PATCH  /api/challenge           — Mark a challenge as completed / remove it
- *
- * In production, replace in-memory store with a database.
+ * POST   /api/challenge  — Create an open challenge after finishing a game
+ * GET    /api/challenge   — List all open challenges
+ * PATCH  /api/challenge   — Remove a challenge (after accepted + resolved)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import Pusher from 'pusher';
+import { getAll } from '@vercel/edge-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,30 +22,41 @@ export interface OpenChallenge {
   createdAt: number;
 }
 
-const openChallenges: Map<string, OpenChallenge> = new Map();
+const EDGE_CONFIG_ID = (process.env.EDGE_CONFIG_ID || '').trim();
+const VERCEL_API_TOKEN = (process.env.VERCEL_API_TOKEN || '').trim();
+const VERCEL_TEAM_ID = (process.env.VERCEL_TEAM_ID || '').trim();
 
 const CHALLENGE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-let pusherInstance: Pusher | null = null;
-
-function getPusher(): Pusher | null {
-  if (pusherInstance) return pusherInstance;
-  const appId = process.env.PUSHER_APP_ID || '';
-  const key = process.env.NEXT_PUBLIC_PUSHER_KEY || '';
-  const secret = process.env.PUSHER_SECRET || '';
-  const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';
-  if (!appId || !key || !secret) return null;
-  pusherInstance = new Pusher({ appId, key, secret, cluster, useTLS: true });
-  return pusherInstance;
+function challengeKey(duelId: number): string {
+  return `duel_${duelId}`;
 }
 
-function pruneExpired() {
-  const now = Date.now();
-  openChallenges.forEach((c, id) => {
-    if (now - c.createdAt > CHALLENGE_TTL_MS) {
-      openChallenges.delete(id);
-    }
-  });
+async function edgeConfigWrite(items: Array<{ operation: string; key: string; value?: any }>): Promise<boolean> {
+  if (!EDGE_CONFIG_ID || !VERCEL_API_TOKEN) {
+    console.error('[challenge] Missing EDGE_CONFIG_ID or VERCEL_API_TOKEN');
+    return false;
+  }
+
+  const teamParam = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
+  const res = await fetch(
+    `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamParam}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${VERCEL_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ items }),
+    },
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error('[challenge] Edge Config write failed:', res.status, errText);
+    return false;
+  }
+  return true;
 }
 
 /** POST — Save a new open challenge after the creator finishes blinking */
@@ -60,12 +69,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    pruneExpired();
-
-    const id = `challenge-${duelId}`;
-
     const challenge: OpenChallenge = {
-      id,
+      id: `challenge-${duelId}`,
       duelId: Number(duelId),
       playerAddress,
       username: username || `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}`,
@@ -75,11 +80,11 @@ export async function POST(request: NextRequest) {
       createdAt: Date.now(),
     };
 
-    openChallenges.set(id, challenge);
+    const key = challengeKey(challenge.duelId);
+    const ok = await edgeConfigWrite([{ operation: 'upsert', key, value: challenge }]);
 
-    const pusher = getPusher();
-    if (pusher) {
-      await pusher.trigger('challenges', 'new-challenge', challenge).catch(() => {});
+    if (!ok) {
+      return NextResponse.json({ error: 'Failed to save challenge' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, challenge });
@@ -91,10 +96,36 @@ export async function POST(request: NextRequest) {
 
 /** GET — List all open challenges */
 export async function GET() {
-  pruneExpired();
+  try {
+    const allItems = await getAll<Record<string, any>>();
+    const challenges: OpenChallenge[] = [];
+    const now = Date.now();
+    const expiredKeys: string[] = [];
 
-  const list = Array.from(openChallenges.values()).sort((a, b) => b.createdAt - a.createdAt);
-  return NextResponse.json({ challenges: list });
+    if (allItems) {
+      for (const [key, value] of Object.entries(allItems)) {
+        if (key.startsWith('duel_') && value && typeof value === 'object') {
+          const c = value as OpenChallenge;
+          if (now - c.createdAt > CHALLENGE_TTL_MS) {
+            expiredKeys.push(key);
+          } else {
+            challenges.push(c);
+          }
+        }
+      }
+    }
+
+    // Clean up expired challenges in the background
+    if (expiredKeys.length > 0) {
+      edgeConfigWrite(expiredKeys.map((key) => ({ operation: 'delete', key }))).catch(() => {});
+    }
+
+    challenges.sort((a, b) => b.createdAt - a.createdAt);
+    return NextResponse.json({ challenges });
+  } catch (err: any) {
+    console.error('[challenge] GET error:', err.message);
+    return NextResponse.json({ challenges: [], error: err.message }, { status: 500 });
+  }
 }
 
 /** PATCH — Remove a challenge (after it's been accepted and completed) */
@@ -107,8 +138,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'duelId required' }, { status: 400 });
     }
 
-    const id = `challenge-${duelId}`;
-    openChallenges.delete(id);
+    const key = challengeKey(duelId);
+    const ok = await edgeConfigWrite([{ operation: 'delete', key }]);
+
+    if (!ok) {
+      return NextResponse.json({ error: 'Failed to remove challenge' }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {

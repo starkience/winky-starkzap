@@ -784,11 +784,10 @@ export function WinkyGame() {
             {/* Challenge cards */}
             {(() => {
               const normalizedUser = walletAddress?.replace(/^0x0*/i, '0x').toLowerCase();
-              const filtered = openChallenges
-                .filter(c => c.playerAddress.replace(/^0x0*/i, '0x').toLowerCase() !== normalizedUser)
-                .filter(c =>
-                  !blinkerSearch || c.username.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())
-                );
+              const searchFiltered = openChallenges.filter(c =>
+                !blinkerSearch || c.username.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())
+              );
+
               if (openChallenges.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '48px 20px' }}>
@@ -801,26 +800,32 @@ export function WinkyGame() {
               }
               return (
                 <div className="blinker-grid">
-                  {filtered.map(c => (
-                    <div
-                      key={c.id}
-                      className="blinker-card"
-                      onClick={() => { if (isConnected) handleAcceptChallenge(c); }}
-                    >
-                      {c.profileImage ? (
-                        <img src={c.profileImage} alt="" className="blinker-card-bg" />
-                      ) : (
-                        <div className="blinker-card-bg blinker-card-bg--placeholder" />
-                      )}
-                      <div className="blinker-card-overlay" />
-                      <div className="blinker-card-content">
-                        <span className="blinker-card-stat">Blinked {c.score} times</span>
-                        <span className="blinker-card-stake">${c.stake} USDC at stake</span>
-                        <span className="blinker-card-name">{c.username}</span>
+                  {searchFiltered.map(c => {
+                    const isOwn = normalizedUser && c.playerAddress.replace(/^0x0*/i, '0x').toLowerCase() === normalizedUser;
+                    return (
+                      <div
+                        key={c.id}
+                        className="blinker-card"
+                        style={isOwn ? { opacity: 0.65, cursor: 'default' } : undefined}
+                        onClick={() => { if (!isOwn && isConnected) handleAcceptChallenge(c); }}
+                      >
+                        {c.profileImage ? (
+                          <img src={c.profileImage} alt="" className="blinker-card-bg" />
+                        ) : (
+                          <div className="blinker-card-bg blinker-card-bg--placeholder" />
+                        )}
+                        <div className="blinker-card-overlay" />
+                        <div className="blinker-card-content">
+                          <span className="blinker-card-stat">Blinked {c.score} times</span>
+                          <span className="blinker-card-stake">${c.stake} USDC at stake</span>
+                          <span className="blinker-card-name">
+                            {isOwn ? 'Your challenge' : c.username}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {blinkerSearch && filtered.length === 0 && (
+                    );
+                  })}
+                  {blinkerSearch && searchFiltered.length === 0 && (
                     <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}>
                       <p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>
                         No challenges found for &ldquo;{blinkerSearch}&rdquo;
