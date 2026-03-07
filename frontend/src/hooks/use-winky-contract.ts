@@ -39,7 +39,7 @@ interface UseWinkyContractOpts {
 }
 
 const TX_TIMEOUT_MS = 20_000;
-const MAX_CONCURRENT_TXS = 3;
+const MAX_CONCURRENT_TXS = 10;
 
 export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: UseWinkyContractOpts) {
   const [txLog, setTxLog] = useState<BlinkTransaction[]>([]);
