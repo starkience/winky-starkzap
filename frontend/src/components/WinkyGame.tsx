@@ -7,6 +7,7 @@ import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useEscrow } from '@/hooks/use-escrow';
+import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS, TOKENS, USDC_DECIMALS } from '@/lib/constants';
 import { BlinkChart } from '@/components/BlinkChart';
 
@@ -33,6 +34,12 @@ function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
   if (!addr.startsWith('0x')) return addr;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+/** Strip Twitter's _normal / _200x200 / _400x400 suffix to get the original full-size image. */
+function fullSizeTwitterImage(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return url.replace(/_(?:normal|200x200|400x400|bigger|mini)(?=\.)/, '');
 }
 
 // ─── Component ───
@@ -117,6 +124,19 @@ export function WinkyGame() {
   const isPlaying = gamePhase === 'playing';
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
   const isBusy = isDuelCreating || isDuelJoining;
+
+  // Sidebar leaderboard (top blinkers)
+  const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard(walletAddress || undefined);
+  const [twitterProfiles, setTwitterProfiles] = useState<Record<string, { username: string; profileImageUrl?: string }>>({});
+
+  useEffect(() => {
+    if (leaderboard.length === 0) return;
+    const addrs = leaderboard.slice(0, 10).map((e) => e.address.replace(/^0x0*/i, '0x').toLowerCase());
+    fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addrs.join(','))}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.profiles) setTwitterProfiles(d.profiles); })
+      .catch(() => {});
+  }, [leaderboard]);
 
   // Fetch USDC balance when wallet connects + poll every 15s
   useEffect(() => {
@@ -411,7 +431,7 @@ export function WinkyGame() {
           duelId,
           playerAddress: walletAddress,
           username: twitterUsername || formatAddress(walletAddress),
-          profileImage: user?.twitter?.profilePictureUrl || undefined,
+          profileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl) || undefined,
           score: finalScore,
           stake: selectedBet,
         }),
@@ -684,45 +704,53 @@ export function WinkyGame() {
         )}
       </div>
 
-      {/* Open Challenges sidebar list */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Open Challenges">
+      {/* Top 10 Leaderboard */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Leaderboard">
         <div style={{
           padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7' }}>Open Challenges</span>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7' }}>Leaderboard</span>
           <span style={{ fontSize: '9px', fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Blinks / Stake
+            Blinks
           </span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {openChallenges.length === 0 && (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-              No open challenges yet
+          {leaderboardLoading && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#444', fontSize: '12px', fontWeight: 600 }}>
+              Loading<span className="dots-anim" />
             </div>
           )}
-          {openChallenges.map((c) => (
-            <div
-              key={c.id}
-              className="sidebar-leaderboard-row"
-              style={{ cursor: 'pointer' }}
-              onClick={() => { if (isConnected && gamePhase === 'idle') handleAcceptChallenge(c); }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#A6A4A7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {c.username}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums' }}>
-                  {c.score}
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 800, color: '#22c55e', minWidth: '48px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  ${c.stake}
-                </span>
-              </div>
+          {!leaderboardLoading && leaderboard.length === 0 && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
+              No players yet
             </div>
-          ))}
+          )}
+          {leaderboard.slice(0, 10).map((entry) => {
+            const norm = entry.address.replace(/^0x0*/i, '0x').toLowerCase();
+            const profile = twitterProfiles[norm];
+            const displayName = profile?.username ? `@${profile.username}` : entry.username;
+            const isMe = walletAddress && norm === walletAddress.replace(/^0x0*/i, '0x').toLowerCase();
+            return (
+              <div
+                key={entry.address}
+                className="sidebar-leaderboard-row"
+                style={isMe ? { background: 'rgba(192,180,218,0.06)' } : undefined}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: entry.rank <= 3 ? '#facc15' : '#555', width: '18px', textAlign: 'center', flexShrink: 0 }}>
+                    {entry.rank}
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: isMe ? 700 : 600, color: isMe ? '#C0B4DA' : '#A6A4A7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {displayName}
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {entry.blinks.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </nav>
     </aside>
@@ -1191,7 +1219,7 @@ export function WinkyGame() {
                 </a>
               )}
               <button onClick={handlePlayAgain} className="result-play-again-btn">
-                Play Again
+                Back to Home
               </button>
             </div>
           </div>
