@@ -1,11 +1,11 @@
 /**
- * POST /api/challenge — Create a challenge
- * Body: { challengerUsername, challengerAddress, targetUsername, stake }
+ * Challenge API — stores open blink challenges (in-memory MVP).
  *
- * GET /api/challenge?username=<twitter_username> — Fetch pending challenges for a user
+ * POST   /api/challenge          — Create an open challenge after finishing a game
+ * GET    /api/challenge           — List all open challenges
+ * PATCH  /api/challenge           — Mark a challenge as completed / remove it
  *
- * Challenges are broadcast via Pusher and stored in-memory (server-side).
- * In production, use a database. This is a lightweight MVP.
+ * In production, replace in-memory store with a database.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,19 +13,20 @@ import Pusher from 'pusher';
 
 export const dynamic = 'force-dynamic';
 
-interface Challenge {
+export interface OpenChallenge {
   id: string;
-  challengerUsername: string;
-  challengerAddress: string;
-  targetUsername: string;
+  duelId: number;
+  playerAddress: string;
+  username: string;
+  profileImage?: string;
+  score: number;
   stake: number;
   createdAt: number;
-  status: 'pending' | 'accepted' | 'expired';
 }
 
-const challenges: Record<string, Challenge> = {};
+const openChallenges: Map<string, OpenChallenge> = new Map();
 
-const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CHALLENGE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 let pusherInstance: Pusher | null = null;
 
@@ -42,45 +43,43 @@ function getPusher(): Pusher | null {
 
 function pruneExpired() {
   const now = Date.now();
-  for (const id of Object.keys(challenges)) {
-    if (now - challenges[id].createdAt > CHALLENGE_TTL_MS) {
-      delete challenges[id];
+  openChallenges.forEach((c, id) => {
+    if (now - c.createdAt > CHALLENGE_TTL_MS) {
+      openChallenges.delete(id);
     }
-  }
+  });
 }
 
+/** POST — Save a new open challenge after the creator finishes blinking */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { challengerUsername, challengerAddress, targetUsername, stake } = body;
+    const { duelId, playerAddress, username, profileImage, score, stake } = body;
 
-    if (!challengerUsername || !targetUsername || !stake) {
+    if (duelId === undefined || !playerAddress || score === undefined || !stake) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (challengerUsername.toLowerCase() === targetUsername.toLowerCase()) {
-      return NextResponse.json({ error: 'Cannot challenge yourself' }, { status: 400 });
     }
 
     pruneExpired();
 
-    const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const challenge: Challenge = {
+    const id = `challenge-${duelId}`;
+
+    const challenge: OpenChallenge = {
       id,
-      challengerUsername: challengerUsername.replace(/^@/, ''),
-      challengerAddress: challengerAddress || '',
-      targetUsername: targetUsername.replace(/^@/, ''),
+      duelId: Number(duelId),
+      playerAddress,
+      username: username || `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}`,
+      profileImage,
+      score: Number(score),
       stake: Number(stake),
       createdAt: Date.now(),
-      status: 'pending',
     };
 
-    challenges[id] = challenge;
+    openChallenges.set(id, challenge);
 
     const pusher = getPusher();
     if (pusher) {
-      const channel = `challenges-${challenge.targetUsername.toLowerCase()}`;
-      await pusher.trigger(channel, 'new-challenge', challenge);
+      await pusher.trigger('challenges', 'new-challenge', challenge).catch(() => {});
     }
 
     return NextResponse.json({ ok: true, challenge });
@@ -90,22 +89,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  const username = request.nextUrl.searchParams.get('username');
-  if (!username) {
-    return NextResponse.json({ error: 'username required' }, { status: 400 });
-  }
-
+/** GET — List all open challenges */
+export async function GET() {
   pruneExpired();
 
-  const target = username.replace(/^@/, '').toLowerCase();
-  const pending: Challenge[] = [];
-  for (const id of Object.keys(challenges)) {
-    const c = challenges[id];
-    if (c.targetUsername.toLowerCase() === target && c.status === 'pending') {
-      pending.push(c);
-    }
-  }
+  const list = Array.from(openChallenges.values()).sort((a, b) => b.createdAt - a.createdAt);
+  return NextResponse.json({ challenges: list });
+}
 
-  return NextResponse.json({ challenges: pending });
+/** PATCH — Remove a challenge (after it's been accepted and completed) */
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { duelId } = body;
+
+    if (duelId === undefined) {
+      return NextResponse.json({ error: 'duelId required' }, { status: 400 });
+    }
+
+    const id = `challenge-${duelId}`;
+    openChallenges.delete(id);
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Failed' }, { status: 500 });
+  }
 }

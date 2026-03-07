@@ -10,38 +10,23 @@ import { useEscrow } from '@/hooks/use-escrow';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, ESCROW_CONTRACT_ADDRESS, TOKENS, USDC_DECIMALS } from '@/lib/constants';
 import { BlinkChart } from '@/components/BlinkChart';
 
-interface PendingChallenge {
-  id: string;
-  challengerUsername: string;
-  challengerAddress: string;
-  targetUsername: string;
-  stake: number;
-  createdAt: number;
-}
-
 // ─── Types & Constants ───
 
 type GamePhase = 'idle' | 'ready' | 'countdown' | 'playing' | 'result';
+type GameMode = 'create' | 'challenge';
 
 const BET_AMOUNTS = [1, 5, 10, 25, 50];
 const GAME_DURATION = 30;
 
-interface LeaderboardEntry {
+interface OpenChallenge {
   id: string;
-  name: string;
-  blinks: number;
-  earnings: number;
-  twitter?: string;
-}
-
-const INITIAL_LEADERBOARD: LeaderboardEntry[] = [];
-
-interface BlinkerCard {
-  id: string;
-  twitter: string;
-  blinks: number;
-  stake: number;
+  duelId: number;
+  playerAddress: string;
+  username: string;
   profileImage?: string;
+  score: number;
+  stake: number;
+  createdAt: number;
 }
 
 function formatAddress(addr: string | null | undefined): string {
@@ -63,14 +48,14 @@ export function WinkyGame() {
 
   // Game state
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle');
+  const [gameMode, setGameMode] = useState<GameMode>('create');
+  const [challengeTarget, setChallengeTarget] = useState<OpenChallenge | null>(null);
   const [selectedBet, setSelectedBet] = useState<number>(5);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [chartData, setChartData] = useState<Array<{ time: number; blinks: number }>>([]);
   const [countdownNumber, setCountdownNumber] = useState(3);
   const [finalScore, setFinalScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState<number | null>(null);
-  const [opponentRevealed, setOpponentRevealed] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(INITIAL_LEADERBOARD);
+  const [resolving, setResolving] = useState(false);
 
   // UI state
   const [copied, setCopied] = useState(false);
@@ -83,13 +68,14 @@ export function WinkyGame() {
   const chartIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const blinkCountRef = useRef(0);
   const gameStartTimeRef = useRef(0);
-  const leaderboardUpdatedRef = useRef(false);
 
   // On-chain escrow
   const {
     createDuel,
+    joinDuel,
     getUsdcBalance,
     isCreating: isDuelCreating,
+    isJoining: isDuelJoining,
     lastTx: duelTx,
     escrowError,
     clearEscrowError,
@@ -102,8 +88,9 @@ export function WinkyGame() {
   const twitterProfile = user?.twitter ?? null;
   const twitterUsername = twitterProfile?.username ?? null;
 
-  // Challenge state (incoming only)
-  const [pendingChallenges, setPendingChallenges] = useState<PendingChallenge[]>([]);
+  // Open challenges directory (loaded from API)
+  const [openChallenges, setOpenChallenges] = useState<OpenChallenge[]>([]);
+  const [blinkerSearch, setBlinkerSearch] = useState('');
 
   // Withdraw modal state
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -112,8 +99,6 @@ export function WinkyGame() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
-  const [blinkerSearch, setBlinkerSearch] = useState('');
-  const [activeBlinkers, setActiveBlinkers] = useState<BlinkerCard[]>([]);
 
   // On-chain blink counter (1 blink = 1 Starknet tx)
   const {
@@ -131,6 +116,7 @@ export function WinkyGame() {
   const isConnected = ready && authenticated && !!sdkWallet && !loggingOut;
   const isPlaying = gamePhase === 'playing';
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
+  const isBusy = isDuelCreating || isDuelJoining;
 
   // Fetch USDC balance when wallet connects + poll every 15s
   useEffect(() => {
@@ -157,55 +143,22 @@ export function WinkyGame() {
     }
   }, [escrowError, clearEscrowError]);
 
-  // ─── Poll for incoming challenges ───
-  useEffect(() => {
-    if (!twitterUsername) return;
-
-    const fetchChallenges = async () => {
-      try {
-        const res = await fetch(`/api/challenge?username=${encodeURIComponent(twitterUsername)}`);
-        const data = await res.json();
-        if (data.challenges?.length > 0) {
-          setPendingChallenges(data.challenges);
-        }
-      } catch {}
-    };
-
-    fetchChallenges();
-    const interval = setInterval(fetchChallenges, 10_000);
-    return () => clearInterval(interval);
-  }, [twitterUsername]);
-
-  // ─── Subscribe to Pusher for real-time challenges ───
-  useEffect(() => {
-    if (!twitterUsername) return;
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';
-    if (!pusherKey) return;
-
-    let pusher: any;
-    let channel: any;
-
-    import('pusher-js').then((PusherModule) => {
-      const PusherClass = PusherModule.default;
-      pusher = new PusherClass(pusherKey, { cluster: pusherCluster });
-      channel = pusher.subscribe(`challenges-${twitterUsername.toLowerCase()}`);
-      channel.bind('new-challenge', (data: PendingChallenge) => {
-        setPendingChallenges(prev => {
-          if (prev.some(c => c.id === data.id)) return prev;
-          return [data, ...prev];
-        });
-      });
-    });
-
-    return () => {
-      if (channel) channel.unbind_all();
-      if (pusher) {
-        pusher.unsubscribe(`challenges-${twitterUsername.toLowerCase()}`);
-        pusher.disconnect();
+  // ─── Fetch open challenges for the directory ───
+  const fetchOpenChallenges = useCallback(async () => {
+    try {
+      const res = await fetch('/api/challenge');
+      const data = await res.json();
+      if (data.challenges) {
+        setOpenChallenges(data.challenges);
       }
-    };
-  }, [twitterUsername]);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchOpenChallenges();
+    const interval = setInterval(fetchOpenChallenges, 10_000);
+    return () => clearInterval(interval);
+  }, [fetchOpenChallenges]);
 
   // ─── Withdraw USDC handler ───
   const handleWithdraw = useCallback(async () => {
@@ -248,9 +201,6 @@ export function WinkyGame() {
     }
   }, [sdkWallet, withdrawRecipient, withdrawAmount, getUsdcBalance]);
 
-  const handleDismissChallenge = useCallback((id: string) => {
-    setPendingChallenges(prev => prev.filter(c => c.id !== id));
-  }, []);
 
   // ─── Mobile detection ───
   useEffect(() => {
@@ -423,11 +373,6 @@ export function WinkyGame() {
           const score = blinkCountRef.current;
           setFinalScore(score);
           setGamePhase('result');
-          leaderboardUpdatedRef.current = false;
-          setTimeout(() => {
-            setOpponentScore(Math.floor(Math.random() * 40) + 20);
-            setOpponentRevealed(true);
-          }, 2000);
           return 0;
         }
         return prev - 1;
@@ -449,66 +394,88 @@ export function WinkyGame() {
     };
   }, [gamePhase]);
 
-  // ─── Leaderboard update after win ───
+  // ─── Post-game: save challenge or resolve duel ───
   useEffect(() => {
-    if (!opponentRevealed || opponentScore === null || leaderboardUpdatedRef.current) return;
-    if (finalScore <= opponentScore || !walletAddress) return;
-    leaderboardUpdatedRef.current = true;
-    const displayName = twitterUsername ? `@${twitterUsername}` : formatAddress(walletAddress);
-    setLeaderboard(prev => {
-      const existing = prev.find(e => e.name === displayName);
-      if (existing) {
-        return prev.map(e =>
-          e.name === displayName
-            ? { ...e, blinks: finalScore, earnings: Math.round((e.earnings + selectedBet * 2 * 0.95) * 100) / 100, twitter: twitterUsername || e.twitter }
-            : e
-        ).sort((a, b) => b.earnings - a.earnings);
-      }
-      return [
-        { id: `user-${Date.now()}`, name: displayName, blinks: finalScore, earnings: Math.round(selectedBet * 2 * 0.95 * 100) / 100, twitter: twitterUsername || undefined },
-        ...prev,
-      ].sort((a, b) => b.earnings - a.earnings);
-    });
-  }, [opponentRevealed, opponentScore, finalScore, walletAddress, selectedBet, twitterUsername]);
+    if (gamePhase !== 'result' || finalScore === 0 || !walletAddress) return;
+    if (resolving) return;
 
-  // ─── Add user to active blinkers when they play ───
-  useEffect(() => {
-    if (gamePhase !== 'playing' || !walletAddress) return;
-    const handle = twitterUsername || formatAddress(walletAddress);
-    setActiveBlinkers(prev => {
-      if (prev.some(b => b.twitter === handle)) return prev;
-      const profileImg = user?.twitter?.profilePictureUrl || undefined;
-      return [...prev, {
-        id: `blinker-${Date.now()}`,
-        twitter: handle,
-        blinks: 0,
-        stake: selectedBet,
-        profileImage: profileImg,
-      }];
-    });
-  }, [gamePhase, walletAddress, twitterUsername, selectedBet, user?.twitter?.profilePictureUrl]);
+    if (gameMode === 'create') {
+      // Flow 1: Save the open challenge to the API so it appears in the directory
+      const duelId = duelTx?.duelId;
+      if (duelId === undefined) return;
 
-  // ─── Update blinker's score after game ends ───
-  useEffect(() => {
-    if (gamePhase !== 'result' || !walletAddress) return;
-    const handle = twitterUsername || formatAddress(walletAddress);
-    setActiveBlinkers(prev =>
-      prev.map(b => b.twitter === handle ? { ...b, blinks: finalScore } : b)
-    );
-  }, [gamePhase, walletAddress, twitterUsername, finalScore]);
+      fetch('/api/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duelId,
+          playerAddress: walletAddress,
+          username: twitterUsername || formatAddress(walletAddress),
+          profileImage: user?.twitter?.profilePictureUrl || undefined,
+          score: finalScore,
+          stake: selectedBet,
+        }),
+      })
+        .then(() => fetchOpenChallenges())
+        .catch((err) => console.error('[challenge] Failed to post:', err));
+    }
+
+    if (gameMode === 'challenge' && challengeTarget) {
+      // Flow 2: Compare scores and resolve on-chain
+      setResolving(true);
+      const opponentScore = challengeTarget.score;
+      const isDraw = finalScore === opponentScore;
+      const challengerWins = finalScore > opponentScore;
+      const winnerAddress = isDraw
+        ? '0x0'
+        : challengerWins
+          ? walletAddress
+          : challengeTarget.playerAddress;
+
+      fetch('/api/challenge/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duelId: challengeTarget.duelId,
+          winnerAddress,
+          isDraw,
+        }),
+      })
+        .then((res) => res.json())
+        .then(() => {
+          // Remove from directory
+          fetch('/api/challenge', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duelId: challengeTarget.duelId }),
+          })
+            .then(() => fetchOpenChallenges())
+            .catch(() => {});
+        })
+        .catch((err) => {
+          console.error('[resolve] Failed:', err);
+          setError('Failed to resolve duel on-chain');
+        })
+        .finally(() => setResolving(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamePhase, finalScore]);
 
   // ─── Handlers ───
+
+  /** Flow 1: Create a new challenge — deposit, then blink */
   const handlePlay = useCallback(async () => {
     if (!isConnected) return;
     resetDetection();
     blinkCountRef.current = 0;
     setChartData([]);
     setFinalScore(0);
-    setOpponentScore(null);
-    setOpponentRevealed(false);
     setError(null);
     setNeedsFunding(false);
     setDuelTxHash(null);
+    setGameMode('create');
+    setChallengeTarget(null);
+    setResolving(false);
     clearBlinkLog();
 
     if (ESCROW_CONTRACT_ADDRESS) {
@@ -521,13 +488,31 @@ export function WinkyGame() {
     setGamePhase('ready');
   }, [isConnected, resetDetection, createDuel, selectedBet, getUsdcBalance, clearBlinkLog]);
 
-  const handleAcceptChallenge = useCallback((challenge: PendingChallenge) => {
-    setPendingChallenges(prev => prev.filter(c => c.id !== challenge.id));
-    setSelectedBet(challenge.stake);
-    if (isConnected) {
-      handlePlay();
+  /** Flow 2: Accept an existing challenge — match bet, then blink to beat the score */
+  const handleAcceptChallenge = useCallback(async (challenge: OpenChallenge) => {
+    if (!isConnected) return;
+    resetDetection();
+    blinkCountRef.current = 0;
+    setChartData([]);
+    setFinalScore(0);
+    setError(null);
+    setNeedsFunding(false);
+    setDuelTxHash(null);
+    setGameMode('challenge');
+    setChallengeTarget(challenge);
+    setResolving(false);
+    clearBlinkLog();
+
+    if (ESCROW_CONTRACT_ADDRESS) {
+      const result = await joinDuel(challenge.duelId, challenge.stake);
+      if (!result) return;
+      setDuelTxHash(result.txHash);
+      setSelectedBet(challenge.stake);
+      getUsdcBalance().then(setUsdcBalance);
     }
-  }, [isConnected, handlePlay]);
+
+    setGamePhase('ready');
+  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog]);
 
   const handleStart = useCallback(() => {
     setGamePhase('countdown');
@@ -544,13 +529,13 @@ export function WinkyGame() {
     blinkCountRef.current = 0;
     setChartData([]);
     setFinalScore(0);
-    setOpponentScore(null);
-    setOpponentRevealed(false);
+    setChallengeTarget(null);
+    setResolving(false);
     setTimeLeft(GAME_DURATION);
-    leaderboardUpdatedRef.current = false;
     clearBlinkLog();
     setGamePhase('idle');
-  }, [resetDetection, clearBlinkLog]);
+    fetchOpenChallenges();
+  }, [resetDetection, clearBlinkLog, fetchOpenChallenges]);
 
   const handleCopyAddress = useCallback(() => {
     if (walletAddress) {
@@ -560,9 +545,10 @@ export function WinkyGame() {
     }
   }, [walletAddress]);
 
-  const isWinner = opponentRevealed && opponentScore !== null && finalScore > opponentScore;
-  const isDraw = opponentRevealed && opponentScore !== null && finalScore === opponentScore;
-  const isLoser = opponentRevealed && opponentScore !== null && finalScore < opponentScore;
+  const opponentScore = challengeTarget?.score ?? null;
+  const isWinner = gameMode === 'challenge' && opponentScore !== null && finalScore > opponentScore;
+  const isDraw = gameMode === 'challenge' && opponentScore !== null && finalScore === opponentScore;
+  const isLoser = gameMode === 'challenge' && opponentScore !== null && finalScore < opponentScore;
   const loginBusy = !ready || walletLoading;
 
   // ─── Sidebar content (shared across all phases) ───
@@ -655,7 +641,7 @@ export function WinkyGame() {
             <button
               key={amount}
               onClick={() => setSelectedBet(amount)}
-              disabled={isDuelCreating || showGameArea}
+              disabled={isBusy || showGameArea}
               className={`sidebar-bet-btn${selectedBet === amount ? ' sidebar-bet-btn--active' : ''}`}
             >
               ${amount}
@@ -664,10 +650,10 @@ export function WinkyGame() {
         </div>
         <button
           onClick={isConnected ? handlePlay : handleLogin}
-          disabled={loginBusy || showGameArea || isDuelCreating}
-          className={`sidebar-play-btn${isConnected && !showGameArea && !isDuelCreating ? ' sidebar-play-btn--active' : ''}`}
+          disabled={loginBusy || showGameArea || isBusy}
+          className={`sidebar-play-btn${isConnected && !showGameArea && !isBusy ? ' sidebar-play-btn--active' : ''}`}
         >
-          {isDuelCreating ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Play ($${selectedBet})` : 'Connect to Play'}
+          {isBusy ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Play ($${selectedBet})` : 'Connect to Play'}
         </button>
         {needsFunding && (
           <div style={{
@@ -698,63 +684,41 @@ export function WinkyGame() {
         )}
       </div>
 
-      {/* Leaderboard */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Leaderboard">
+      {/* Open Challenges sidebar list */}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Open Challenges">
         <div style={{
           padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7', textWrap: 'balance' }}>Leaderboard</span>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7' }}>Open Challenges</span>
           <span style={{ fontSize: '9px', fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Blinks / Earned
+            Blinks / Stake
           </span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {leaderboard.map((entry, idx) => (
+          {openChallenges.length === 0 && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
+              No open challenges yet
+            </div>
+          )}
+          {openChallenges.map((c) => (
             <div
-              key={entry.id}
+              key={c.id}
               className="sidebar-leaderboard-row"
-              style={{
-                background: idx === 0 ? 'rgba(255,215,0,0.04)' : idx === 1 ? 'rgba(192,192,192,0.03)' : idx === 2 ? 'rgba(205,127,50,0.03)' : 'transparent',
-              }}
+              style={{ cursor: 'pointer' }}
+              onClick={() => { if (isConnected && gamePhase === 'idle') handleAcceptChallenge(c); }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                <span style={{
-                  fontSize: '13px', fontWeight: 800, width: '24px', textAlign: 'center', flexShrink: 0,
-                  color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : idx === 2 ? '#CD7F32' : '#444',
-                }} aria-hidden="true">
-                  {idx === 0 ? '\u{1F947}' : idx === 1 ? '\u{1F948}' : idx === 2 ? '\u{1F949}' : `${idx + 1}`}
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#A6A4A7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.username}
                 </span>
-                {entry.twitter ? (
-                  <a
-                    href={`https://x.com/${entry.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontSize: '12px', fontWeight: 600, color: '#A6A4A7',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      textDecoration: 'none', transition: 'color 0.15s',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#1d9bf0'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = '#A6A4A7'; }}
-                  >
-                    {entry.name}
-                  </a>
-                ) : (
-                  <span style={{
-                    fontSize: '12px', fontWeight: 600, color: '#A6A4A7',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {entry.name}
-                  </span>
-                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums' }}>
-                  {entry.blinks}
+                  {c.score}
                 </span>
                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#22c55e', minWidth: '48px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  ${entry.earnings}
+                  ${c.stake}
                 </span>
               </div>
             </div>
@@ -788,38 +752,7 @@ export function WinkyGame() {
         position: 'relative',
       }}>
 
-        {/* ─── Challenge notifications ─── */}
-        {gamePhase === 'idle' && pendingChallenges.length > 0 && (
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {pendingChallenges.map(c => (
-              <div key={c.id} className="challenge-banner">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: 800, color: '#C0B4DA', margin: 0 }}>
-                    @{c.challengerUsername} challenged you!
-                  </p>
-                  <p style={{ fontSize: '12px', fontWeight: 600, color: '#555', margin: '4px 0 0' }}>
-                    ${c.stake} USDC &middot; 30s Blink Duel
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleAcceptChallenge(c)}
-                  className="challenge-accept-btn"
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={() => handleDismissChallenge(c.id)}
-                  className="challenge-dismiss-btn"
-                  aria-label="Dismiss challenge"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ─── IDLE: battle blinkers ─── */}
+        {/* ─── IDLE: challenge directory ─── */}
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
@@ -848,50 +781,49 @@ export function WinkyGame() {
               />
             </div>
 
-            {/* Blinker cards */}
+            {/* Challenge cards */}
             {(() => {
-              const filtered = activeBlinkers.filter(b =>
-                !blinkerSearch || b.twitter.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())
-              );
-              if (activeBlinkers.length === 0) {
+              const normalizedUser = walletAddress?.replace(/^0x0*/i, '0x').toLowerCase();
+              const filtered = openChallenges
+                .filter(c => c.playerAddress.replace(/^0x0*/i, '0x').toLowerCase() !== normalizedUser)
+                .filter(c =>
+                  !blinkerSearch || c.username.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase())
+                );
+              if (openChallenges.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#444', margin: 0 }}>No blinkers yet</p>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#444', margin: 0 }}>No open challenges yet</p>
                     <p style={{ fontSize: '13px', fontWeight: 500, color: '#333', margin: '8px 0 0' }}>
-                      Connect your wallet, place a bet, and be the first to blink!
+                      Place a bet and be the first to post a challenge!
                     </p>
                   </div>
                 );
               }
               return (
                 <div className="blinker-grid">
-                  {filtered.map(b => (
-                    <div key={b.id} className="blinker-card">
-                      {b.profileImage ? (
-                        <img src={b.profileImage} alt="" className="blinker-card-bg" />
+                  {filtered.map(c => (
+                    <div
+                      key={c.id}
+                      className="blinker-card"
+                      onClick={() => { if (isConnected) handleAcceptChallenge(c); }}
+                    >
+                      {c.profileImage ? (
+                        <img src={c.profileImage} alt="" className="blinker-card-bg" />
                       ) : (
                         <div className="blinker-card-bg blinker-card-bg--placeholder" />
                       )}
                       <div className="blinker-card-overlay" />
                       <div className="blinker-card-content">
-                        <span className="blinker-card-stat">Blinked {b.blinks} times</span>
-                        <span className="blinker-card-stake">Take ${b.stake}</span>
-                        <a
-                          href={`https://x.com/${b.twitter}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="blinker-card-name"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          @{b.twitter}
-                        </a>
+                        <span className="blinker-card-stat">Blinked {c.score} times</span>
+                        <span className="blinker-card-stake">${c.stake} USDC at stake</span>
+                        <span className="blinker-card-name">{c.username}</span>
                       </div>
                     </div>
                   ))}
                   {blinkerSearch && filtered.length === 0 && (
                     <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}>
                       <p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>
-                        No blinkers found for &ldquo;{blinkerSearch}&rdquo;
+                        No challenges found for &ldquo;{blinkerSearch}&rdquo;
                       </p>
                     </div>
                   )}
@@ -1161,46 +1093,76 @@ export function WinkyGame() {
               alignItems: 'center', justifyContent: 'center', gap: '24px',
               padding: '32px', overflow: 'auto',
             }}>
-              <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0, textWrap: 'balance' }}>
-                Time&apos;s Up!
-              </h2>
-              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <div style={{
-                  padding: '24px 36px', background: '#141414', borderRadius: '14px',
-                  border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
-                }}>
-                  <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
-                  <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
-                </div>
-                {opponentRevealed && opponentScore !== null && (
+              {/* ── Flow 1: Challenge created ── */}
+              {gameMode === 'create' && (
+                <>
+                  <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#C0B4DA', margin: 0 }}>
+                    Challenge Posted!
+                  </h2>
                   <div style={{
                     padding: '24px 36px', background: '#141414', borderRadius: '14px',
-                    border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                    border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
                   }}>
-                    <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Opponent</p>
-                    <p style={{ fontSize: '48px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{opponentScore}</p>
+                    <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
+                    <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
                   </div>
-                )}
-              </div>
-              {!opponentRevealed && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} aria-live="polite">
-                  <div className="spinner" aria-hidden="true" />
-                  <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>Waiting for opponent&#x2026;</p>
-                </div>
+                  <div style={{
+                    padding: '16px 28px', borderRadius: '12px', textAlign: 'center',
+                    background: 'rgba(192,180,218,0.06)', border: '1px solid rgba(192,180,218,0.15)',
+                  }}>
+                    <p style={{ fontSize: '14px', fontWeight: 700, color: '#A6A4A7', margin: 0 }}>
+                      ${selectedBet} USDC at stake
+                    </p>
+                    <p style={{ fontSize: '12px', fontWeight: 500, color: '#555', margin: '6px 0 0' }}>
+                      Your challenge is now live. Anyone can accept and try to beat your {finalScore} blinks!
+                    </p>
+                  </div>
+                </>
               )}
-              {opponentRevealed && opponentScore !== null && (
-                <div style={{
-                  padding: '20px 32px', borderRadius: '14px', textAlign: 'center',
-                  background: isWinner ? 'rgba(34,197,94,0.08)' : isDraw ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
-                  border: `2px solid ${isWinner ? 'rgba(34,197,94,0.25)' : isDraw ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                }} aria-live="polite">
-                  <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                    {isWinner ? 'You Win!' : isDraw ? 'Draw!' : 'You Lose'}
-                  </p>
-                  <p style={{ fontSize: '14px', fontWeight: 700, margin: '8px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                    {isWinner ? `+$${(selectedBet * 2 * 0.95).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
-                  </p>
-                </div>
+
+              {/* ── Flow 2: Challenge result (vs opponent) ── */}
+              {gameMode === 'challenge' && challengeTarget && (
+                <>
+                  <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>
+                    Time&apos;s Up!
+                  </h2>
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{
+                      padding: '24px 36px', background: '#141414', borderRadius: '14px',
+                      border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
+                    }}>
+                      <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
+                      <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
+                    </div>
+                    <div style={{
+                      padding: '24px 36px', background: '#141414', borderRadius: '14px',
+                      border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                    }}>
+                      <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>{challengeTarget.username}</p>
+                      <p style={{ fontSize: '48px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{challengeTarget.score}</p>
+                    </div>
+                  </div>
+                  {resolving && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="spinner" />
+                      <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>Resolving on-chain&#x2026;</p>
+                    </div>
+                  )}
+                  {!resolving && (
+                    <div style={{
+                      padding: '20px 32px', borderRadius: '14px', textAlign: 'center',
+                      background: isWinner ? 'rgba(34,197,94,0.08)' : isDraw ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                      border: `2px solid ${isWinner ? 'rgba(34,197,94,0.25)' : isDraw ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                    }}>
+                      <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                        {isWinner ? 'You Win!' : isDraw ? 'Draw!' : 'You Lose'}
+                      </p>
+                      <p style={{ fontSize: '14px', fontWeight: 700, margin: '8px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                        {isWinner ? `+$${(selectedBet * 2 * 0.95).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {chartData.length > 1 && (
                 <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>

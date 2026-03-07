@@ -173,14 +173,60 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
     }
   }, [walletAddress]);
 
+  const [isJoining, setIsJoining] = useState(false);
+
+  const joinDuel = useCallback(async (duelId: number, stakeDollars: number): Promise<{ txHash: string } | null> => {
+    if (!wallet || !ESCROW_CONTRACT_ADDRESS) {
+      setEscrowError('Wallet not connected or escrow not configured');
+      return null;
+    }
+
+    setIsJoining(true);
+    setEscrowError(null);
+
+    try {
+      const [stakeLow, stakeHigh] = usdcToU256(stakeDollars);
+
+      const tx = await wallet.execute(
+        [
+          {
+            contractAddress: TOKENS.USDC,
+            entrypoint: 'approve',
+            calldata: [ESCROW_CONTRACT_ADDRESS, stakeLow, stakeHigh],
+          },
+          {
+            contractAddress: ESCROW_CONTRACT_ADDRESS,
+            entrypoint: 'join_duel',
+            calldata: [duelId.toString()],
+          },
+        ],
+        { feeMode: 'sponsored' },
+      );
+
+      return { txHash: tx.hash };
+    } catch (err: any) {
+      const raw = err.message || 'Failed to join duel';
+      console.error('[joinDuel]', raw);
+
+      const isInsufficientFunds =
+        raw.includes('u256_sub Overflow') || raw.includes('insufficient') || raw.includes('balance');
+      setEscrowError(isInsufficientFunds ? 'INSUFFICIENT_USDC' : raw.length > 120 ? raw.slice(0, 120) + '\u2026' : raw);
+      return null;
+    } finally {
+      setIsJoining(false);
+    }
+  }, [wallet]);
+
   const clearEscrowError = useCallback(() => setEscrowError(null), []);
 
   return {
     createDuel,
+    joinDuel,
     getDuel,
     getDuelCount,
     getUsdcBalance,
     isCreating,
+    isJoining,
     lastTx,
     escrowError,
     clearEscrowError,
