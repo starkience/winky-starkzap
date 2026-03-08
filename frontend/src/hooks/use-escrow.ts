@@ -70,6 +70,15 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
     try {
       const [stakeLow, stakeHigh] = usdcToU256(stakeDollars);
 
+      // Read current count BEFORE creating — this will be the new duel's ID
+      const provider = getProvider();
+      const countBefore = await provider.callContract({
+        contractAddress: ESCROW_CONTRACT_ADDRESS,
+        entrypoint: 'get_duel_count',
+        calldata: [],
+      });
+      const duelId = Number(BigInt(countBefore[0] || '0'));
+
       const tx = await wallet.execute(
         [
           {
@@ -88,17 +97,6 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
 
       const txHash = tx.hash;
       const voyagerUrl = VOYAGER_TX_URL ? `${VOYAGER_TX_URL}/${txHash}` : '';
-
-      // Wait for tx confirmation before reading the new duel count
-      const provider = getProvider();
-      await provider.waitForTransaction(txHash);
-
-      const count = await provider.callContract({
-        contractAddress: ESCROW_CONTRACT_ADDRESS,
-        entrypoint: 'get_duel_count',
-        calldata: [],
-      });
-      const duelId = Number(BigInt(count[0] || '1')) - 1;
       activeDuelIdRef.current = duelId;
 
       const result: DuelTxResult = { duelId, txHash, voyagerUrl };
@@ -178,7 +176,7 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
 
   const [isJoining, setIsJoining] = useState(false);
 
-  const joinDuel = useCallback(async (duelId: number, stakeDollars: number): Promise<{ txHash: string } | null> => {
+  const joinDuel = useCallback(async (duelId: number, stakeDollars: number): Promise<{ txHash: string; error?: string } | null> => {
     if (!wallet || !ESCROW_CONTRACT_ADDRESS) {
       setEscrowError('Wallet not connected or escrow not configured');
       return null;
@@ -212,16 +210,17 @@ export function useEscrow({ wallet, walletAddress }: UseEscrowOpts) {
       console.error('[joinDuel]', raw);
 
       const isInsufficientFunds =
-        raw.includes('u256_sub Overflow') || raw.includes('insufficient') || raw.includes('balance');
+        raw.includes('u256_sub Overflow') || raw.includes('insufficient') || raw.includes('balance')
+        || raw.includes('exceeds');
       const isDuelNotOpen = raw.includes('Duel not open');
       const isOwnDuel = raw.includes('Cannot join own duel');
-      setEscrowError(
+      const errorCode =
         isOwnDuel ? 'OWN_DUEL' :
         isDuelNotOpen ? 'DUEL_NOT_OPEN' :
         isInsufficientFunds ? 'INSUFFICIENT_USDC' :
-        raw.length > 120 ? raw.slice(0, 120) + '\u2026' : raw
-      );
-      return null;
+        raw.length > 120 ? raw.slice(0, 120) + '\u2026' : raw;
+      setEscrowError(errorCode);
+      return { txHash: '', error: errorCode };
     } finally {
       setIsJoining(false);
     }

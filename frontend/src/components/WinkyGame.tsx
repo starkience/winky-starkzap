@@ -549,19 +549,22 @@ export function WinkyGame() {
 
     if (ESCROW_CONTRACT_ADDRESS) {
       const result = await joinDuel(challenge.duelId, challenge.stake);
-      if (!result) {
-        if (escrowError === 'DUEL_NOT_OPEN') {
+      if (!result || result.error) {
+        const err = result?.error;
+        if (err === 'DUEL_NOT_OPEN') {
           fetch('/api/challenge', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ duelId: challenge.duelId }),
           }).then(() => fetchOpenChallenges()).catch(() => {});
           setError('This challenge is no longer available — it may have been cancelled or already accepted.');
-        } else if (escrowError === 'OWN_DUEL') {
+        } else if (err === 'OWN_DUEL') {
           setError('You can\u2019t accept your own challenge — you need a different wallet to play against yourself.');
-        } else if (escrowError === 'INSUFFICIENT_USDC') {
+        } else if (err === 'INSUFFICIENT_USDC') {
           setError('Not enough USDC to match this bet. Fund your wallet first.');
           setNeedsFunding(true);
+        } else {
+          setError(err || 'Failed to join challenge.');
         }
         clearEscrowError();
         setChallengeTarget(null);
@@ -574,7 +577,7 @@ export function WinkyGame() {
     }
 
     setGamePhase('ready');
-  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog, escrowError, clearEscrowError, fetchOpenChallenges]);
+  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog, clearEscrowError, fetchOpenChallenges]);
 
   const handleStart = useCallback(() => {
     setGamePhase('countdown');
