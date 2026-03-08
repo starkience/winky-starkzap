@@ -999,7 +999,13 @@ export function WinkyGame() {
                               <>
                                 <div className="blinker-card-overlay" />
                                 <div className="blinker-card-content">
-                                  <span className="blinker-card-stat">Blinked {c.score} times</span>
+                                  {isOwn ? (
+                                    <span className="blinker-card-stat">Blinked {c.score} times</span>
+                                  ) : (
+                                    <span className="blinker-card-stat blinker-card-stat--hidden">
+                                      <span className="blinker-card-score-blur">???</span> blinks
+                                    </span>
+                                  )}
                                   <span className="blinker-card-stake">${c.stake} USDC at stake</span>
                                   <span className="blinker-card-name">{c.username}</span>
                                   {isOwn && (
@@ -1024,7 +1030,7 @@ export function WinkyGame() {
                             <div className="blinker-card-back-overlay" />
                             <div className="blinker-card-back-content">
                               <div className="blinker-card-back-challenge-text">
-                                <span className="blinker-card-stat">Blink {c.score + 1} times</span>
+                                <span className="blinker-card-stat">Beat the score</span>
                                 <span className="blinker-card-stake">Win ${c.stake * 2} USDC</span>
                               </div>
                               <div className="blinker-card-back-footer">

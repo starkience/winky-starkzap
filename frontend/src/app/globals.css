@@ -1745,6 +1745,13 @@ a:focus-visible,
   line-height: 1.3;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
+.blinker-card-score-blur {
+  display: inline-block;
+  filter: blur(6px);
+  color: #C0B4DA;
+  user-select: none;
+  letter-spacing: 2px;
+}
 .blinker-card-stake {
   font-size: 16px;
   font-weight: 800;
