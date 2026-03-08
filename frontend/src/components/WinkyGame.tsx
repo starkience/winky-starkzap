@@ -977,20 +977,24 @@ export function WinkyGame() {
                             ) : (
                               <div className="blinker-card-bg blinker-card-bg--placeholder" />
                             )}
-                            <div className="blinker-card-overlay" />
-                            <div className="blinker-card-content">
-                              <span className="blinker-card-stat">Blinked {c.score} times</span>
-                              <span className="blinker-card-stake">${c.stake} USDC at stake</span>
-                              <span className="blinker-card-name">{c.username}</span>
-                              {isOwn && (
-                                <span style={{
-                                  fontSize: '10px', fontWeight: 700, color: '#facc15',
-                                  textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px',
-                                }}>
-                                  Waiting for challenger&hellip;
-                                </span>
-                              )}
-                            </div>
+                            {!isFlipped && (
+                              <>
+                                <div className="blinker-card-overlay" />
+                                <div className="blinker-card-content">
+                                  <span className="blinker-card-stat">Blinked {c.score} times</span>
+                                  <span className="blinker-card-stake">${c.stake} USDC at stake</span>
+                                  <span className="blinker-card-name">{c.username}</span>
+                                  {isOwn && (
+                                    <span style={{
+                                      fontSize: '10px', fontWeight: 700, color: '#facc15',
+                                      textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px',
+                                    }}>
+                                      Waiting for challenger&hellip;
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                           {/* Back face — challenge preview */}
                           <div className="blinker-card blinker-card-back" onClick={() => setFlippedCardId(null)}>

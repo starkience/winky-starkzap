@@ -1596,22 +1596,6 @@ a:focus-visible,
   transform: rotateY(180deg);
   cursor: pointer;
 }
-.blinker-card-flipper--flipped .blinker-card-front {
-  visibility: hidden;
-  transition: visibility 0s 0.25s;
-}
-.blinker-card-flipper--flipped .blinker-card-back {
-  visibility: visible;
-  transition: visibility 0s 0s;
-}
-.blinker-card-flipper:not(.blinker-card-flipper--flipped) .blinker-card-front {
-  visibility: visible;
-  transition: visibility 0s 0s;
-}
-.blinker-card-flipper:not(.blinker-card-flipper--flipped) .blinker-card-back {
-  visibility: hidden;
-  transition: visibility 0s 0.25s;
-}
 .blinker-card--own {
   opacity: 0.5;
   cursor: default;
