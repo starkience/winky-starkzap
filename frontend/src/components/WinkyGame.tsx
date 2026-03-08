@@ -603,6 +603,7 @@ export function WinkyGame() {
       getUsdcBalance().then(setUsdcBalance);
     }
 
+    window.history.pushState({ winkyGame: true }, '');
     setGamePhase('ready');
   }, [isConnected, resetDetection, createDuel, selectedBet, getUsdcBalance, clearBlinkLog]);
 
@@ -621,6 +622,7 @@ export function WinkyGame() {
     setResolving(false);
     clearBlinkLog();
     setSelectedBet(challenge.stake);
+    window.history.pushState({ winkyGame: true }, '');
     setGamePhase('ready');
   }, [isConnected, resetDetection, clearBlinkLog]);
 
@@ -690,6 +692,17 @@ export function WinkyGame() {
     setGamePhase('idle');
     fetchOpenChallenges();
   }, [resetDetection, clearBlinkLog, fetchOpenChallenges]);
+
+  // ─── Browser back button → return to idle (no challenge triggered) ───
+  useEffect(() => {
+    const onPopState = () => {
+      if (gamePhase === 'ready') {
+        handlePlayAgain();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [gamePhase, handlePlayAgain]);
 
   const handleCopyAddress = useCallback(() => {
     if (walletAddress) {
