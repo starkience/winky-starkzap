@@ -1596,10 +1596,11 @@ a:focus-visible,
   transform: rotateY(180deg);
   cursor: pointer;
 }
-.blinker-card-front *,
-.blinker-card-back * {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+.blinker-card-flipper--flipped .blinker-card-front {
+  visibility: hidden;
+}
+.blinker-card-flipper:not(.blinker-card-flipper--flipped) .blinker-card-back {
+  visibility: hidden;
 }
 .blinker-card--own {
   opacity: 0.5;
@@ -1650,12 +1651,12 @@ a:focus-visible,
   justify-content: space-between;
 }
 .blinker-card-back-enter-btn {
-  padding: 8px 24px;
+  padding: 10px 32px;
   border: none;
   border-radius: 10px;
-  background: rgba(192, 180, 218, 0.25);
-  color: #C0B4DA;
-  font-size: 14px;
+  background: rgba(191, 181, 216, 0.25);
+  color: #BFB5D8;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
   backdrop-filter: blur(8px);
@@ -1663,7 +1664,7 @@ a:focus-visible,
   letter-spacing: 0.03em;
 }
 .blinker-card-back-enter-btn:hover {
-  background: rgba(192, 180, 218, 0.4);
+  background: rgba(191, 181, 216, 0.4);
 }
 .blinker-card-back-enter-btn:active {
   transform: scale(0.96);
