@@ -741,15 +741,15 @@ export function WinkyGame() {
     }}>
       {/* Brand */}
       <div style={{
-        padding: '20px 20px 16px',
+        padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: isMobile ? '10px' : '16px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: '280px', height: 'auto' }} />
+            <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: isMobile ? '160px' : '280px', height: 'auto' }} />
           </div>
           {NETWORK === 'sepolia' && (
             <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
@@ -800,7 +800,7 @@ export function WinkyGame() {
 
 
       {/* Bet + Play */}
-      <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ padding: isMobile ? '12px 16px' : '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '14px' }}>
         {isConnected && usdcBalance !== null && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>
@@ -857,7 +857,7 @@ export function WinkyGame() {
       </div>
 
       {/* Top 10 Leaderboard */}
-      <nav style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: isMobile ? '200px' : undefined }} aria-label="Leaderboard">
+      <nav style={{ flex: isMobile ? 'none' : 1, display: isMobile ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Leaderboard">
         <div style={{
           padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
