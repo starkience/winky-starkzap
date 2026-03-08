@@ -1593,7 +1593,6 @@ a:focus-visible,
 }
 .blinker-card-back {
   transform: rotateY(180deg);
-  background: linear-gradient(145deg, #1a1a2e 0%, #0d0d1a 100%);
   cursor: default;
 }
 .blinker-card--own {
@@ -1608,91 +1607,67 @@ a:focus-visible,
   box-shadow: none;
   border-color: rgba(250, 204, 21, 0.2);
 }
-/* ─── Card back (confirmation) ─── */
-.blinker-card-back-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+/* ─── Card back (challenge preview) ─── */
+.blinker-card-back-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  padding: 14px 16px;
-  gap: 6px;
+  object-fit: cover;
+  filter: blur(10px) brightness(0.45);
+  transform: scale(1.1);
 }
-.blinker-card-back-title {
-  font-size: 13px;
-  font-weight: 900;
-  color: #fff;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+.blinker-card-back-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
-.blinker-card-back-details {
-  width: 100%;
+.blinker-card-back-content {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-.blinker-card-back-row {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
+  padding: 16px 18px;
+  z-index: 1;
 }
-.blinker-card-back-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
+.blinker-card-back-challenge-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
 }
-.blinker-card-back-value {
-  font-size: 11px;
-  font-weight: 800;
-  color: #C0B4DA;
+.blinker-card-back-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
 }
-.blinker-card-back-value--low {
-  color: #ef4444;
-}
-.blinker-card-back-btn {
-  margin-top: 4px;
-  width: 100%;
-  padding: 8px 0;
+.blinker-card-back-enter-btn {
+  padding: 8px 24px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #C0B4DA, #8B7AAF);
-  color: #0a0a0a;
-  font-size: 13px;
-  font-weight: 900;
+  background: rgba(192, 180, 218, 0.25);
+  color: #C0B4DA;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s, transform 0.1s;
   letter-spacing: 0.03em;
 }
-.blinker-card-back-btn:hover {
-  opacity: 0.9;
-  transform: scale(1.02);
+.blinker-card-back-enter-btn:hover {
+  background: rgba(192, 180, 218, 0.4);
 }
-.blinker-card-back-btn:active {
-  transform: scale(0.98);
+.blinker-card-back-enter-btn:active {
+  transform: scale(0.96);
 }
-.blinker-card-back-warning {
+.blinker-card-back-warning-inline {
   font-size: 10px;
   font-weight: 700;
   color: #facc15;
-  text-align: center;
-  margin: 4px 0 0;
+  text-align: right;
   line-height: 1.4;
-}
-.blinker-card-back-cancel {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 2px 8px;
-  transition: color 0.15s;
-}
-.blinker-card-back-cancel:hover {
-  color: rgba(255, 255, 255, 0.7);
 }
 .blinker-card-bg {
   position: absolute;

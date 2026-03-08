@@ -992,48 +992,42 @@ export function WinkyGame() {
                               )}
                             </div>
                           </div>
-                          {/* Back face — confirmation */}
+                          {/* Back face — challenge preview */}
                           <div className="blinker-card blinker-card-back">
+                            {c.profileImage ? (
+                              <img src={c.profileImage} alt="" className="blinker-card-back-bg" />
+                            ) : (
+                              <div className="blinker-card-back-bg blinker-card-bg--placeholder" />
+                            )}
+                            <div className="blinker-card-back-overlay" />
                             <div className="blinker-card-back-content">
-                              <span className="blinker-card-back-title">Challenge {c.username}</span>
-                              <div className="blinker-card-back-details">
-                                <div className="blinker-card-back-row">
-                                  <span className="blinker-card-back-label">Match bet</span>
-                                  <span className="blinker-card-back-value">${c.stake} USDC</span>
-                                </div>
-                                <div className="blinker-card-back-row">
-                                  <span className="blinker-card-back-label">Prize pool</span>
-                                  <span className="blinker-card-back-value">${c.stake * 2} USDC</span>
-                                </div>
-                                <div className="blinker-card-back-row">
-                                  <span className="blinker-card-back-label">Your balance</span>
-                                  <span className={`blinker-card-back-value${canAfford ? '' : ' blinker-card-back-value--low'}`}>
-                                    {usdcBalance !== null ? `$${usdcBalance.toFixed(2)}` : '...'}
-                                  </span>
-                                </div>
-                                <div className="blinker-card-back-row" style={{ opacity: 0.5 }}>
-                                  <span className="blinker-card-back-label">Their blinks</span>
-                                  <span className="blinker-card-back-value">{c.score}</span>
-                                </div>
+                              <div className="blinker-card-back-challenge-text">
+                                <span className="blinker-card-stat">Blink {c.score + 1} times</span>
+                                <span className="blinker-card-stake">Win ${c.stake * 2} USDC</span>
                               </div>
-                              {canAfford ? (
-                                <button
-                                  className="blinker-card-back-btn"
-                                  onClick={() => { setFlippedCardId(null); handleAcceptChallenge(c); }}
+                              <div className="blinker-card-back-bottom">
+                                <a
+                                  href={`https://x.com/${c.username}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="blinker-card-name"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  Duel!
-                                </button>
-                              ) : (
-                                <p className="blinker-card-back-warning">
-                                  Insufficient balance. Fund your wallet to match this bet.
-                                </p>
-                              )}
-                              <button
-                                className="blinker-card-back-cancel"
-                                onClick={() => setFlippedCardId(null)}
-                              >
-                                Back
-                              </button>
+                                  @{c.username}
+                                </a>
+                                {canAfford ? (
+                                  <button
+                                    className="blinker-card-back-enter-btn"
+                                    onClick={() => { setFlippedCardId(null); handleAcceptChallenge(c); }}
+                                  >
+                                    Enter
+                                  </button>
+                                ) : (
+                                  <span className="blinker-card-back-warning-inline">
+                                    Insufficient funds
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
