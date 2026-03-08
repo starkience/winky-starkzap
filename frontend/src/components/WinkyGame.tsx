@@ -1002,8 +1002,8 @@ export function WinkyGame() {
                                   {isOwn ? (
                                     <span className="blinker-card-stat">Blinked {c.score} times</span>
                                   ) : (
-                                    <span className="blinker-card-stat blinker-card-stat--hidden">
-                                      <span className="blinker-card-score-blur">???</span> blinks
+                                    <span className="blinker-card-stat">
+                                      Blinked <span className="blinker-card-score-blur">{c.score}</span> times
                                     </span>
                                   )}
                                   <span className="blinker-card-stake">${c.stake} USDC at stake</span>

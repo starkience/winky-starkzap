@@ -1747,10 +1747,9 @@ a:focus-visible,
 }
 .blinker-card-score-blur {
   display: inline-block;
-  filter: blur(6px);
+  filter: blur(4px);
   color: #C0B4DA;
   user-select: none;
-  letter-spacing: 2px;
 }
 .blinker-card-stake {
   font-size: 16px;
