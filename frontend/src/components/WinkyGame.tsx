@@ -1106,7 +1106,7 @@ export function WinkyGame() {
                           <span className="past-card-center-text">
                             {c.isDraw
                               ? `Draw \u2014 $${c.payout / 2} returned`
-                              : `${winner.username} won $${c.payout}`}
+                              : (<><a href={`https://x.com/${winner.username}`} target="_blank" rel="noopener noreferrer">{winner.username}</a>{` won $${c.payout}`}</>)}
                           </span>
                         </div>
                       </div>
