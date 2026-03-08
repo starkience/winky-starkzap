@@ -936,12 +936,12 @@ export function WinkyGame() {
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            gap: '24px',
-            padding: '36px 32px',
+            gap: isMobile ? '16px' : '24px',
+            padding: isMobile ? '20px 16px' : '36px 32px',
             overflowY: 'auto',
           }}>
             <div style={{ textAlign: 'center' }}>
-              <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
+              <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
                 Bet. Blink.<br />Winner takes it all.
               </h1>
             </div>

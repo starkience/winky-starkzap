@@ -1554,7 +1554,32 @@ a:focus-visible,
 }
 @media (max-width: 600px) {
   .blinker-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    max-width: 360px;
+  }
+}
+@media (max-width: 600px) {
+  .blinker-card-wrapper {
+    aspect-ratio: 5 / 3.5;
+  }
+  .blinker-card-back-content {
+    padding: 14px 16px;
+  }
+  .blinker-card-back-enter-btn {
+    padding: 12px 36px;
+    font-size: 15px;
+  }
+  .blinker-card-content {
+    padding: 14px 16px;
+  }
+  .blinker-card-stat {
+    font-size: 16px;
+  }
+  .blinker-card-stake {
+    font-size: 14px;
+  }
+  .blinker-card-name {
+    font-size: 12px;
   }
 }
 /* ─── Card flip wrapper ─── */
