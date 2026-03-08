@@ -2122,6 +2122,28 @@ a:focus-visible,
   margin: 0 0 8px;
   text-align: center;
 }
+.share-popup-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 24px;
+  border: 1.5px solid rgba(192, 180, 218, 0.25);
+  border-radius: 12px;
+  background: transparent;
+  color: #C0B4DA;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.share-popup-download-btn:hover {
+  background: rgba(192, 180, 218, 0.08);
+  border-color: rgba(192, 180, 218, 0.4);
+}
+.share-popup-download-btn:active {
+  transform: scale(0.97);
+}
 .share-popup-btn {
   display: inline-flex;
   align-items: center;

@@ -111,7 +111,7 @@ export function WinkyGame() {
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
 
   // Share popup state (after creating a challenge)
-  const [sharePopup, setSharePopup] = useState<{ score: number; stake: number } | null>(null);
+  const [sharePopup, setSharePopup] = useState<{ score: number; stake: number; username: string; profileImage?: string } | null>(null);
 
   // Withdraw modal state
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -685,7 +685,12 @@ export function WinkyGame() {
 
   const handlePlayAgain = useCallback(() => {
     if (gameMode === 'create' && finalScore > 0) {
-      setSharePopup({ score: finalScore, stake: selectedBet });
+      setSharePopup({
+        score: finalScore,
+        stake: selectedBet,
+        username: twitterUsername || formatAddress(walletAddress || ''),
+        profileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
+      });
     }
     resetDetection();
     blinkCountRef.current = 0;
@@ -697,7 +702,7 @@ export function WinkyGame() {
     clearBlinkLog();
     setGamePhase('idle');
     fetchOpenChallenges();
-  }, [resetDetection, clearBlinkLog, fetchOpenChallenges, gameMode, finalScore, selectedBet]);
+  }, [resetDetection, clearBlinkLog, fetchOpenChallenges, gameMode, finalScore, selectedBet, twitterUsername, walletAddress, user]);
 
   // ─── Browser back button → return to idle (no challenge triggered) ───
   useEffect(() => {
@@ -1611,6 +1616,97 @@ export function WinkyGame() {
             <button className="share-popup-close" onClick={() => setSharePopup(null)}>&times;</button>
             <h3 className="share-popup-title">Challenge created!</h3>
             <p className="share-popup-subtitle">Challenge your friends on Twitter</p>
+            <button
+              className="share-popup-download-btn"
+              onClick={() => {
+                const W = 600, H = 360, R = 24;
+                const canvas = document.createElement('canvas');
+                canvas.width = W; canvas.height = H;
+                const ctx = canvas.getContext('2d')!;
+
+                const draw = (img?: HTMLImageElement) => {
+                  // Background
+                  ctx.fillStyle = '#0A0A0A';
+                  ctx.beginPath();
+                  ctx.roundRect(0, 0, W, H, R);
+                  ctx.fill();
+                  ctx.clip();
+
+                  if (img) {
+                    ctx.globalAlpha = 0.35;
+                    const scale = Math.max(W / img.width, H / img.height);
+                    const sw = img.width * scale, sh = img.height * scale;
+                    ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
+                    ctx.globalAlpha = 1;
+                  }
+
+                  // Gradient overlay
+                  const grad = ctx.createLinearGradient(0, H * 0.3, 0, H);
+                  grad.addColorStop(0, 'rgba(10,10,10,0.3)');
+                  grad.addColorStop(1, 'rgba(10,10,10,0.92)');
+                  ctx.fillStyle = grad;
+                  ctx.fillRect(0, 0, W, H);
+
+                  // "WINK." branding top-left
+                  ctx.fillStyle = '#C0B4DA';
+                  ctx.font = '900 16px Manrope, sans-serif';
+                  ctx.textAlign = 'left';
+                  ctx.fillText('WINK.', 28, 38);
+
+                  // Stake badge top-right
+                  ctx.fillStyle = 'rgba(192,180,218,0.15)';
+                  const badge = `$${sharePopup!.stake * 2} USDC Prize`;
+                  ctx.font = '800 14px Manrope, sans-serif';
+                  const bw = ctx.measureText(badge).width + 24;
+                  ctx.beginPath();
+                  ctx.roundRect(W - bw - 24, 20, bw, 30, 8);
+                  ctx.fill();
+                  ctx.fillStyle = '#C0B4DA';
+                  ctx.textAlign = 'center';
+                  ctx.fillText(badge, W - bw / 2 - 24, 40);
+
+                  // Score
+                  ctx.textAlign = 'left';
+                  ctx.fillStyle = '#fff';
+                  ctx.font = '900 64px Manrope, sans-serif';
+                  ctx.fillText(String(sharePopup!.score), 28, H - 90);
+
+                  // "blinks in 30s"
+                  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                  ctx.font = '700 20px Manrope, sans-serif';
+                  ctx.fillText('blinks in 30s', 28, H - 60);
+
+                  // Username
+                  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                  ctx.font = '600 15px Manrope, sans-serif';
+                  ctx.fillText(`@${sharePopup!.username}`, 28, H - 28);
+
+                  // "Can you beat me?" right side
+                  ctx.textAlign = 'right';
+                  ctx.fillStyle = '#C0B4DA';
+                  ctx.font = '800 18px Manrope, sans-serif';
+                  ctx.fillText('Can you beat me?', W - 28, H - 32);
+
+                  // Download
+                  const link = document.createElement('a');
+                  link.download = `winky-challenge-${sharePopup!.score}.png`;
+                  link.href = canvas.toDataURL('image/png');
+                  link.click();
+                };
+
+                if (sharePopup!.profileImage) {
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  img.onload = () => draw(img);
+                  img.onerror = () => draw();
+                  img.src = sharePopup!.profileImage;
+                } else {
+                  draw();
+                }
+              }}
+            >
+              &#x2B07; Download Card
+            </button>
             <a
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
                 `I just blinked ${sharePopup.score} times. Can you out-blink me in 30 seconds?\n\nWinner wins it all: $${sharePopup.stake * 2} USDC\n\nBlink here: https://winky-starkzap.vercel.app`
