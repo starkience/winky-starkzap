@@ -1070,48 +1070,50 @@ export function WinkyGame() {
                 <div className="blinker-grid">
                   {completedChallenges.slice(0, 9).map(c => {
                     const p1Won = !c.isDraw && c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase() === c.player1.address.replace(/^0x0*/i, '0x').toLowerCase();
-                    const p2Won = !c.isDraw && !p1Won;
                     const winner = p1Won ? c.player1 : c.player2;
+                    const loser = p1Won ? c.player2 : c.player1;
+                    const left = c.isDraw ? c.player1 : loser;
+                    const right = c.isDraw ? c.player2 : winner;
                     return (
                       <div key={c.duelId} className="past-card">
-                        <div className={`past-card-half${p1Won ? ' past-card-half--won' : p2Won ? ' past-card-half--lost' : ''}`}>
-                          {c.player1.profileImage ? (
-                            <img src={c.player1.profileImage} alt="" className="past-card-img" />
+                        <div className={`past-card-half${c.isDraw ? '' : ' past-card-half--lost'}`}>
+                          {left.profileImage ? (
+                            <img src={left.profileImage} alt="" className="past-card-img" />
                           ) : (
                             <div className="past-card-img past-card-img--placeholder" />
                           )}
                           <div className="past-card-half-overlay" />
-                          <span className={`past-card-score${p1Won ? ' past-card-score--won' : p2Won ? ' past-card-score--lost' : ''}`}>
-                            {c.player1.score}
+                          <span className={`past-card-score${c.isDraw ? '' : ' past-card-score--lost'}`}>
+                            {left.score}
                           </span>
                           <a
-                            href={`https://x.com/${c.player1.username}`}
+                            href={`https://x.com/${left.username}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="past-card-player-name"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            @{c.player1.username}
+                            @{left.username}
                           </a>
                         </div>
-                        <div className={`past-card-half${p2Won ? ' past-card-half--won' : p1Won ? ' past-card-half--lost' : ''}`}>
-                          {c.player2.profileImage ? (
-                            <img src={c.player2.profileImage} alt="" className="past-card-img" />
+                        <div className={`past-card-half${c.isDraw ? '' : ' past-card-half--won'}`}>
+                          {right.profileImage ? (
+                            <img src={right.profileImage} alt="" className="past-card-img" />
                           ) : (
                             <div className="past-card-img past-card-img--placeholder" />
                           )}
                           <div className="past-card-half-overlay" />
-                          <span className={`past-card-score${p2Won ? ' past-card-score--won' : p1Won ? ' past-card-score--lost' : ''}`}>
-                            {c.player2.score}
+                          <span className={`past-card-score${c.isDraw ? '' : ' past-card-score--won'}`}>
+                            {right.score}
                           </span>
                           <a
-                            href={`https://x.com/${c.player2.username}`}
+                            href={`https://x.com/${right.username}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="past-card-player-name"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            @{c.player2.username}
+                            @{right.username}
                           </a>
                         </div>
                         <div className="past-card-center-label">
