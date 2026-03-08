@@ -1598,9 +1598,19 @@ a:focus-visible,
 }
 .blinker-card-flipper--flipped .blinker-card-front {
   visibility: hidden;
+  transition: visibility 0s 0.25s;
+}
+.blinker-card-flipper--flipped .blinker-card-back {
+  visibility: visible;
+  transition: visibility 0s 0s;
+}
+.blinker-card-flipper:not(.blinker-card-flipper--flipped) .blinker-card-front {
+  visibility: visible;
+  transition: visibility 0s 0s;
 }
 .blinker-card-flipper:not(.blinker-card-flipper--flipped) .blinker-card-back {
   visibility: hidden;
+  transition: visibility 0s 0.25s;
 }
 .blinker-card--own {
   opacity: 0.5;
@@ -1668,6 +1678,24 @@ a:focus-visible,
 }
 .blinker-card-back-enter-btn:active {
   transform: scale(0.96);
+}
+.blinker-card-back-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.blinker-card-back-fund-notice {
+  padding: 6px 10px;
+  background: rgba(250, 204, 21, 0.08);
+  border: 1px solid rgba(250, 204, 21, 0.2);
+  border-radius: 8px;
+}
+.blinker-card-back-fund-notice span {
+  font-size: 10px;
+  font-weight: 600;
+  color: #facc15;
+  line-height: 1.4;
 }
 .blinker-card-bg {
   position: absolute;

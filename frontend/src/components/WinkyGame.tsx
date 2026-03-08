@@ -1005,22 +1005,29 @@ export function WinkyGame() {
                                 <span className="blinker-card-stat">Blink {c.score + 1} times</span>
                                 <span className="blinker-card-stake">Win ${c.stake * 2} USDC</span>
                               </div>
-                              <div className="blinker-card-back-bottom">
-                                <a
-                                  href={`https://x.com/${c.username}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="blinker-card-name"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  @{c.username}
-                                </a>
-                                <button
-                                  className="blinker-card-back-enter-btn"
-                                  onClick={(e) => { e.stopPropagation(); setFlippedCardId(null); handleAcceptChallenge(c); }}
-                                >
-                                  Enter
-                                </button>
+                              <div className="blinker-card-back-footer">
+                                {!canAfford && (
+                                  <div className="blinker-card-back-fund-notice" onClick={(e) => e.stopPropagation()}>
+                                    <span>Add funds to your wallet to match this bet</span>
+                                  </div>
+                                )}
+                                <div className="blinker-card-back-bottom">
+                                  <a
+                                    href={`https://x.com/${c.username}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="blinker-card-name"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    @{c.username}
+                                  </a>
+                                  <button
+                                    className="blinker-card-back-enter-btn"
+                                    onClick={(e) => { e.stopPropagation(); setFlippedCardId(null); handleAcceptChallenge(c); }}
+                                  >
+                                    Enter
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
