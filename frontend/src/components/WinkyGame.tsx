@@ -970,7 +970,7 @@ export function WinkyGame() {
                           {/* Front face */}
                           <div
                             className="blinker-card blinker-card-front"
-                            onClick={() => { if (!isOwn && isConnected) setFlippedCardId(c.id); }}
+                            onClick={() => { if (!isOwn && isConnected) setFlippedCardId(isFlipped ? null : c.id); }}
                           >
                             {c.profileImage ? (
                               <img src={c.profileImage} alt="" className="blinker-card-bg" />
@@ -993,7 +993,7 @@ export function WinkyGame() {
                             </div>
                           </div>
                           {/* Back face — challenge preview */}
-                          <div className="blinker-card blinker-card-back">
+                          <div className="blinker-card blinker-card-back" onClick={() => setFlippedCardId(null)}>
                             {c.profileImage ? (
                               <img src={c.profileImage} alt="" className="blinker-card-back-bg" />
                             ) : (
