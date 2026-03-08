@@ -15,6 +15,7 @@ pub trait IBlinkEscrow<TContractState> {
     fn join_duel(ref self: TContractState, duel_id: u64);
     fn resolve_duel(ref self: TContractState, duel_id: u64, winner: ContractAddress, is_draw: bool);
     fn cancel_duel(ref self: TContractState, duel_id: u64);
+    fn withdraw_surplus(ref self: TContractState);
     fn get_duel(self: @TContractState, duel_id: u64) -> (ContractAddress, ContractAddress, u256, u8);
     fn get_duel_count(self: @TContractState) -> u64;
     fn get_fee_bps(self: @TContractState) -> u16;
@@ -234,6 +235,31 @@ pub mod BlinkEscrow {
             assert!(success, "Refund failed");
 
             self.emit(DuelCancelled { duel_id });
+        }
+
+        fn withdraw_surplus(ref self: ContractState) {
+            self.ownable.assert_only_owner();
+
+            let token = IERC20Dispatcher { contract_address: self.token_address.read() };
+            let this = get_contract_address();
+            let balance = token.balance_of(this);
+
+            let mut locked: u256 = 0;
+            let limit = self.next_duel_id.read();
+            for i in 0..limit {
+                let status = self.duel_status.entry(i).read();
+                if status == STATUS_CREATED {
+                    locked += self.duel_stake.entry(i).read();
+                } else if status == STATUS_JOINED {
+                    locked += self.duel_stake.entry(i).read() * 2;
+                };
+            };
+
+            assert!(balance > locked, "No surplus to withdraw");
+            let surplus = balance - locked;
+            let owner = self.ownable.owner();
+            let success = token.transfer(owner, surplus);
+            assert!(success, "Surplus transfer failed");
         }
 
         fn get_duel(

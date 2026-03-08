@@ -35,7 +35,7 @@ const EDGE_CONFIG_ID = (process.env.EDGE_CONFIG_ID || '').trim();
 const VERCEL_API_TOKEN = (process.env.VERCEL_API_TOKEN || '').trim();
 const VERCEL_TEAM_ID = (process.env.VERCEL_TEAM_ID || '').trim();
 
-const CHALLENGE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CHALLENGE_TTL_MS = Infinity; // Challenges stay live forever (funds are locked on-chain until accepted or cancelled)
 const COMPLETED_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function challengeKey(duelId: number): string {
