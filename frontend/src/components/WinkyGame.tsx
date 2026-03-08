@@ -728,7 +728,7 @@ export function WinkyGame() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="Winky" width={56} height={56} style={{ objectFit: 'contain' }} />
+            <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: '280px', height: 'auto' }} />
           </div>
           {NETWORK === 'sepolia' && (
             <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
@@ -780,16 +780,13 @@ export function WinkyGame() {
 
       {/* Bet + Play */}
       <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ fontSize: '10px', fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>
-            Stake (USDC)
-          </p>
-          {isConnected && usdcBalance !== null && (
+        {isConnected && usdcBalance !== null && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>
               Balance: ${usdcBalance.toFixed(2)}
             </span>
-          )}
-        </div>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '6px' }}>
           {BET_AMOUNTS.map(amount => (
             <button
@@ -932,7 +929,7 @@ export function WinkyGame() {
                 type="text"
                 value={blinkerSearch}
                 onChange={(e) => setBlinkerSearch(e.target.value)}
-                placeholder="Search @username\u2026"
+                placeholder="Search @username"
                 className="challenge-input"
                 spellCheck={false}
                 autoComplete="off"
@@ -1072,7 +1069,18 @@ export function WinkyGame() {
                             <div className="past-card-img past-card-img--placeholder" />
                           )}
                           <div className="past-card-half-overlay" />
-                          <span className="past-card-player-name">{c.player1.username}</span>
+                          <span className={`past-card-score${p1Won ? ' past-card-score--won' : p2Won ? ' past-card-score--lost' : ''}`}>
+                            {c.player1.score}
+                          </span>
+                          <a
+                            href={`https://x.com/${c.player1.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="past-card-player-name"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            @{c.player1.username}
+                          </a>
                         </div>
                         <div className={`past-card-half${p2Won ? ' past-card-half--won' : p1Won ? ' past-card-half--lost' : ''}`}>
                           {c.player2.profileImage ? (
@@ -1081,16 +1089,24 @@ export function WinkyGame() {
                             <div className="past-card-img past-card-img--placeholder" />
                           )}
                           <div className="past-card-half-overlay" />
-                          <span className="past-card-player-name">{c.player2.username}</span>
+                          <span className={`past-card-score${p2Won ? ' past-card-score--won' : p1Won ? ' past-card-score--lost' : ''}`}>
+                            {c.player2.score}
+                          </span>
+                          <a
+                            href={`https://x.com/${c.player2.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="past-card-player-name"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            @{c.player2.username}
+                          </a>
                         </div>
                         <div className="past-card-center-label">
                           <span className="past-card-center-text">
                             {c.isDraw
                               ? `Draw \u2014 $${c.payout / 2} returned`
                               : `${winner.username} won $${c.payout}`}
-                          </span>
-                          <span className="past-card-center-sub">
-                            {c.player1.score} vs {c.player2.score} blinks
                           </span>
                         </div>
                       </div>
@@ -1099,6 +1115,12 @@ export function WinkyGame() {
                 </div>
               </>
             )}
+
+            {/* Powered by Starknet */}
+            <div className="powered-by-starknet">
+              <span>Powered by</span>
+              <img src="/starknet-logo.png" alt="Starknet" />
+            </div>
 
           </div>
         )}

@@ -1760,6 +1760,13 @@ a:focus-visible,
   border-radius: 14px;
   overflow: hidden;
   border: 1.5px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, brightness 0.2s;
+}
+.past-card:hover {
+  border-color: rgba(192, 180, 218, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.1);
 }
 .past-card-half {
   position: relative;
@@ -1787,6 +1794,24 @@ a:focus-visible,
 .past-card-half--lost .past-card-half-overlay {
   background: rgba(239, 68, 68, 0.35);
 }
+.past-card-score {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  z-index: 2;
+  line-height: 1;
+}
+.past-card-score--won {
+  color: #22c55e;
+}
+.past-card-score--lost {
+  color: #ef4444;
+}
 .past-card-player-name {
   position: absolute;
   bottom: 8px;
@@ -1798,6 +1823,11 @@ a:focus-visible,
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
   z-index: 2;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.past-card-player-name:hover {
+  color: #1d9bf0;
 }
 .past-card-center-label {
   position: absolute;
@@ -1811,19 +1841,42 @@ a:focus-visible,
   gap: 3px;
   text-align: center;
   pointer-events: none;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 14px;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
 }
 .past-card-center-text {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 900;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
 }
-.past-card-center-sub {
-  font-size: 10px;
+
+/* ─── Powered by Starknet footer ─── */
+.powered-by-starknet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0 12px;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.powered-by-starknet:hover {
+  opacity: 0.7;
+}
+.powered-by-starknet span {
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  color: #888;
+  letter-spacing: 0.3px;
+}
+.powered-by-starknet img {
+  height: 16px;
+  width: auto;
+  object-fit: contain;
 }
 
 /* ─── Animated dots ─── */
