@@ -1203,6 +1203,16 @@ export function WinkyGame() {
                     START
                   </button>
                   <span style={{ fontSize: '13px', color: '#555', fontWeight: 600 }}>Press to begin your 30s duel</span>
+                  <button
+                    onClick={handlePlayAgain}
+                    style={{
+                      marginTop: '8px', background: 'none', border: 'none',
+                      color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontWeight: 700,
+                      cursor: 'pointer', padding: '4px 12px',
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </>
               )}
               {gamePhase === 'ready' && !cameraReady && (
