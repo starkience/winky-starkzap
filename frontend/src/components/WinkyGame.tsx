@@ -1015,18 +1015,12 @@ export function WinkyGame() {
                                 >
                                   @{c.username}
                                 </a>
-                                {canAfford ? (
-                                  <button
-                                    className="blinker-card-back-enter-btn"
-                                    onClick={() => { setFlippedCardId(null); handleAcceptChallenge(c); }}
-                                  >
-                                    Enter
-                                  </button>
-                                ) : (
-                                  <span className="blinker-card-back-warning-inline">
-                                    Insufficient funds
-                                  </span>
-                                )}
+                                <button
+                                  className="blinker-card-back-enter-btn"
+                                  onClick={(e) => { e.stopPropagation(); setFlippedCardId(null); handleAcceptChallenge(c); }}
+                                >
+                                  Enter
+                                </button>
                               </div>
                             </div>
                           </div>

@@ -1572,6 +1572,7 @@ a:focus-visible,
   height: 100%;
   transition: transform 0.5s ease;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 .blinker-card-flipper--flipped {
   transform: rotateY(180deg);
@@ -1593,7 +1594,12 @@ a:focus-visible,
 }
 .blinker-card-back {
   transform: rotateY(180deg);
-  cursor: default;
+  cursor: pointer;
+}
+.blinker-card-front *,
+.blinker-card-back * {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .blinker-card--own {
   opacity: 0.5;
@@ -1661,13 +1667,6 @@ a:focus-visible,
 }
 .blinker-card-back-enter-btn:active {
   transform: scale(0.96);
-}
-.blinker-card-back-warning-inline {
-  font-size: 10px;
-  font-weight: 700;
-  color: #facc15;
-  text-align: right;
-  line-height: 1.4;
 }
 .blinker-card-bg {
   position: absolute;
