@@ -108,6 +108,7 @@ export function WinkyGame() {
   const [openChallenges, setOpenChallenges] = useState<OpenChallenge[]>([]);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
   const [blinkerSearch, setBlinkerSearch] = useState('');
+  const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
 
   // Withdraw modal state
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -194,6 +195,65 @@ export function WinkyGame() {
     const interval = setInterval(fetchOpenChallenges, 10_000);
     return () => clearInterval(interval);
   }, [fetchOpenChallenges]);
+
+  // ─── Recover abandoned challenges (user refreshed mid-game → score 0 → they lose) ───
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('winky_active_challenge');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved?.duelId || !saved?.opponentAddress) return;
+
+      const abandonScore = saved.lastScore ?? 0;
+      const opponentScore = saved.opponentScore ?? 0;
+      const isDraw = abandonScore === opponentScore;
+      const challengerWins = abandonScore > opponentScore;
+      const winnerAddress = isDraw
+        ? '0x0'
+        : challengerWins
+          ? saved.challengerAddress
+          : saved.opponentAddress;
+
+      console.log(`[recover] Abandoned challenge duel #${saved.duelId}, score ${abandonScore} vs ${opponentScore}`);
+
+      fetch('/api/challenge/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duelId: saved.duelId,
+          winnerAddress,
+          isDraw,
+        }),
+      })
+        .then((res) => res.json())
+        .then(() =>
+          fetch('/api/challenge', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              duelId: saved.duelId,
+              winnerAddress,
+              isDraw,
+              challenger: {
+                address: saved.challengerAddress,
+                username: saved.challengerUsername,
+                profileImage: saved.challengerProfileImage,
+                score: abandonScore,
+              },
+            }),
+          }),
+        )
+        .then(() => {
+          console.log('[recover] Abandoned duel resolved.');
+          fetchOpenChallenges();
+        })
+        .catch((err) => console.error('[recover] Failed to resolve abandoned duel:', err))
+        .finally(() => {
+          localStorage.removeItem('winky_active_challenge');
+        });
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Withdraw USDC handler ───
   const handleWithdraw = useCallback(async () => {
@@ -416,11 +476,20 @@ export function WinkyGame() {
 
     chartIntervalRef.current = setInterval(() => {
       const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
+      const currentBlinks = blinkCountRef.current;
       setChartData(prev => {
         const last = prev[prev.length - 1];
         if (last && Math.abs(last.time - elapsed) < 0.3) return prev;
-        return [...prev, { time: Math.round(elapsed * 10) / 10, blinks: blinkCountRef.current }];
+        return [...prev, { time: Math.round(elapsed * 10) / 10, blinks: currentBlinks }];
       });
+      try {
+        const raw = localStorage.getItem('winky_active_challenge');
+        if (raw) {
+          const saved = JSON.parse(raw);
+          saved.lastScore = currentBlinks;
+          localStorage.setItem('winky_active_challenge', JSON.stringify(saved));
+        }
+      } catch {}
     }, 500);
 
     return () => {
@@ -456,29 +525,32 @@ export function WinkyGame() {
     }
 
     if (gameMode === 'challenge' && challengeTarget) {
-      // Flow 2: Compare scores and resolve on-chain
+      // Flow 2: joinDuel already happened in handleStart — just resolve
       setResolving(true);
-      const opponentScore = challengeTarget.score;
-      const isDraw = finalScore === opponentScore;
-      const challengerWins = finalScore > opponentScore;
-      const winnerAddress = isDraw
-        ? '0x0'
-        : challengerWins
-          ? walletAddress
-          : challengeTarget.playerAddress;
 
-      fetch('/api/challenge/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          duelId: challengeTarget.duelId,
-          winnerAddress,
-          isDraw,
-        }),
-      })
-        .then((res) => res.json())
-        .then(() => {
-          fetch('/api/challenge', {
+      (async () => {
+        try {
+          const opponentScore = challengeTarget.score;
+          const isDraw = finalScore === opponentScore;
+          const challengerWins = finalScore > opponentScore;
+          const winnerAddress = isDraw
+            ? '0x0'
+            : challengerWins
+              ? walletAddress
+              : challengeTarget.playerAddress;
+
+          const resolveRes = await fetch('/api/challenge/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              duelId: challengeTarget.duelId,
+              winnerAddress,
+              isDraw,
+            }),
+          });
+          await resolveRes.json();
+
+          await fetch('/api/challenge', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -492,15 +564,17 @@ export function WinkyGame() {
                 score: finalScore,
               },
             }),
-          })
-            .then(() => fetchOpenChallenges())
-            .catch(() => {});
-        })
-        .catch((err) => {
+          });
+          fetchOpenChallenges();
+
+          try { localStorage.removeItem('winky_active_challenge'); } catch {}
+        } catch (err: any) {
           console.error('[resolve] Failed:', err);
           setError('Failed to resolve duel on-chain');
-        })
-        .finally(() => setResolving(false));
+        } finally {
+          setResolving(false);
+        }
+      })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase, finalScore]);
@@ -532,7 +606,7 @@ export function WinkyGame() {
     setGamePhase('ready');
   }, [isConnected, resetDetection, createDuel, selectedBet, getUsdcBalance, clearBlinkLog]);
 
-  /** Flow 2: Accept an existing challenge — match bet, then blink to beat the score */
+  /** Flow 2: Accept an existing challenge — blink first, then match bet + resolve after game */
   const handleAcceptChallenge = useCallback(async (challenge: OpenChallenge) => {
     if (!isConnected) return;
     resetDetection();
@@ -546,20 +620,25 @@ export function WinkyGame() {
     setChallengeTarget(challenge);
     setResolving(false);
     clearBlinkLog();
+    setSelectedBet(challenge.stake);
+    setGamePhase('ready');
+  }, [isConnected, resetDetection, clearBlinkLog]);
 
-    if (ESCROW_CONTRACT_ADDRESS) {
-      const result = await joinDuel(challenge.duelId, challenge.stake);
+  const handleStart = useCallback(async () => {
+    if (gameMode === 'challenge' && challengeTarget && ESCROW_CONTRACT_ADDRESS) {
+      setError(null);
+      const result = await joinDuel(challengeTarget.duelId, challengeTarget.stake);
       if (!result || result.error) {
         const err = result?.error;
         if (err === 'DUEL_NOT_OPEN') {
           fetch('/api/challenge', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ duelId: challenge.duelId }),
+            body: JSON.stringify({ duelId: challengeTarget.duelId }),
           }).then(() => fetchOpenChallenges()).catch(() => {});
           setError('This challenge is no longer available — it may have been cancelled or already accepted.');
         } else if (err === 'OWN_DUEL') {
-          setError('You can\u2019t accept your own challenge — you need a different wallet to play against yourself.');
+          setError('You can\u2019t accept your own challenge.');
         } else if (err === 'INSUFFICIENT_USDC') {
           setError('Not enough USDC to match this bet. Fund your wallet first.');
           setNeedsFunding(true);
@@ -569,17 +648,27 @@ export function WinkyGame() {
         clearEscrowError();
         setChallengeTarget(null);
         setGameMode('create');
+        setGamePhase('idle');
         return;
       }
       setDuelTxHash(result.txHash);
-      setSelectedBet(challenge.stake);
       getUsdcBalance().then(setUsdcBalance);
+
+      try {
+        localStorage.setItem('winky_active_challenge', JSON.stringify({
+          duelId: challengeTarget.duelId,
+          challengerAddress: walletAddress,
+          challengerUsername: twitterUsername || formatAddress(walletAddress || ''),
+          challengerProfileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl) || undefined,
+          opponentAddress: challengeTarget.playerAddress,
+          opponentUsername: challengeTarget.username,
+          opponentScore: challengeTarget.score,
+          stake: challengeTarget.stake,
+          startedAt: Date.now(),
+        }));
+      } catch {}
     }
 
-    setGamePhase('ready');
-  }, [isConnected, resetDetection, joinDuel, getUsdcBalance, clearBlinkLog, clearEscrowError, fetchOpenChallenges]);
-
-  const handleStart = useCallback(() => {
     setGamePhase('countdown');
     setCountdownNumber(3);
     resetDetection();
@@ -587,7 +676,7 @@ export function WinkyGame() {
     setTimeout(() => setCountdownNumber(2), 1000);
     setTimeout(() => setCountdownNumber(1), 2000);
     setTimeout(() => setGamePhase('playing'), 3000);
-  }, [resetDetection]);
+  }, [resetDetection, gameMode, challengeTarget, joinDuel, clearEscrowError, fetchOpenChallenges, getUsdcBalance, walletAddress, twitterUsername, user]);
 
   const handlePlayAgain = useCallback(() => {
     resetDetection();
@@ -872,31 +961,84 @@ export function WinkyGame() {
                 <div className="blinker-grid">
                   {searchFiltered.map(c => {
                     const isOwn = normalizedUser && c.playerAddress.replace(/^0x0*/i, '0x').toLowerCase() === normalizedUser;
+                    const isFlipped = flippedCardId === c.id;
+                    const canAfford = usdcBalance !== null && usdcBalance >= c.stake;
                     return (
                       <div
                         key={c.id}
-                        className={`blinker-card${isOwn ? ' blinker-card--own' : ''}`}
+                        className={`blinker-card-wrapper${isOwn ? ' blinker-card--own' : ''}`}
                         style={isOwn ? { pointerEvents: 'none' as const } : undefined}
-                        onClick={() => { if (!isOwn && isConnected) handleAcceptChallenge(c); }}
                       >
-                        {c.profileImage ? (
-                          <img src={c.profileImage} alt="" className="blinker-card-bg" />
-                        ) : (
-                          <div className="blinker-card-bg blinker-card-bg--placeholder" />
-                        )}
-                        <div className="blinker-card-overlay" />
-                        <div className="blinker-card-content">
-                          <span className="blinker-card-stat">Blinked {c.score} times</span>
-                          <span className="blinker-card-stake">${c.stake} USDC at stake</span>
-                          <span className="blinker-card-name">{c.username}</span>
-                          {isOwn && (
-                            <span style={{
-                              fontSize: '10px', fontWeight: 700, color: '#facc15',
-                              textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px',
-                            }}>
-                              Waiting for challenger&hellip;
-                            </span>
-                          )}
+                        <div className={`blinker-card-flipper${isFlipped ? ' blinker-card-flipper--flipped' : ''}`}>
+                          {/* Front face */}
+                          <div
+                            className="blinker-card blinker-card-front"
+                            onClick={() => { if (!isOwn && isConnected) setFlippedCardId(c.id); }}
+                          >
+                            {c.profileImage ? (
+                              <img src={c.profileImage} alt="" className="blinker-card-bg" />
+                            ) : (
+                              <div className="blinker-card-bg blinker-card-bg--placeholder" />
+                            )}
+                            <div className="blinker-card-overlay" />
+                            <div className="blinker-card-content">
+                              <span className="blinker-card-stat">Blinked {c.score} times</span>
+                              <span className="blinker-card-stake">${c.stake} USDC at stake</span>
+                              <span className="blinker-card-name">{c.username}</span>
+                              {isOwn && (
+                                <span style={{
+                                  fontSize: '10px', fontWeight: 700, color: '#facc15',
+                                  textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px',
+                                }}>
+                                  Waiting for challenger&hellip;
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Back face — confirmation */}
+                          <div className="blinker-card blinker-card-back">
+                            <div className="blinker-card-back-content">
+                              <span className="blinker-card-back-title">Challenge {c.username}</span>
+                              <div className="blinker-card-back-details">
+                                <div className="blinker-card-back-row">
+                                  <span className="blinker-card-back-label">Match bet</span>
+                                  <span className="blinker-card-back-value">${c.stake} USDC</span>
+                                </div>
+                                <div className="blinker-card-back-row">
+                                  <span className="blinker-card-back-label">Prize pool</span>
+                                  <span className="blinker-card-back-value">${c.stake * 2} USDC</span>
+                                </div>
+                                <div className="blinker-card-back-row">
+                                  <span className="blinker-card-back-label">Your balance</span>
+                                  <span className={`blinker-card-back-value${canAfford ? '' : ' blinker-card-back-value--low'}`}>
+                                    {usdcBalance !== null ? `$${usdcBalance.toFixed(2)}` : '...'}
+                                  </span>
+                                </div>
+                                <div className="blinker-card-back-row" style={{ opacity: 0.5 }}>
+                                  <span className="blinker-card-back-label">Their blinks</span>
+                                  <span className="blinker-card-back-value">{c.score}</span>
+                                </div>
+                              </div>
+                              {canAfford ? (
+                                <button
+                                  className="blinker-card-back-btn"
+                                  onClick={() => { setFlippedCardId(null); handleAcceptChallenge(c); }}
+                                >
+                                  Duel!
+                                </button>
+                              ) : (
+                                <p className="blinker-card-back-warning">
+                                  Insufficient balance. Fund your wallet to match this bet.
+                                </p>
+                              )}
+                              <button
+                                className="blinker-card-back-cancel"
+                                onClick={() => setFlippedCardId(null)}
+                              >
+                                Back
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );

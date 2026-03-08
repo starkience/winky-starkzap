@@ -1557,29 +1557,142 @@ a:focus-visible,
     grid-template-columns: repeat(2, 1fr);
   }
 }
-.blinker-card {
+/* ─── Card flip wrapper ─── */
+.blinker-card-wrapper {
   position: relative;
   aspect-ratio: 5 / 3;
+  perspective: 800px;
+}
+.blinker-card-wrapper:hover .blinker-card-flipper:not(.blinker-card-flipper--flipped) {
+  transform: translateY(-3px);
+}
+.blinker-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+}
+.blinker-card-flipper--flipped {
+  transform: rotateY(180deg);
+}
+.blinker-card {
+  position: absolute;
+  inset: 0;
   border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.06);
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.blinker-card:hover {
+.blinker-card-front:hover {
   border-color: rgba(192, 180, 218, 0.3);
-  transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.blinker-card-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #1a1a2e 0%, #0d0d1a 100%);
+  cursor: default;
 }
 .blinker-card--own {
   opacity: 0.5;
   cursor: default;
   border-color: rgba(250, 204, 21, 0.2);
 }
-.blinker-card--own:hover {
+.blinker-card--own:hover .blinker-card-flipper {
   transform: none;
+}
+.blinker-card--own .blinker-card-front:hover {
   box-shadow: none;
   border-color: rgba(250, 204, 21, 0.2);
+}
+/* ─── Card back (confirmation) ─── */
+.blinker-card-back-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 14px 16px;
+  gap: 6px;
+}
+.blinker-card-back-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.blinker-card-back-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.blinker-card-back-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.blinker-card-back-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+}
+.blinker-card-back-value {
+  font-size: 11px;
+  font-weight: 800;
+  color: #C0B4DA;
+}
+.blinker-card-back-value--low {
+  color: #ef4444;
+}
+.blinker-card-back-btn {
+  margin-top: 4px;
+  width: 100%;
+  padding: 8px 0;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #C0B4DA, #8B7AAF);
+  color: #0a0a0a;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.03em;
+}
+.blinker-card-back-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+.blinker-card-back-btn:active {
+  transform: scale(0.98);
+}
+.blinker-card-back-warning {
+  font-size: 10px;
+  font-weight: 700;
+  color: #facc15;
+  text-align: center;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.blinker-card-back-cancel {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 8px;
+  transition: color 0.15s;
+}
+.blinker-card-back-cancel:hover {
+  color: rgba(255, 255, 255, 0.7);
 }
 .blinker-card-bg {
   position: absolute;
