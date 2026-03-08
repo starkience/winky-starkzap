@@ -804,7 +804,7 @@ export function WinkyGame() {
           disabled={loginBusy || showGameArea || isBusy}
           className={`sidebar-play-btn${isConnected && !showGameArea && !isBusy ? ' sidebar-play-btn--active' : ''}`}
         >
-          {isBusy ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Play ($${selectedBet})` : 'Connect to Play'}
+          {isBusy ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Create Challenge ($${selectedBet})` : 'Connect to Play'}
         </button>
         {needsFunding && (
           <div style={{
