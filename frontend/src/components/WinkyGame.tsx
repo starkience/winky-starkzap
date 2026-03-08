@@ -110,6 +110,9 @@ export function WinkyGame() {
   const [blinkerSearch, setBlinkerSearch] = useState('');
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
 
+  // Share popup state (after creating a challenge)
+  const [sharePopup, setSharePopup] = useState<{ score: number; stake: number } | null>(null);
+
   // Withdraw modal state
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawRecipient, setWithdrawRecipient] = useState('');
@@ -681,6 +684,9 @@ export function WinkyGame() {
   }, [resetDetection, gameMode, challengeTarget, joinDuel, clearEscrowError, fetchOpenChallenges, getUsdcBalance, walletAddress, twitterUsername, user]);
 
   const handlePlayAgain = useCallback(() => {
+    if (gameMode === 'create' && finalScore > 0) {
+      setSharePopup({ score: finalScore, stake: selectedBet });
+    }
     resetDetection();
     blinkCountRef.current = 0;
     setChartData([]);
@@ -691,7 +697,7 @@ export function WinkyGame() {
     clearBlinkLog();
     setGamePhase('idle');
     fetchOpenChallenges();
-  }, [resetDetection, clearBlinkLog, fetchOpenChallenges]);
+  }, [resetDetection, clearBlinkLog, fetchOpenChallenges, gameMode, finalScore, selectedBet]);
 
   // ─── Browser back button → return to idle (no challenge triggered) ───
   useEffect(() => {
@@ -726,10 +732,12 @@ export function WinkyGame() {
       display: 'flex',
       flexDirection: 'column',
       borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
+      borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
       background: 'rgba(17,17,17,0.6)',
       backdropFilter: 'blur(20px)',
-      height: '100%',
-      overflow: 'hidden',
+      height: isMobile ? 'auto' : '100%',
+      overflow: isMobile ? 'visible' : 'hidden',
+      flexShrink: 0,
     }}>
       {/* Brand */}
       <div style={{
@@ -849,7 +857,7 @@ export function WinkyGame() {
       </div>
 
       {/* Top 10 Leaderboard */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Leaderboard">
+      <nav style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: isMobile ? '200px' : undefined }} aria-label="Leaderboard">
         <div style={{
           padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -903,12 +911,15 @@ export function WinkyGame() {
       display: 'flex',
       width: '100%',
       height: '100vh',
-      overflow: 'hidden',
+      overflow: isMobile ? 'auto' : 'hidden',
       background: '#0A0A0A',
       fontFamily: "'Manrope', sans-serif",
       flexDirection: isMobile ? 'column' : 'row',
       touchAction: 'manipulation',
     }}>
+
+      {/* ═══ SIDEBAR (on mobile renders first/top) ═══ */}
+      {isMobile && sidebarContent}
 
       {/* ═══ MAIN AREA ═══ */}
       <main style={{
@@ -916,8 +927,8 @@ export function WinkyGame() {
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        minHeight: 0,
-        overflow: 'hidden',
+        minHeight: isMobile ? 'auto' : 0,
+        overflow: isMobile ? 'visible' : 'hidden',
         position: 'relative',
       }}>
 
@@ -1502,8 +1513,8 @@ export function WinkyGame() {
         )}
       </main>
 
-      {/* ═══ SIDEBAR ═══ */}
-      {sidebarContent}
+      {/* ═══ SIDEBAR (on desktop renders after main) ═══ */}
+      {!isMobile && sidebarContent}
 
       {/* Withdraw modal */}
       {showWithdraw && (
@@ -1589,6 +1600,28 @@ export function WinkyGame() {
             <p style={{ fontSize: '10px', fontWeight: 500, color: '#444', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
               Transfer your USDC to your Ready wallet or any Starknet wallet
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Share on X popup */}
+      {sharePopup && (
+        <div className="share-popup-overlay" onClick={() => setSharePopup(null)}>
+          <div className="share-popup" onClick={(e) => e.stopPropagation()}>
+            <button className="share-popup-close" onClick={() => setSharePopup(null)}>&times;</button>
+            <h3 className="share-popup-title">Challenge created!</h3>
+            <p className="share-popup-subtitle">Challenge your friends on Twitter</p>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                `I just blinked ${sharePopup.score} times. Can you out-blink me in 30 seconds?\n\nWinner wins it all: $${sharePopup.stake * 2} USDC\n\nBlink here: https://winky-starkzap.vercel.app`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="share-popup-btn"
+              onClick={() => setSharePopup(null)}
+            >
+              Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            </a>
           </div>
         </div>
       )}
