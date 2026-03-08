@@ -1348,10 +1348,10 @@ export function WinkyGame() {
 
         {/* ─── RESULT PHASE ─── */}
         {gamePhase === 'result' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-            {/* Left column: tx log (bottom-up, fading) */}
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
+            {/* Left column: tx log (hidden on mobile) */}
             <div style={{
-              width: '192px', minWidth: '192px', display: 'flex', flexDirection: 'column',
+              width: '192px', minWidth: '192px', display: isMobile ? 'none' : 'flex', flexDirection: 'column',
               padding: '12px 0 12px 12px', flexShrink: 0, overflow: 'hidden',
             }}>
               <div style={{
@@ -1410,8 +1410,8 @@ export function WinkyGame() {
             {/* Right area: result content */}
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: '24px',
-              padding: '32px', overflow: 'auto',
+              alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'center', gap: '24px',
+              padding: isMobile ? '20px 16px' : '32px', overflowY: 'auto',
             }}>
               {/* ── Flow 1: Challenge created ── */}
               {gameMode === 'create' && (
