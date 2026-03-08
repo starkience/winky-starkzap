@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const WinkyGame = dynamic(
@@ -27,20 +28,24 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
   );
 }
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const challengeParam = searchParams.get('challenge');
+  const initialChallengeId = challengeParam ? Number(challengeParam) : undefined;
+
   const [launched, setLaunched] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (sessionStorage.getItem('winky_launched') === '1') {
+    if (sessionStorage.getItem('winky_launched') === '1' || initialChallengeId !== undefined) {
       setLaunched(true);
     }
-  }, []);
+  }, [initialChallengeId]);
 
   if (!mounted) return null;
 
-  if (launched) return <WinkyGame />;
+  if (launched) return <WinkyGame initialChallengeId={initialChallengeId} />;
 
   return (
     <LandingPage
@@ -49,5 +54,13 @@ export default function Home() {
         setLaunched(true);
       }}
     />
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }

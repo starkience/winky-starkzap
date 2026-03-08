@@ -51,9 +51,155 @@ function fullSizeTwitterImage(url: string | null | undefined): string | undefine
   return url.replace(/_(?:normal|200x200|400x400|bigger|mini)(?=\.)/, '');
 }
 
+/** Load an image, returning null on failure. */
+function loadImg(src: string, crossOrigin = true): Promise<HTMLImageElement | null> {
+  return new Promise(resolve => {
+    const img = new Image();
+    if (crossOrigin) img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** Draw a challenge card PNG and trigger download. */
+async function downloadChallengeCard(opts: { score: number; stake: number; username: string; profileImage?: string }) {
+  const W = 600, H = 360, R = 24;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+
+  const [profileImg, logoImg] = await Promise.all([
+    opts.profileImage ? loadImg(opts.profileImage) : Promise.resolve(null),
+    loadImg('/logo.png', false),
+  ]);
+
+  ctx.fillStyle = '#0A0A0A';
+  ctx.beginPath(); ctx.roundRect(0, 0, W, H, R); ctx.fill(); ctx.clip();
+
+  if (profileImg) {
+    ctx.globalAlpha = 0.35;
+    const scale = Math.max(W / profileImg.width, H / profileImg.height);
+    const sw = profileImg.width * scale, sh = profileImg.height * scale;
+    ctx.drawImage(profileImg, (W - sw) / 2, (H - sh) / 2, sw, sh);
+    ctx.globalAlpha = 1;
+  }
+
+  const grad = ctx.createLinearGradient(0, H * 0.3, 0, H);
+  grad.addColorStop(0, 'rgba(10,10,10,0.3)');
+  grad.addColorStop(1, 'rgba(10,10,10,0.92)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  if (logoImg) {
+    const lh = 32;
+    const lw = (logoImg.width / logoImg.height) * lh;
+    ctx.drawImage(logoImg, 20, 12, lw, lh);
+  }
+
+  ctx.fillStyle = 'rgba(192,180,218,0.15)';
+  const badge = `$${opts.stake * 2} USDC Prize`;
+  ctx.font = '800 14px Manrope, sans-serif';
+  const bw = ctx.measureText(badge).width + 24;
+  ctx.beginPath(); ctx.roundRect(W - bw - 24, 20, bw, 30, 8); ctx.fill();
+  ctx.fillStyle = '#C0B4DA'; ctx.textAlign = 'center'; ctx.fillText(badge, W - bw / 2 - 24, 40);
+
+  ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '900 64px Manrope, sans-serif';
+  ctx.fillText(String(opts.score), 28, H - 90);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 20px Manrope, sans-serif';
+  ctx.fillText('blinks in 30s', 28, H - 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 15px Manrope, sans-serif';
+  ctx.fillText(`@${opts.username}`, 28, H - 28);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#C0B4DA'; ctx.font = '800 18px Manrope, sans-serif';
+  ctx.fillText('Can you beat me?', W - 28, H - 32);
+
+  const link = document.createElement('a');
+  link.download = `winky-challenge-${opts.score}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+/** Draw a win card PNG (split red/green like past challenge cards) and trigger download. */
+async function downloadWinCard(opts: {
+  winnerUsername: string; winnerScore: number; winnerImage?: string;
+  loserUsername: string; loserScore: number; loserImage?: string;
+  payout: number;
+}) {
+  const W = 600, H = 360, R = 24;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+
+  const [loserImg, winnerImg, logoImg] = await Promise.all([
+    opts.loserImage ? loadImg(opts.loserImage) : Promise.resolve(null),
+    opts.winnerImage ? loadImg(opts.winnerImage) : Promise.resolve(null),
+    loadImg('/logo.png', false),
+  ]);
+
+  ctx.fillStyle = '#0A0A0A';
+  ctx.beginPath(); ctx.roundRect(0, 0, W, H, R); ctx.fill(); ctx.clip();
+
+  const half = W / 2;
+
+  // Left half (loser - red)
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, half, H); ctx.clip();
+  if (loserImg) {
+    const scale = Math.max(half / loserImg.width, H / loserImg.height);
+    ctx.drawImage(loserImg, (half - loserImg.width * scale) / 2, (H - loserImg.height * scale) / 2, loserImg.width * scale, loserImg.height * scale);
+  }
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; ctx.fillRect(0, 0, half, H);
+  ctx.restore();
+
+  // Right half (winner - green)
+  ctx.save(); ctx.beginPath(); ctx.rect(half, 0, half, H); ctx.clip();
+  if (winnerImg) {
+    const scale = Math.max(half / winnerImg.width, H / winnerImg.height);
+    ctx.drawImage(winnerImg, half + (half - winnerImg.width * scale) / 2, (H - winnerImg.height * scale) / 2, winnerImg.width * scale, winnerImg.height * scale);
+  }
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.4)'; ctx.fillRect(half, 0, half, H);
+  ctx.restore();
+
+  // Logo top-left
+  if (logoImg) {
+    const lh = 28;
+    const lw = (logoImg.width / logoImg.height) * lh;
+    ctx.drawImage(logoImg, 16, 10, lw, lh);
+  }
+
+  // Center label background
+  const labelText = `${opts.winnerUsername} won $${opts.payout}`;
+  ctx.font = '900 16px Manrope, sans-serif';
+  const lbw = ctx.measureText(labelText).width + 28;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.beginPath(); ctx.roundRect((W - lbw) / 2, 12, lbw, 28, 8); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(labelText, W / 2, 32);
+
+  // Loser score + name (left)
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ef4444'; ctx.font = '900 48px Manrope, sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
+  ctx.fillText(String(opts.loserScore), half / 2, H - 50);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 12px Manrope, sans-serif';
+  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 24);
+  ctx.shadowBlur = 0;
+
+  // Winner score + name (right)
+  ctx.fillStyle = '#22c55e'; ctx.font = '900 48px Manrope, sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
+  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 50);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 12px Manrope, sans-serif';
+  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 24);
+  ctx.shadowBlur = 0;
+
+  const link = document.createElement('a');
+  link.download = `winky-win-${opts.winnerScore}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
 // ─── Component ───
 
-export function WinkyGame() {
+export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number }) {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
 
   // Wallet state (Starkzap SDK)
@@ -109,6 +255,9 @@ export function WinkyGame() {
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
   const [blinkerSearch, setBlinkerSearch] = useState('');
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [challengePopup, setChallengePopup] = useState<OpenChallenge | null>(null);
+  const [challengePopupDismissed, setChallengePopupDismissed] = useState(false);
 
   // Withdraw modal state
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -195,6 +344,14 @@ export function WinkyGame() {
     const interval = setInterval(fetchOpenChallenges, 10_000);
     return () => clearInterval(interval);
   }, [fetchOpenChallenges]);
+
+  useEffect(() => {
+    if (initialChallengeId === undefined || challengePopupDismissed || openChallenges.length === 0) return;
+    const match = openChallenges.find(c => c.duelId === initialChallengeId);
+    if (match && !challengePopup) {
+      setChallengePopup(match);
+    }
+  }, [initialChallengeId, openChallenges, challengePopupDismissed, challengePopup]);
 
   // ─── Recover abandoned challenges (user refreshed mid-game → score 0 → they lose) ───
   useEffect(() => {
@@ -941,7 +1098,7 @@ export function WinkyGame() {
             </div>
 
             {/* Header row: title + search */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', maxWidth: '960px', width: '100%', margin: '0 auto' }}>
               <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
               <input
                 type="text"
@@ -998,6 +1155,24 @@ export function WinkyGame() {
                             {!isFlipped && (
                               <>
                                 <div className="blinker-card-overlay" />
+                                <button
+                                  className="blinker-card-share-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const url = `${window.location.origin}/?challenge=${c.duelId}`;
+                                    navigator.clipboard.writeText(url).then(() => {
+                                      setCopiedLinkId(c.id);
+                                      setTimeout(() => setCopiedLinkId(prev => prev === c.id ? null : prev), 1500);
+                                    });
+                                  }}
+                                  aria-label="Copy challenge link"
+                                >
+                                  {copiedLinkId === c.id ? (
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                  ) : (
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                                  )}
+                                </button>
                                 <div className="blinker-card-content">
                                   {isOwn ? (
                                     <span className="blinker-card-stat">Blinked {c.score} times</span>
@@ -1077,7 +1252,7 @@ export function WinkyGame() {
             {/* Past Challenges */}
             {completedChallenges.length > 0 && (
               <>
-                <p className="idle-section-title" style={{ margin: 0 }}>Past Challenges</p>
+                <p className="idle-section-title" style={{ margin: 0, maxWidth: '960px', width: '100%', alignSelf: 'center' }}>Past Challenges</p>
                 <div className="blinker-grid">
                   {completedChallenges.slice(0, 9).map(c => {
                     const p1Won = !c.isDraw && c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase() === c.player1.address.replace(/^0x0*/i, '0x').toLowerCase();
@@ -1447,57 +1622,12 @@ export function WinkyGame() {
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <button
                       className="share-popup-download-btn"
-                      onClick={() => {
-                        const score = finalScore;
-                        const stake = selectedBet;
-                        const uname = twitterUsername || formatAddress(walletAddress || '');
-                        const profImg = fullSizeTwitterImage(user?.twitter?.profilePictureUrl);
-                        const W = 600, H = 360, R = 24;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = W; canvas.height = H;
-                        const ctx = canvas.getContext('2d')!;
-                        const draw = (img?: HTMLImageElement) => {
-                          ctx.fillStyle = '#0A0A0A';
-                          ctx.beginPath(); ctx.roundRect(0, 0, W, H, R); ctx.fill(); ctx.clip();
-                          if (img) {
-                            ctx.globalAlpha = 0.35;
-                            const scale = Math.max(W / img.width, H / img.height);
-                            const sw = img.width * scale, sh = img.height * scale;
-                            ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
-                            ctx.globalAlpha = 1;
-                          }
-                          const grad = ctx.createLinearGradient(0, H * 0.3, 0, H);
-                          grad.addColorStop(0, 'rgba(10,10,10,0.3)'); grad.addColorStop(1, 'rgba(10,10,10,0.92)');
-                          ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-                          ctx.fillStyle = '#C0B4DA'; ctx.font = '900 16px Manrope, sans-serif'; ctx.textAlign = 'left';
-                          ctx.fillText('WINK.', 28, 38);
-                          ctx.fillStyle = 'rgba(192,180,218,0.15)';
-                          const badge = `$${stake * 2} USDC Prize`;
-                          ctx.font = '800 14px Manrope, sans-serif';
-                          const bw = ctx.measureText(badge).width + 24;
-                          ctx.beginPath(); ctx.roundRect(W - bw - 24, 20, bw, 30, 8); ctx.fill();
-                          ctx.fillStyle = '#C0B4DA'; ctx.textAlign = 'center'; ctx.fillText(badge, W - bw / 2 - 24, 40);
-                          ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '900 64px Manrope, sans-serif';
-                          ctx.fillText(String(score), 28, H - 90);
-                          ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 20px Manrope, sans-serif';
-                          ctx.fillText('blinks in 30s', 28, H - 60);
-                          ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 15px Manrope, sans-serif';
-                          ctx.fillText(`@${uname}`, 28, H - 28);
-                          ctx.textAlign = 'right'; ctx.fillStyle = '#C0B4DA'; ctx.font = '800 18px Manrope, sans-serif';
-                          ctx.fillText('Can you beat me?', W - 28, H - 32);
-                          const link = document.createElement('a');
-                          link.download = `winky-challenge-${score}.png`;
-                          link.href = canvas.toDataURL('image/png');
-                          link.click();
-                        };
-                        if (profImg) {
-                          const img = new Image();
-                          img.crossOrigin = 'anonymous';
-                          img.onload = () => draw(img);
-                          img.onerror = () => draw();
-                          img.src = profImg;
-                        } else { draw(); }
-                      }}
+                      onClick={() => downloadChallengeCard({
+                        score: finalScore,
+                        stake: selectedBet,
+                        username: twitterUsername || formatAddress(walletAddress || ''),
+                        profileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
+                      })}
                     >
                       &#x2B07; Download Card
                     </button>
@@ -1555,6 +1685,34 @@ export function WinkyGame() {
                       <p style={{ fontSize: '14px', fontWeight: 700, margin: '8px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
                         {isWinner ? `+$${(selectedBet * 2).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
                       </p>
+                    </div>
+                  )}
+                  {!resolving && isWinner && (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      <button
+                        className="share-popup-download-btn"
+                        onClick={() => downloadWinCard({
+                          winnerUsername: twitterUsername || formatAddress(walletAddress || ''),
+                          winnerScore: finalScore,
+                          winnerImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
+                          loserUsername: challengeTarget.username,
+                          loserScore: challengeTarget.score,
+                          loserImage: challengeTarget.profileImage,
+                          payout: selectedBet * 2,
+                        })}
+                      >
+                        &#x2B07; Download Card
+                      </button>
+                      <a
+                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                          `I just beat @${challengeTarget.username} with ${finalScore} blinks and won $${selectedBet * 2} USDC\n\nPvP blink today: https://winky-starkzap.vercel.app`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="share-popup-btn"
+                      >
+                        Tweet your win <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                      </a>
                     </div>
                   )}
                 </>
@@ -1669,6 +1827,52 @@ export function WinkyGame() {
             <p style={{ fontSize: '10px', fontWeight: 500, color: '#444', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
               Transfer your USDC to your Ready wallet or any Starknet wallet
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge deep-link popup */}
+      {challengePopup && (
+        <div className="challenge-popup-overlay" onClick={() => { setChallengePopup(null); setChallengePopupDismissed(true); }}>
+          <div className="challenge-popup" onClick={(e) => e.stopPropagation()}>
+            <button className="challenge-popup-close" onClick={() => { setChallengePopup(null); setChallengePopupDismissed(true); }}>&times;</button>
+            <div className="challenge-popup-card">
+              {challengePopup.profileImage ? (
+                <img src={challengePopup.profileImage} alt="" className="challenge-popup-card-bg" />
+              ) : (
+                <div className="challenge-popup-card-bg challenge-popup-card-bg--placeholder" />
+              )}
+              <div className="challenge-popup-card-overlay" />
+              <div className="challenge-popup-card-content">
+                <span className="blinker-card-stat">
+                  Blinked <span className="blinker-card-score-blur">{challengePopup.score}</span> times
+                </span>
+                <span className="blinker-card-stake">${challengePopup.stake} USDC at stake</span>
+                <a
+                  href={`https://x.com/${challengePopup.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="blinker-card-name"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  @{challengePopup.username}
+                </a>
+              </div>
+            </div>
+            <button
+              className="challenge-popup-enter-btn"
+              onClick={() => {
+                setChallengePopup(null);
+                setChallengePopupDismissed(true);
+                if (isConnected) {
+                  handleAcceptChallenge(challengePopup);
+                } else {
+                  handleLogin();
+                }
+              }}
+            >
+              {isConnected ? 'Enter Challenge' : 'Connect & Enter'}
+            </button>
           </div>
         </div>
       )}
