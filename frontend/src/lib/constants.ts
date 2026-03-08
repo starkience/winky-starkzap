@@ -64,7 +64,7 @@ export const ESCROW_CONTRACT_ADDRESS = (
 ).trim();
 
 export const ESCROW_OWNER = '0x3d9115d5e585ecadd25b64e7c4dd80a00130077255a73b9ab89e93bbc9da550';
-export const ESCROW_FEE_BPS = 500; // 5%
+export const ESCROW_FEE_BPS = 0; // no fee — 100% to winner
 
 // Game configuration
 export const GAME_CONFIG = {

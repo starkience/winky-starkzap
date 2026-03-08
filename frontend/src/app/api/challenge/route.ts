@@ -209,7 +209,7 @@ export async function PATCH(request: NextRequest) {
     ];
 
     if (openChallenge && challenger) {
-      const payout = openChallenge.stake * 2 * 0.95;
+      const payout = openChallenge.stake * 2;
       const record: CompletedChallenge = {
         duelId: Number(duelId),
         player1: {

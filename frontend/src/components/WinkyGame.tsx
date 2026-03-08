@@ -1285,7 +1285,7 @@ export function WinkyGame() {
                         {isWinner ? 'You Win!' : isDraw ? 'Draw!' : 'You Lose'}
                       </p>
                       <p style={{ fontSize: '14px', fontWeight: 700, margin: '8px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                        {isWinner ? `+$${(selectedBet * 2 * 0.95).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
+                        {isWinner ? `+$${(selectedBet * 2).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
                       </p>
                     </div>
                   )}
