@@ -1697,96 +1697,116 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
               {/* ── Flow 2: Challenge result (vs opponent) ── */}
               {gameMode === 'challenge' && challengeTarget && (
                 <>
-                  <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>
+                  <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#A6A4A7', margin: 0, alignSelf: 'flex-start' }}>
                     Time&apos;s Up!
                   </h2>
-                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+
+                  {/* Score cards + result card row */}
+                  <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '640px' }}>
+                    {/* Your Blinks */}
                     <div style={{
-                      padding: '24px 36px', background: '#141414', borderRadius: '14px',
-                      border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
+                      flex: '1 1 140px', padding: '24px 28px', background: '#141414', borderRadius: '14px',
+                      border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '130px',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
                     }}>
                       <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
                       <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
                     </div>
+                    {/* Opponent */}
                     <div style={{
-                      padding: '24px 36px', background: '#141414', borderRadius: '14px',
-                      border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                      flex: '1 1 140px', padding: '24px 28px', background: '#141414', borderRadius: '14px',
+                      border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '130px',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
                     }}>
                       <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>{challengeTarget.username}</p>
                       <p style={{ fontSize: '48px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{challengeTarget.score}</p>
                     </div>
+                    {/* Result card */}
+                    {resolving ? (
+                      <div style={{
+                        flex: '1 1 160px', padding: '24px 28px', background: '#141414', borderRadius: '14px',
+                        border: '2px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: '160px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      }}>
+                        <div className="spinner" />
+                        <p style={{ fontSize: '12px', color: '#555', fontWeight: 600, margin: 0 }}>Resolving&#x2026;</p>
+                      </div>
+                    ) : (
+                      <div style={{
+                        flex: '1 1 160px', padding: '20px 24px', borderRadius: '14px', textAlign: 'center', minWidth: '160px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        background: isWinner ? 'rgba(34,197,94,0.08)' : isDraw ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                        border: `2px solid ${isWinner ? 'rgba(34,197,94,0.25)' : isDraw ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      }}>
+                        <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                          {isWinner ? 'You Win!' : isDraw ? 'Draw!' : 'You Lose'}
+                        </p>
+                        <p style={{ fontSize: '14px', fontWeight: 700, margin: '6px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
+                          {isWinner ? `+$${(selectedBet * 2).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
+                        </p>
+                        {duelTxHash && VOYAGER_TX_URL && (
+                          <a
+                            href={`${VOYAGER_TX_URL}/${duelTxHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-block', marginTop: '10px', padding: '4px 10px', fontSize: '10px', fontWeight: 700,
+                              color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444',
+                              background: isWinner ? 'rgba(34,197,94,0.1)' : isDraw ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                              borderRadius: '6px', textDecoration: 'none',
+                              border: `1px solid ${isWinner ? 'rgba(34,197,94,0.2)' : isDraw ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                            }}
+                          >
+                            View duel on Voyager &#x2197;
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {resolving && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div className="spinner" />
-                      <p style={{ fontSize: '13px', color: '#555', fontWeight: 600, margin: 0 }}>Resolving on-chain&#x2026;</p>
-                    </div>
-                  )}
-                  {!resolving && (
-                    <div style={{
-                      padding: '20px 32px', borderRadius: '14px', textAlign: 'center',
-                      background: isWinner ? 'rgba(34,197,94,0.08)' : isDraw ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
-                      border: `2px solid ${isWinner ? 'rgba(34,197,94,0.25)' : isDraw ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                    }}>
-                      <p style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                        {isWinner ? 'You Win!' : isDraw ? 'Draw!' : 'You Lose'}
-                      </p>
-                      <p style={{ fontSize: '14px', fontWeight: 700, margin: '8px 0 0', color: isWinner ? '#22c55e' : isDraw ? '#f59e0b' : '#ef4444' }}>
-                        {isWinner ? `+$${(selectedBet * 2).toFixed(2)} USDC` : isDraw ? 'Bet returned' : `\u2212$${selectedBet} USDC`}
-                      </p>
-                    </div>
-                  )}
-                  {!resolving && isWinner && (
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                      <button
-                        className="share-popup-download-btn"
-                        onClick={() => downloadWinCard({
-                          winnerUsername: twitterUsername || formatAddress(walletAddress || ''),
-                          winnerScore: finalScore,
-                          winnerImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
-                          loserUsername: challengeTarget.username,
-                          loserScore: challengeTarget.score,
-                          loserImage: challengeTarget.profileImage,
-                          payout: selectedBet * 2,
-                        })}
-                      >
-                        &#x2B07; Download Card
-                      </button>
-                      <a
-                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                          `I just beat @${challengeTarget.username} with ${finalScore} blinks and won $${selectedBet * 2} USDC\n\nPvP blink today: https://winky-starkzap.vercel.app`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="share-popup-btn"
-                      >
-                        Tweet your win <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                      </a>
-                    </div>
-                  )}
-                </>
-              )}
-              {/* Shared chart + actions for challenge flow */}
-              {gameMode === 'challenge' && (
-                <>
+
+                  {/* Chart */}
                   {chartData.length > 1 && (
-                    <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
+                    <div style={{ width: '100%', maxWidth: '640px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
                       <BlinkChart data={chartData} height={140} />
                     </div>
                   )}
-                  {duelTxHash && VOYAGER_TX_URL && (
-                    <a
-                      href={`${VOYAGER_TX_URL}/${duelTxHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '12px', fontWeight: 600, color: '#C0B4DA', textDecoration: 'none' }}
-                    >
-                      View duel on Voyager &#x2197;
-                    </a>
+
+                  {/* Action buttons */}
+                  {!resolving && (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {isWinner && (
+                        <>
+                          <button
+                            className="share-popup-download-btn"
+                            onClick={() => downloadWinCard({
+                              winnerUsername: twitterUsername || formatAddress(walletAddress || ''),
+                              winnerScore: finalScore,
+                              winnerImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
+                              loserUsername: challengeTarget.username,
+                              loserScore: challengeTarget.score,
+                              loserImage: challengeTarget.profileImage,
+                              payout: selectedBet * 2,
+                            })}
+                          >
+                            &#x2B07; Download Card
+                          </button>
+                          <a
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                              `I just beat @${challengeTarget.username} with ${finalScore} blinks and won $${selectedBet * 2} USDC\n\nPvP blink today: https://winky-starkzap.vercel.app`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="share-popup-btn"
+                          >
+                            Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                          </a>
+                        </>
+                      )}
+                      <button onClick={handlePlayAgain} className="result-play-again-btn" style={{ margin: 0 }}>
+                        Back to Home
+                      </button>
+                    </div>
                   )}
-                  <button onClick={handlePlayAgain} className="result-play-again-btn">
-                    Back to Home
-                  </button>
                 </>
               )}
             </div>
