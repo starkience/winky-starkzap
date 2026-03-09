@@ -1157,13 +1157,13 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                       <div
                         key={c.id}
                         className={`blinker-card-wrapper${isOwn ? ' blinker-card--own' : ''}`}
-                        style={isOwn ? { pointerEvents: 'none' as const } : undefined}
                       >
                         <div className={`blinker-card-flipper${isFlipped ? ' blinker-card-flipper--flipped' : ''}`}>
                           {/* Front face */}
                           <div
                             className="blinker-card blinker-card-front"
                             onClick={() => { if (!isOwn && isConnected) setFlippedCardId(isFlipped ? null : c.id); }}
+                            style={isOwn ? { cursor: 'default' } : undefined}
                           >
                             {c.profileImage ? (
                               <img src={c.profileImage} alt="" className="blinker-card-bg" />
