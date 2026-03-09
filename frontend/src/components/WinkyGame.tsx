@@ -1097,19 +1097,37 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
               </h1>
             </div>
 
-            {/* Header row: title + search */}
+            {/* Header row: title + info + search */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', maxWidth: '960px', width: '100%', margin: '0 auto' }}>
               <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
-              <input
-                type="text"
-                value={blinkerSearch}
-                onChange={(e) => setBlinkerSearch(e.target.value)}
-                placeholder="Search @username"
-                className="challenge-input"
-                spellCheck={false}
-                autoComplete="off"
-                style={{ maxWidth: '220px', padding: '9px 14px', fontSize: '12px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="info-icon-wrapper">
+                  <button className="info-icon-btn" aria-label="How it works">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                  </button>
+                  <div className="info-tooltip">
+                    <p className="info-tooltip-title">How it works</p>
+                    <ul className="info-tooltip-list">
+                      <li>Create or accept a 30-second blink challenge</li>
+                      <li>Stake USDC &mdash; winner takes the full pot</li>
+                      <li>Opponent&rsquo;s score is hidden until the duel ends</li>
+                      <li>Blink detection powered by <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker" target="_blank" rel="noopener noreferrer">MediaPipe</a>, an open-source eye tracking library by Google</li>
+                      <li>No data leaves your device &mdash; webcam processing is 100% local</li>
+                      <li>Fully open source: <a href="https://github.com/starkience/winky-starkzap" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                    </ul>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={blinkerSearch}
+                  onChange={(e) => setBlinkerSearch(e.target.value)}
+                  placeholder="Search @username"
+                  className="challenge-input"
+                  spellCheck={false}
+                  autoComplete="off"
+                  style={{ maxWidth: '220px', padding: '9px 14px', fontSize: '12px' }}
+                />
+              </div>
             </div>
 
             {/* Challenge cards */}
@@ -1600,25 +1618,53 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                   <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#C0B4DA', margin: 0 }}>
                     Challenge Posted!
                   </h2>
-                  <div style={{
-                    padding: '24px 36px', background: '#141414', borderRadius: '14px',
-                    border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '160px',
-                  }}>
-                    <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
-                    <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
+
+                  {/* Score + Stake row */}
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '500px' }}>
+                    <div style={{
+                      flex: '1 1 140px', padding: '24px 28px', background: '#141414', borderRadius: '14px',
+                      border: '2px solid rgba(192,180,218,0.2)', textAlign: 'center', minWidth: '140px',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    }}>
+                      <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Blinks</p>
+                      <p style={{ fontSize: '48px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
+                    </div>
+                    <div style={{
+                      flex: '2 1 200px', padding: '20px 24px', borderRadius: '14px',
+                      background: 'rgba(192,180,218,0.06)', border: '1px solid rgba(192,180,218,0.15)',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    }}>
+                      <p style={{ fontSize: '16px', fontWeight: 800, color: '#A6A4A7', margin: 0 }}>
+                        ${selectedBet} at stake
+                      </p>
+                      <p style={{ fontSize: '12px', fontWeight: 500, color: '#555', margin: '6px 0 0', lineHeight: 1.5 }}>
+                        your challenge is now live. Anyone can accept and try to beat your {finalScore} blinks!
+                      </p>
+                      {duelTxHash && VOYAGER_TX_URL && (
+                        <a
+                          href={`${VOYAGER_TX_URL}/${duelTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-block', marginTop: '10px', padding: '5px 12px', fontSize: '10px', fontWeight: 700,
+                            color: '#C0B4DA', background: 'rgba(192,180,218,0.1)', borderRadius: '6px', textDecoration: 'none',
+                            border: '1px solid rgba(192,180,218,0.15)', alignSelf: 'flex-start',
+                          }}
+                        >
+                          View txn on Voyager &#x2197;
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  <div style={{
-                    padding: '16px 28px', borderRadius: '12px', textAlign: 'center',
-                    background: 'rgba(192,180,218,0.06)', border: '1px solid rgba(192,180,218,0.15)',
-                  }}>
-                    <p style={{ fontSize: '14px', fontWeight: 700, color: '#A6A4A7', margin: 0 }}>
-                      ${selectedBet} USDC at stake
-                    </p>
-                    <p style={{ fontSize: '12px', fontWeight: 500, color: '#555', margin: '6px 0 0' }}>
-                      Your challenge is now live. Anyone can accept and try to beat your {finalScore} blinks!
-                    </p>
-                  </div>
-                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#666', margin: '4px 0 0' }}>Challenge your friends on Twitter</p>
+
+                  {/* Chart */}
+                  {chartData.length > 1 && (
+                    <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
+                      <BlinkChart data={chartData} height={140} />
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <button
                       className="share-popup-download-btn"
@@ -1641,6 +1687,9 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                     >
                       Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                     </a>
+                    <button onClick={handlePlayAgain} className="result-play-again-btn" style={{ margin: 0 }}>
+                      Back to Home
+                    </button>
                   </div>
                 </>
               )}
@@ -1717,24 +1766,29 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                   )}
                 </>
               )}
-              {chartData.length > 1 && (
-                <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
-                  <BlinkChart data={chartData} height={140} />
-                </div>
+              {/* Shared chart + actions for challenge flow */}
+              {gameMode === 'challenge' && (
+                <>
+                  {chartData.length > 1 && (
+                    <div style={{ width: '100%', maxWidth: '500px', background: '#111', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
+                      <BlinkChart data={chartData} height={140} />
+                    </div>
+                  )}
+                  {duelTxHash && VOYAGER_TX_URL && (
+                    <a
+                      href={`${VOYAGER_TX_URL}/${duelTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '12px', fontWeight: 600, color: '#C0B4DA', textDecoration: 'none' }}
+                    >
+                      View duel on Voyager &#x2197;
+                    </a>
+                  )}
+                  <button onClick={handlePlayAgain} className="result-play-again-btn">
+                    Back to Home
+                  </button>
+                </>
               )}
-              {duelTxHash && VOYAGER_TX_URL && (
-                <a
-                  href={`${VOYAGER_TX_URL}/${duelTxHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: '12px', fontWeight: 600, color: '#C0B4DA', textDecoration: 'none' }}
-                >
-                  View duel on Voyager &#x2197;
-                </a>
-              )}
-              <button onClick={handlePlayAgain} className="result-play-again-btn">
-                Back to Home
-              </button>
             </div>
           </div>
         )}

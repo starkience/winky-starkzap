@@ -2070,6 +2070,87 @@ a:focus-visible,
   cursor: not-allowed;
 }
 
+/* ─── Info icon + tooltip ─── */
+.info-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.info-icon-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.info-icon-btn:hover {
+  color: #C0B4DA;
+  border-color: rgba(192, 180, 218, 0.3);
+  background: rgba(192, 180, 218, 0.06);
+}
+.info-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 320px;
+  background: #141414;
+  border: 1.5px solid rgba(192, 180, 218, 0.2);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.info-icon-wrapper:hover .info-tooltip,
+.info-icon-btn:focus + .info-tooltip {
+  display: block;
+}
+.info-tooltip-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #C0B4DA;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+.info-tooltip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.info-tooltip-list li {
+  font-size: 12px;
+  font-weight: 500;
+  color: #999;
+  line-height: 1.5;
+  padding-left: 14px;
+  position: relative;
+}
+.info-tooltip-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #C0B4DA;
+  font-weight: 800;
+}
+.info-tooltip-list a {
+  color: #C0B4DA;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+.info-tooltip-list a:hover {
+  color: #fff;
+}
+
 /* ─── Idle screen sections ─── */
 .idle-section-title {
   font-size: 14px;
