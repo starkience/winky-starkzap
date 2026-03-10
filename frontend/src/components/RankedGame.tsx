@@ -503,6 +503,7 @@ export function RankedGame() {
               const opacity = 0.2 + 0.8 * fadeRatio;
               const isConfirmed = tx.status === 'success';
               const blinkColor = isConfirmed ? '#22c55e' : '#fff';
+              const isNewest = idx === arr.length - 1;
 
               return (
                 <div key={tx.id} className="ranked-tx-row" style={{
@@ -510,6 +511,7 @@ export function RankedGame() {
                   display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
                   opacity,
                   cursor: tx.hash ? 'pointer' : 'default',
+                  animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined,
                 }}
                   onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}
                 >

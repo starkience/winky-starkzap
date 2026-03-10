@@ -1601,8 +1601,13 @@ a:focus-visible,
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 12px 32px;
   pointer-events: none;
+}
+
+@keyframes tx-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .app-header-bar > * {
   pointer-events: auto;
@@ -1686,7 +1691,7 @@ a:focus-visible,
 
 @media (max-width: 768px) {
   .app-header-bar {
-    padding: 10px 12px;
+    padding: 10px 16px;
     gap: 8px;
   }
   .mode-toggle-btn {
