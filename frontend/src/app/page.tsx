@@ -44,34 +44,6 @@ function ModeToggle({ mode, onChange }: { mode: AppMode; onChange: (m: AppMode) 
   );
 }
 
-function LandingPage({ onSelect }: { onSelect: (m: AppMode) => void }) {
-  return (
-    <div className="landing-page">
-      <div className="landing-content">
-        <img src="/logo.png" alt="Winky" width={120} height={120} className="landing-logo" />
-        <h1 className="landing-headline">
-          Blink. On-chain.
-        </h1>
-        <p className="landing-sub">
-          Every blink is a real transaction on Starknet. Zero gas. Climb the leaderboard or challenge anyone to a PvP blink duel.
-        </p>
-        <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
-          <button className="landing-mode-btn" onClick={() => onSelect('ranked')}>
-            Ranked
-          </button>
-          <button className="landing-mode-btn landing-mode-btn--alt" onClick={() => onSelect('pvp')}>
-            PvP
-          </button>
-        </div>
-      </div>
-      <div className="powered-by-starknet">
-        <span>Powered by</span>
-        <img src="/starknet-logo.png" alt="Starknet" />
-      </div>
-    </div>
-  );
-}
-
 function WelcomePopup({ mode, onClose }: { mode: AppMode; onClose: () => void }) {
   return (
     <div className="welcome-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -107,35 +79,24 @@ function HomeContent() {
   const challengeParam = searchParams.get('challenge');
   const initialChallengeId = challengeParam ? Number(challengeParam) : undefined;
 
-  const [launched, setLaunched] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<AppMode>('ranked');
+  const [mode, setMode] = useState<AppMode>(initialChallengeId !== undefined ? 'pvp' : 'ranked');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
 
   useEffect(() => {
     setMounted(true);
-    if (sessionStorage.getItem('winky_launched') === '1' || initialChallengeId !== undefined) {
-      setLaunched(true);
-    }
-    if (initialChallengeId !== undefined) {
-      setMode('pvp');
-    }
-  }, [initialChallengeId]);
 
-  const handleModeSelect = useCallback((m: AppMode) => {
-    setMode(m);
-    sessionStorage.setItem('winky_launched', '1');
-    setLaunched(true);
-    setPreloadedModes(new Set([m]));
+    const initialMode: AppMode = initialChallengeId !== undefined ? 'pvp' : 'ranked';
+    setPreloadedModes(new Set([initialMode]));
 
-    const welcomeKey = `winky_welcome_${m}`;
+    const welcomeKey = `winky_welcome_${initialMode}`;
     if (!sessionStorage.getItem(welcomeKey)) {
       setShowWelcome(true);
       sessionStorage.setItem(welcomeKey, '1');
     }
-  }, []);
+  }, [initialChallengeId]);
 
   const handleModeChange = useCallback((m: AppMode) => {
     setMode(m);
@@ -154,10 +115,6 @@ function HomeContent() {
 
   if (!mounted) return null;
 
-  if (!launched) {
-    return <LandingPage onSelect={handleModeSelect} />;
-  }
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       <div className="app-header-bar">
@@ -170,7 +127,6 @@ function HomeContent() {
         </button>
       </div>
 
-      {/* Keep both modes mounted once loaded to eliminate toggle delay */}
       <div style={mode === 'ranked' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
         {(mode === 'ranked' || preloadedModes.has('ranked')) && <RankedGame />}
       </div>
