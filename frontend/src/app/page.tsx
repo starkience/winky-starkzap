@@ -116,9 +116,10 @@ function HomeContent() {
   if (!mounted) return null;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+    <div style={{ position: 'relative', width: '100%', minHeight: '100dvh' }}>
       <div className="app-header-bar">
         <ModeToggle mode={mode} onChange={handleModeChange} />
+        <div style={{ flex: 1 }} />
         <button
           className="leaderboard-header-btn"
           onClick={() => setShowLeaderboard(true)}

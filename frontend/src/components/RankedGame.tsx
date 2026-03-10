@@ -319,8 +319,9 @@ export function RankedGame() {
     <div style={{
       display: 'flex',
       width: '100%',
-      height: '100vh',
-      overflow: 'hidden',
+      height: isMobile ? 'auto' : '100vh',
+      minHeight: isMobile ? '100dvh' : undefined,
+      overflow: isMobile ? 'auto' : 'hidden',
       background: '#0A0A0A',
       fontFamily: "'Manrope', sans-serif",
       flexDirection: isMobile ? 'column' : 'row',
@@ -331,25 +332,25 @@ export function RankedGame() {
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        minHeight: 0,
+        minHeight: isMobile ? '50dvh' : 0,
         position: 'relative',
       }}>
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          padding: isMobile ? `${headerH + 8}px 16px 20px` : `${headerH + 12}px 32px 36px`,
+          padding: isMobile ? `${headerH + 8}px 12px 12px` : `${headerH + 12}px 32px 36px`,
           minHeight: 0,
         }}>
           {/* Webcam — always shown */}
           <div style={{
             flex: 1,
             position: 'relative',
-            borderRadius: '16px',
+            borderRadius: isMobile ? '12px' : '16px',
             overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.08)',
             background: '#111',
-            minHeight: 0,
+            minHeight: isMobile ? '240px' : 0,
           }}>
             <video
               ref={(el) => { videoRef.current = el; }}
@@ -362,16 +363,23 @@ export function RankedGame() {
             />
 
             {!cameraReady && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)', zIndex: 5, gap: '16px' }}>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)', zIndex: 5, gap: '20px', padding: '20px' }}>
                 {!isConnected ? (
-                  <button
-                    onClick={handleLogin}
-                    disabled={loginBusy}
-                    className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
-                    style={{ padding: '14px 40px', fontSize: '15px' }}
-                  >
-                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleLogin}
+                      disabled={loginBusy}
+                      className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
+                      style={{ padding: '16px 44px', fontSize: isMobile ? '16px' : '15px', minHeight: '48px' }}
+                    >
+                      {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+                    </button>
+                    {isMobile && (
+                      <span style={{ fontSize: '13px', color: '#555', fontWeight: 500, textAlign: 'center' }}>
+                        Connect to start blinking on Starknet
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <div className="spinner" style={{ width: '32px', height: '32px' }} />
                 )}
@@ -381,11 +389,11 @@ export function RankedGame() {
             {/* Live feed overlay — bottom-left, newest at bottom, fading upward */}
             {cameraReady && (
               <div style={{
-                position: 'absolute', bottom: '12px', left: '12px',
+                position: 'absolute', bottom: isMobile ? '8px' : '12px', left: isMobile ? '8px' : '12px',
                 zIndex: 5, pointerEvents: 'none',
                 display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                gap: '2px', maxWidth: '70%',
-                maxHeight: '40%', overflow: 'hidden',
+                gap: '2px', maxWidth: isMobile ? '85%' : '70%',
+                maxHeight: isMobile ? '50%' : '40%', overflow: 'hidden',
               }}>
                 {[...liveEvents.slice(0, 8)].reverse().map((ev, idx, arr) => {
                   const fadeRatio = idx / Math.max(arr.length - 1, 1);
@@ -425,10 +433,11 @@ export function RankedGame() {
         display: 'flex',
         flexDirection: 'column',
         borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
+        borderTop: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
         background: 'rgba(17,17,17,0.6)',
         backdropFilter: 'blur(20px)',
         height: isMobile ? 'auto' : '100%',
-        overflow: 'hidden',
+        overflow: isMobile ? 'visible' : 'hidden',
         flexShrink: 0,
       }}>
 
@@ -588,16 +597,17 @@ export function RankedGame() {
 
         {/* Transaction Log */}
         <div style={{
-          flex: 1,
+          flex: isMobile ? 'none' : 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          minHeight: 0,
+          minHeight: isMobile ? '200px' : 0,
+          maxHeight: isMobile ? '300px' : undefined,
           position: 'relative',
         }}>
           {/* Strong fade-out gradient at the top */}
           <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: '80px',
+            position: 'absolute', top: 0, left: 0, right: 0, height: isMobile ? '48px' : '80px',
             background: 'linear-gradient(to bottom, rgba(17,17,17,1) 0%, rgba(17,17,17,0.8) 40%, transparent 100%)',
             zIndex: 3, pointerEvents: 'none',
           }} />
@@ -607,7 +617,8 @@ export function RankedGame() {
             style={{
               flex: 1, overflowY: 'auto',
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-              padding: isMobile ? '0 16px 20px' : '0 20px 36px',
+              padding: isMobile ? '0 12px 16px' : '0 20px 36px',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             {[...blinkTxLog].reverse().map((tx, idx, arr) => {
@@ -668,17 +679,18 @@ export function RankedGame() {
         <div
           role="alert"
           style={{
-            position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-            padding: '12px 20px', background: 'rgba(239,68,68,0.1)',
+            position: 'fixed', bottom: isMobile ? 'max(20px, env(safe-area-inset-bottom, 20px))' : '20px',
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '14px 20px', background: 'rgba(239,68,68,0.1)',
             border: '1px solid rgba(239,68,68,0.25)', borderRadius: '12px',
             color: '#ef4444', fontSize: '13px', fontWeight: 600, zIndex: 100,
-            fontFamily: "'Manrope', sans-serif", maxWidth: '90vw',
+            fontFamily: "'Manrope', sans-serif", maxWidth: isMobile ? 'calc(100vw - 32px)' : '90vw',
             display: 'flex', alignItems: 'center', gap: '12px',
             backdropFilter: 'blur(12px)',
           }}
         >
-          {error}
-          <button onClick={() => setError(null)} aria-label="Dismiss error" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', fontWeight: 800, lineHeight: 1 }}>&times;</button>
+          <span style={{ flex: 1 }}>{error}</span>
+          <button onClick={() => setError(null)} aria-label="Dismiss error" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px', fontWeight: 800, lineHeight: 1, minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>&times;</button>
         </div>
       )}
     </div>

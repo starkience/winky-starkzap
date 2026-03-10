@@ -1432,12 +1432,13 @@ a:focus-visible,
   }
 
   .leaderboard-generate-btn {
-    padding: 4px 8px;
-    font-size: 10px;
+    padding: 6px 12px;
+    font-size: 11px;
+    min-height: 36px;
   }
 
   .leaderboard-header {
-    padding: 48px 12px 12px;
+    padding: 48px 16px 12px;
     padding-top: max(48px, env(safe-area-inset-top, 48px));
   }
 
@@ -1457,6 +1458,132 @@ a:focus-visible,
 
   .leaderboard-username {
     font-size: 12px;
+  }
+
+  /* ─── Global mobile touch targets ─── */
+  .sidebar-connect-btn,
+  .sidebar-play-btn,
+  .sidebar-wallet-btn,
+  .sidebar-disconnect-btn,
+  .sidebar-withdraw-btn,
+  .challenge-send-btn,
+  .challenge-accept-btn,
+  .game-start-btn,
+  .result-play-again-btn,
+  .welcome-play-btn,
+  .challenge-popup-enter-btn,
+  .withdraw-send-btn,
+  .withdraw-max-btn,
+  .share-popup-btn,
+  .share-popup-download-btn {
+    min-height: 44px;
+  }
+
+  .sidebar-bet-btn {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 10px 6px;
+  }
+
+  .sidebar-disconnect-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-withdraw-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  /* Wallet button more tappable */
+  .sidebar-wallet-btn {
+    padding: 12px 14px;
+  }
+
+  .sidebar-connect-btn {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  .sidebar-play-btn {
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  /* Welcome modal mobile */
+  .welcome-modal {
+    width: 92vw;
+    max-width: 400px;
+    padding: 24px 20px;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  .welcome-play-btn {
+    padding: 16px 0;
+    font-size: 16px;
+  }
+
+  /* Challenge popup mobile */
+  .challenge-popup {
+    padding: 20px 16px;
+    max-width: 92vw;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  .challenge-popup-enter-btn {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  /* Withdraw modal mobile */
+  .withdraw-modal {
+    margin: 16px;
+    padding: 24px 20px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+
+  .withdraw-send-btn {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .withdraw-input {
+    font-size: 16px;
+    padding: 14px;
+  }
+
+  /* Game start button */
+  .game-start-btn {
+    padding: 16px 36px;
+    font-size: 18px;
+  }
+
+  .result-play-again-btn {
+    padding: 14px 36px;
+    font-size: 15px;
+  }
+
+  /* Share buttons */
+  .share-popup-btn {
+    padding: 14px 24px;
+    font-size: 14px;
+  }
+
+  .share-popup-download-btn {
+    padding: 14px 20px;
+    font-size: 13px;
+  }
+
+  /* Error banner - above safe area */
+  .error-banner-mobile {
+    bottom: max(20px, env(safe-area-inset-bottom, 20px));
   }
 }
 
@@ -1748,17 +1875,35 @@ a:focus-visible,
 
 @media (max-width: 768px) {
   .app-header-bar {
-    padding: 10px 16px;
+    padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px;
     gap: 8px;
+    justify-content: space-between;
+  }
+  .mode-toggle {
+    flex: 0 1 auto;
   }
   .mode-toggle-btn {
-    padding: 6px 14px;
-    font-size: 11px;
-    min-width: 54px;
+    padding: 8px 16px;
+    font-size: 12px;
+    min-width: 60px;
+    min-height: 36px;
   }
   .leaderboard-header-btn {
-    padding: 6px 12px;
+    padding: 8px 14px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mode-toggle-btn {
+    padding: 7px 12px;
     font-size: 11px;
+    min-width: 50px;
+  }
+  .leaderboard-header-btn {
+    padding: 7px 10px;
+    font-size: 10px;
   }
 }
 
@@ -1867,10 +2012,9 @@ a:focus-visible,
 @media (max-width: 600px) {
   .blinker-grid {
     grid-template-columns: 1fr;
-    max-width: 360px;
+    max-width: 400px;
+    gap: 12px;
   }
-}
-@media (max-width: 600px) {
   .blinker-card-wrapper {
     aspect-ratio: 5 / 3.5;
   }
@@ -1878,8 +2022,9 @@ a:focus-visible,
     padding: 14px 16px;
   }
   .blinker-card-back-enter-btn {
-    padding: 12px 36px;
+    padding: 14px 36px;
     font-size: 15px;
+    min-height: 44px;
   }
   .blinker-card-content {
     padding: 14px 16px;
@@ -1891,7 +2036,17 @@ a:focus-visible,
     font-size: 14px;
   }
   .blinker-card-name {
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .past-card-score {
+    font-size: 28px;
+  }
+  .past-card-center-text {
     font-size: 12px;
+  }
+  .past-card-center-label {
+    padding: 4px 10px;
   }
 }
 /* ─── Card flip wrapper ─── */
@@ -2494,6 +2649,29 @@ a:focus-visible,
   .stats-panel {
     flex-wrap: wrap;
     gap: 16px;
+  }
+
+  .landing-headline {
+    font-size: 32px;
+  }
+
+  .landing-sub {
+    font-size: 14px;
+    max-width: 300px;
+  }
+
+  .landing-content {
+    padding: 32px 20px;
+    gap: 20px;
+  }
+
+  .landing-cta,
+  .landing-mode-btn {
+    padding: 14px 36px;
+    font-size: 15px;
+    min-height: 48px;
+    width: 100%;
+    max-width: 300px;
   }
 }
 

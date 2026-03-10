@@ -932,15 +932,15 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
 
 
       {/* Bet + Play */}
-      <div style={{ padding: isMobile ? '12px 16px' : '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '14px' }}>
+      <div style={{ padding: isMobile ? '14px 16px' : '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '14px' }}>
         {isConnected && usdcBalance !== null && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: isMobile ? '12px' : '10px', fontWeight: 700, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>
               Balance: ${usdcBalance.toFixed(2)}
             </span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: isMobile ? '8px' : '6px' }}>
           {BET_AMOUNTS.map(amount => (
             <button
               key={amount}
@@ -1024,25 +1024,31 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            gap: isMobile ? '16px' : '24px',
-            padding: isMobile ? '20px 16px' : '36px 32px',
+            gap: isMobile ? '20px' : '24px',
+            padding: isMobile ? '16px 12px 24px' : '36px 32px',
             overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}>
-            <div style={{ textAlign: 'center' }}>
-              <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
+            <div style={{ textAlign: 'center', padding: isMobile ? '8px 0' : undefined }}>
+              <h1 style={{ fontSize: isMobile ? '22px' : '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
                 Bet. Blink.<br />Winner takes it all.
               </h1>
             </div>
 
             {/* Header row: title + info + search */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', maxWidth: '960px', width: '100%', margin: '0 auto' }}>
-              <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: isMobile ? '10px' : '16px', flexWrap: 'wrap',
+              maxWidth: '960px', width: '100%', margin: '0 auto',
+              padding: isMobile ? '0 4px' : undefined,
+            }}>
+              <p className="idle-section-title" style={{ margin: 0, fontSize: isMobile ? '12px' : undefined }}>Battle these blinkers</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? '1 1 auto' : undefined, justifyContent: 'flex-end' }}>
                 <div className="info-icon-wrapper">
-                  <button className="info-icon-btn" aria-label="How it works">
+                  <button className="info-icon-btn" aria-label="How it works" style={{ minWidth: '36px', minHeight: '36px' }}>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
                   </button>
-                  <div className="info-tooltip">
+                  <div className="info-tooltip" style={isMobile ? { width: '260px', right: '-8px' } : undefined}>
                     <p className="info-tooltip-title">How it works</p>
                     <ul className="info-tooltip-list">
                       <li>Create or accept a 30-second blink challenge</li>
@@ -1062,7 +1068,7 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                   className="challenge-input"
                   spellCheck={false}
                   autoComplete="off"
-                  style={{ maxWidth: '220px', padding: '9px 14px', fontSize: '12px' }}
+                  style={{ maxWidth: isMobile ? '160px' : '220px', padding: isMobile ? '10px 14px' : '9px 14px', fontSize: isMobile ? '14px' : '12px', minHeight: '36px' }}
                 />
               </div>
             </div>
@@ -1289,12 +1295,18 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
         }}>
           {/* Top bar: webcam + stats/controls to the right */}
           <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: '16px',
-            padding: '12px 16px', flexShrink: 0,
+            display: 'flex',
+            alignItems: isMobile ? 'center' : 'flex-start',
+            gap: isMobile ? '12px' : '16px',
+            padding: isMobile ? '10px 12px' : '12px 16px',
+            flexShrink: 0,
+            flexDirection: isMobile ? 'column' : 'row',
           }}>
             {/* Webcam */}
             <div style={{
-              position: 'relative', width: '176px', height: '132px',
+              position: 'relative',
+              width: isMobile ? '100%' : '176px',
+              height: isMobile ? '200px' : '132px',
               borderRadius: '10px', overflow: 'hidden',
               border: '2px solid rgba(255,255,255,0.1)', background: '#111',
               flexShrink: 0,
@@ -1316,19 +1328,26 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
               )}
             </div>
 
-            {/* Stats / controls to the right of webcam */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '132px', gap: '10px' }}>
+            {/* Stats / controls to the right of webcam (or below on mobile) */}
+            <div style={{
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: isMobile ? 'auto' : '132px',
+              gap: isMobile ? '12px' : '10px',
+              width: isMobile ? '100%' : 'auto',
+              alignItems: isMobile ? 'center' : 'flex-start',
+            }}>
               {gamePhase === 'playing' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: isMobile ? 'center' : 'flex-start' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span style={{ fontSize: '40px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
+                    <span style={{ fontSize: isMobile ? '48px' : '40px', fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: '#C0B4DA' }}>
                       {blinkCount}
                     </span>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px' }}>blinks</span>
+                    <span style={{ fontSize: isMobile ? '13px' : '11px', fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px' }}>blinks</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '16px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start' }}>
                     <span style={{
-                      fontSize: '22px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                      fontSize: isMobile ? '24px' : '22px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
                       color: timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#A6A4A7',
                       transition: 'color 0.3s',
                     }}>
@@ -1354,29 +1373,29 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                 </div>
               )}
               {gamePhase === 'ready' && cameraReady && (
-                <>
-                  <button onClick={handleStart} className="game-start-btn">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+                  <button onClick={handleStart} className="game-start-btn" style={isMobile ? { width: '100%', maxWidth: '300px' } : undefined}>
                     START
                   </button>
-                  <span style={{ fontSize: '13px', color: '#555', fontWeight: 600 }}>Press to begin your 30s duel</span>
+                  <span style={{ fontSize: '13px', color: '#555', fontWeight: 600, textAlign: 'center' }}>Press to begin your 30s duel</span>
                   <button
                     onClick={handlePlayAgain}
                     style={{
-                      marginTop: '8px', background: 'none', border: 'none',
-                      color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontWeight: 700,
-                      cursor: 'pointer', padding: '4px 12px',
+                      marginTop: '4px', background: 'none', border: 'none',
+                      color: 'rgba(255,255,255,0.35)', fontSize: '13px', fontWeight: 700,
+                      cursor: 'pointer', padding: '8px 16px', minHeight: '36px',
                     }}
                   >
                     Cancel
                   </button>
-                </>
+                </div>
               )}
               {gamePhase === 'ready' && !cameraReady && (
                 <span style={{ fontSize: '14px', color: '#555', fontWeight: 600 }}>Starting camera&#x2026;</span>
               )}
               {gamePhase === 'countdown' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ fontSize: '64px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1, textShadow: '0 0 30px rgba(192,180,218,0.4)', animation: 'pulse 1s ease-in-out infinite' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                  <span style={{ fontSize: isMobile ? '72px' : '64px', fontWeight: 900, color: '#C0B4DA', lineHeight: 1, textShadow: '0 0 30px rgba(192,180,218,0.4)', animation: 'pulse 1s ease-in-out infinite' }}>
                     {countdownNumber}
                   </span>
                   <span style={{ fontSize: '16px', color: '#666', fontWeight: 700 }}>Get ready&#x2026;</span>
@@ -1386,9 +1405,9 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
           </div>
 
           {/* Bottom row: tx log (left, under webcam) + chart (right, fills space) */}
-          <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-            {/* Tx log column (same width as webcam, only during playing) */}
-            {gamePhase === 'playing' && (
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, minHeight: 0 }}>
+            {/* Tx log column (same width as webcam, only during playing — hidden on mobile) */}
+            {gamePhase === 'playing' && !isMobile && (
               <div style={{
                 width: '192px', minWidth: '192px', padding: '0 0 12px 12px', flexShrink: 0,
                 display: 'flex', flexDirection: 'column',
@@ -1454,9 +1473,9 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
             )}
 
             {/* Chart area */}
-            <div style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0 }}>
+            <div style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: isMobile ? '180px' : 0 }}>
               {(gamePhase === 'playing' || chartData.length > 1) ? (
-                <div style={{ position: 'absolute', inset: 0, padding: '0 8px 8px 0' }}>
+                <div style={{ position: isMobile ? 'relative' : 'absolute', inset: isMobile ? undefined : 0, padding: isMobile ? '8px 12px 12px' : '0 8px 8px 0', height: isMobile ? '180px' : undefined }}>
                   {gamePhase === 'playing' && (
                     <div style={{
                       position: 'absolute', right: '20px', top: '8px', zIndex: 2,
@@ -1484,7 +1503,7 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
 
         {/* ─── RESULT PHASE ─── */}
         {gamePhase === 'result' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: 0, overflow: isMobile ? 'auto' : 'hidden', WebkitOverflowScrolling: 'touch' }}>
             {/* Left column: tx log (hidden on mobile) */}
             <div style={{
               width: '192px', minWidth: '192px', display: isMobile ? 'none' : 'flex', flexDirection: 'column',
@@ -1546,8 +1565,11 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
             {/* Right area: result content */}
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'center', gap: '24px',
-              padding: isMobile ? '20px 16px' : '32px', overflowY: 'auto',
+              alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '20px' : '24px',
+              padding: isMobile ? '16px 12px 32px' : '32px',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}>
               {/* ── Flow 1: Challenge created ── */}
               {gameMode === 'create' && (
@@ -1602,9 +1624,16 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                   )}
 
                   {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div style={{
+                    display: 'flex', gap: isMobile ? '10px' : '10px',
+                    flexWrap: 'wrap', justifyContent: 'center',
+                    width: isMobile ? '100%' : 'auto',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: 'center',
+                  }}>
                     <button
                       className="share-popup-download-btn"
+                      style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
                       onClick={() => downloadChallengeCard({
                         score: finalScore,
                         stake: selectedBet,
@@ -1621,10 +1650,11 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                       target="_blank"
                       rel="noopener noreferrer"
                       className="share-popup-btn"
+                      style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
                     >
                       Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                     </a>
-                    <button onClick={handlePlayAgain} className="result-play-again-btn" style={{ margin: 0 }}>
+                    <button onClick={handlePlayAgain} className="result-play-again-btn" style={isMobile ? { width: '100%', maxWidth: '300px', margin: 0 } : { margin: 0 }}>
                       Back to Home
                     </button>
                   </div>
@@ -1710,11 +1740,18 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
 
                   {/* Action buttons */}
                   {!resolving && (
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{
+                      display: 'flex', gap: '10px',
+                      flexWrap: 'wrap', justifyContent: 'center',
+                      width: isMobile ? '100%' : 'auto',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: 'center',
+                    }}>
                       {isWinner && (
                         <>
                           <button
                             className="share-popup-download-btn"
+                            style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
                             onClick={() => downloadWinCard({
                               winnerUsername: twitterUsername || formatAddress(walletAddress || ''),
                               winnerScore: finalScore,
@@ -1734,12 +1771,13 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                             target="_blank"
                             rel="noopener noreferrer"
                             className="share-popup-btn"
+                            style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
                           >
                             Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                           </a>
                         </>
                       )}
-                      <button onClick={handlePlayAgain} className="result-play-again-btn" style={{ margin: 0 }}>
+                      <button onClick={handlePlayAgain} className="result-play-again-btn" style={isMobile ? { width: '100%', maxWidth: '300px', margin: 0 } : { margin: 0 }}>
                         Back to Home
                       </button>
                     </div>
@@ -1894,21 +1932,26 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
           role="alert"
           aria-live="polite"
           style={{
-            position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-            padding: '12px 20px', background: 'rgba(239,68,68,0.1)',
+            position: 'fixed',
+            bottom: isMobile ? 'max(20px, env(safe-area-inset-bottom, 20px))' : '20px',
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '14px 20px', background: 'rgba(239,68,68,0.1)',
             border: '1px solid rgba(239,68,68,0.25)', borderRadius: '12px',
             color: '#ef4444', fontSize: '13px', fontWeight: 600, zIndex: 100,
-            fontFamily: "'Manrope', sans-serif", maxWidth: '90vw',
+            fontFamily: "'Manrope', sans-serif", maxWidth: isMobile ? 'calc(100vw - 32px)' : '90vw',
             display: 'flex', alignItems: 'center', gap: '12px',
             backdropFilter: 'blur(12px)',
           }}
         >
-          {error}
+          <span style={{ flex: 1 }}>{error}</span>
           <button
             onClick={() => setError(null)}
             aria-label="Dismiss error"
             style={{
-              background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', fontWeight: 800, lineHeight: 1,
+              background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+              fontSize: '18px', fontWeight: 800, lineHeight: 1,
+              minWidth: '32px', minHeight: '32px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >&times;</button>
         </div>
