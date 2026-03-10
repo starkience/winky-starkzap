@@ -79,9 +79,10 @@ async function downloadChallengeCard(opts: { score: number; stake: number; usern
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const [profileImg, logoImg] = await Promise.all([
+  const [profileImg, logoImg, szLogoImg] = await Promise.all([
     opts.profileImage ? loadImg(opts.profileImage) : Promise.resolve(null),
     loadImg('/logo.png', false),
+    loadImg('/starkzap-logo.png', false),
   ]);
 
   ctx.fillStyle = '#0A0A0A';
@@ -100,10 +101,20 @@ async function downloadChallengeCard(opts: { score: number; stake: number; usern
   grad.addColorStop(1, 'rgba(10,10,10,0.92)');
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
+  let logoRight = 20;
   if (logoImg) {
     const lh = 32;
     const lw = (logoImg.width / logoImg.height) * lh;
     ctx.drawImage(logoImg, 20, 12, lw, lh);
+    logoRight = 20 + lw + 6;
+  }
+  if (szLogoImg) {
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 9px Manrope, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('Powered by', logoRight, 26);
+    const szH = 14;
+    const szW = (szLogoImg.width / szLogoImg.height) * szH;
+    ctx.drawImage(szLogoImg, logoRight, 28, szW, szH);
   }
 
   ctx.fillStyle = 'rgba(192,180,218,0.15)';
@@ -143,9 +154,10 @@ async function downloadResultCard(opts: {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const [profileImg, logoImg] = await Promise.all([
+  const [profileImg, logoImg, szLogoImg] = await Promise.all([
     opts.profileImage ? loadImg(opts.profileImage) : Promise.resolve(null),
     loadImg('/logo.png', false),
+    loadImg('/starkzap-logo.png', false),
   ]);
 
   // Background
@@ -171,11 +183,21 @@ async function downloadResultCard(opts: {
   grad.addColorStop(1, 'rgba(10,10,10,0.92)');
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
-  // Top-left: WINK logo
+  // Top-left: WINK logo + Powered by Starkzap
+  let logoRight = 20;
   if (logoImg) {
     const lh = 32;
     const lw = (logoImg.width / logoImg.height) * lh;
     ctx.drawImage(logoImg, 20, 12, lw, lh);
+    logoRight = 20 + lw + 6;
+  }
+  if (szLogoImg) {
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 9px Manrope, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('Powered by', logoRight, 26);
+    const szH = 14;
+    const szW = (szLogoImg.width / szLogoImg.height) * szH;
+    ctx.drawImage(szLogoImg, logoRight, 28, szW, szH);
   }
 
   // Top-right: prize badge
