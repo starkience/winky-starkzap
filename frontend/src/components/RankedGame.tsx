@@ -7,6 +7,7 @@ import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useLeaderboard } from '@/hooks/use-leaderboard';
+import { useLiveFeed } from '@/hooks/use-live-feed';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL } from '@/lib/constants';
 
 function formatAddress(addr: string | null | undefined): string {
@@ -17,6 +18,16 @@ function formatAddress(addr: string | null | undefined): string {
 
 function normalizeAddress(addr: string): string {
   return addr.replace(/^0x0*/i, '0x').toLowerCase();
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }
 
 interface StoredTwitterProfile {
@@ -61,10 +72,18 @@ export function RankedGame() {
 
   const { leaderboard, isLoading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard(walletAddress || undefined);
 
+  const { events: liveEvents, topBlinker } = useLiveFeed();
+
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
   const syncedRef = useRef(false);
 
-  // Sync current user's Privy Twitter profile to Edge Config so others can see it
+  // Force re-render for "time ago" labels
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!walletAddress || !twitterProfile || syncedRef.current) return;
     syncedRef.current = true;
@@ -84,7 +103,6 @@ export function RankedGame() {
     }).catch(() => {});
   }, [walletAddress, twitterProfile]);
 
-  // Fetch Twitter profiles for all leaderboard addresses
   useEffect(() => {
     if (leaderboardLoading || leaderboard.length === 0) return;
     const addresses = leaderboard.map((e) => normalizeAddress(e.address)).join(',');
@@ -94,7 +112,6 @@ export function RankedGame() {
         if (data.profiles) {
           setAllTwitterProfiles(data.profiles);
 
-          // Safety net: if current user has Privy Twitter but isn't in Edge Config yet, sync now
           if (twitterProfile && walletAddress) {
             const norm = normalizeAddress(walletAddress);
             if (!data.profiles[norm]) {
@@ -110,10 +127,7 @@ export function RankedGame() {
                   profileImageUrl: fullSizeUrl,
                 }),
               })
-                .then(() => {
-                  // Re-fetch profiles so the avatar appears immediately
-                  return fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addresses)}`);
-                })
+                .then(() => fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addresses)}`))
                 .then((r) => r.json())
                 .then((d) => { if (d.profiles) setAllTwitterProfiles(d.profiles); })
                 .catch(() => {});
@@ -133,7 +147,6 @@ export function RankedGame() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Wallet setup via Starkzap SDK
   useEffect(() => {
     if (!ready || !authenticated || !user?.id) return;
     if (loggingOut) setLoggingOut(false);
@@ -228,7 +241,6 @@ export function RankedGame() {
     logout().catch(() => {});
   }, [logout]);
 
-  // Blink detection — always active when `active` is true (no game phase gating)
   const activeRef = useRef(false);
   useEffect(() => { activeRef.current = active; }, [active]);
 
@@ -254,7 +266,6 @@ export function RankedGame() {
 
   useEffect(() => { blinkCountRef.current = blinkCount; }, [blinkCount]);
 
-  // Auto-start camera + detection once active + detector ready
   useEffect(() => {
     if (active && isDetectorReady && !cameraReady) {
       startDetection()
@@ -368,8 +379,7 @@ export function RankedGame() {
             <>
               <div style={{
                 width: '100%',
-                maxWidth: '640px',
-                aspectRatio: '4 / 3',
+                height: '100%',
                 position: 'relative',
                 borderRadius: '16px',
                 overflow: 'hidden',
@@ -395,12 +405,12 @@ export function RankedGame() {
                 {/* Blink count HUD — persistent total from on-chain */}
                 {cameraReady && (
                   <div style={{
-                    position: 'absolute', top: '16px', left: '16px',
-                    display: 'flex', flexDirection: 'column', gap: '4px',
+                    position: 'absolute', top: '16px', right: '16px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px',
                     zIndex: 5, pointerEvents: 'none',
                   }}>
                     <span style={{
-                      fontSize: '48px', fontWeight: 900, lineHeight: 1,
+                      fontSize: '56px', fontWeight: 900, lineHeight: 1,
                       fontVariantNumeric: 'tabular-nums', color: '#C0B4DA',
                       textShadow: '0 2px 12px rgba(0,0,0,0.6)',
                     }}>
@@ -411,27 +421,71 @@ export function RankedGame() {
                     </span>
                   </div>
                 )}
-              </div>
 
-              {/* Stop button */}
-              <button
-                onClick={handleStop}
-                style={{
-                  marginTop: '16px',
-                  padding: '10px 32px',
-                  background: 'rgba(239,68,68,0.1)',
-                  border: '1.5px solid rgba(239,68,68,0.3)',
-                  borderRadius: '10px',
-                  color: '#ef4444',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  fontFamily: "'Manrope', sans-serif",
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, border-color 0.15s',
-                }}
-              >
-                Stop Session
-              </button>
+                {/* Global live feed overlay — bottom-left of webcam */}
+                {cameraReady && (
+                  <div style={{
+                    position: 'absolute', bottom: '12px', left: '12px',
+                    zIndex: 5, pointerEvents: 'none',
+                    display: 'flex', flexDirection: 'column', gap: '2px',
+                    maxWidth: '70%',
+                  }}>
+                    {topBlinker && (
+                      <div style={{
+                        fontSize: '13px', fontWeight: 800, color: '#22c55e',
+                        textShadow: '0 1px 6px rgba(0,0,0,0.8)',
+                        marginBottom: '4px',
+                      }}>
+                        Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
+                      </div>
+                    )}
+                    {liveEvents.slice(0, 8).map((ev) => {
+                      const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
+                      return (
+                        <div key={ev.id} style={{
+                          fontSize: '11px', fontWeight: 600,
+                          color: 'rgba(255,255,255,0.7)',
+                          textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
+                          {' blinked '}
+                          <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '10px' }}>
+                            {formatAddress(ev.txHash)}
+                          </span>
+                          {' '}
+                          <span style={{ color: 'rgba(255,255,255,0.5)' }}>{formatTimeAgo(ev.timestamp)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Stop button overlay — top-left */}
+                {cameraReady && (
+                  <button
+                    onClick={handleStop}
+                    style={{
+                      position: 'absolute', top: '16px', left: '16px', zIndex: 5,
+                      padding: '8px 20px',
+                      background: 'rgba(239,68,68,0.15)',
+                      border: '1.5px solid rgba(239,68,68,0.4)',
+                      borderRadius: '10px',
+                      color: '#ef4444',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      fontFamily: "'Manrope', sans-serif",
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(8px)',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    Stop
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -508,13 +562,14 @@ export function RankedGame() {
           minHeight: 0,
         }}>
           <div style={{
-            padding: '10px 20px 8px',
+            padding: '14px 20px 10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0,
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Transactions
             </span>
             {active && (
@@ -526,40 +581,55 @@ export function RankedGame() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             {blinkTxLog.length === 0 && (
-              <div style={{ padding: '20px 16px', textAlign: 'center', color: '#333', fontSize: '11px', fontWeight: 600 }}>
+              <div style={{ padding: '32px 20px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
                 {active
                   ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
                   : 'Start blinking to see transactions'}
               </div>
             )}
             {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-              const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-              const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+              const opacity = 0.3 + 0.7 * (idx / Math.max(arr.length - 1, 1));
               return (
                 <div key={tx.id} style={{
-                  padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                  padding: '12px 20px',
+                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
                   opacity,
                 }}>
                   <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{
+                      fontSize: '15px', fontWeight: 800, color: '#fff',
+                      display: 'block', marginBottom: '3px',
+                    }}>
                       Blink #{tx.blinkNumber}
                     </span>
-                    <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                      {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                    </span>
+                    {tx.hash ? (
+                      <a
+                        href={`${VOYAGER_TX_URL}/${tx.hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: '12px', fontWeight: 600, color: '#888',
+                          textDecoration: 'underline',
+                          textDecorationColor: 'rgba(255,255,255,0.15)',
+                          fontFamily: "'SF Mono', Monaco, monospace",
+                          transition: 'color 0.15s',
+                        }}
+                      >
+                        {formatAddress(tx.hash)}
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>
+                        {tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}
+                      </span>
+                    )}
                   </div>
-                  {VOYAGER_TX_URL && tx.hash && (
-                    <a
-                      href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="tx-voyager-link"
-                      aria-label="View on Voyager"
-                    >
-                      &#x2197;
-                    </a>
-                  )}
+                  <span style={{
+                    fontSize: '12px', fontWeight: 600, color: '#555',
+                    whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px',
+                  }}>
+                    {formatTimeAgo(tx.timestamp)}
+                  </span>
                 </div>
               );
             })}
