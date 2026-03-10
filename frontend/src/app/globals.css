@@ -1878,6 +1878,11 @@ a:focus-visible,
   object-fit: contain;
   border-radius: 4px;
 }
+@media (max-width: 768px) {
+  .header-powered-by {
+    order: -1;
+  }
+}
 
 /* Info icon: desktop hidden, mobile visible */
 .info-icon-mobile-only {
