@@ -139,10 +139,9 @@ async function downloadWinCard(opts: {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const [loserImg, winnerImg, logoImg] = await Promise.all([
+  const [loserImg, winnerImg] = await Promise.all([
     opts.loserImage ? loadImg(opts.loserImage) : Promise.resolve(null),
     opts.winnerImage ? loadImg(opts.winnerImage) : Promise.resolve(null),
-    loadImg('/logo.png', false),
   ]);
 
   ctx.fillStyle = '#0A0A0A';
@@ -168,37 +167,31 @@ async function downloadWinCard(opts: {
   ctx.fillStyle = 'rgba(34, 197, 94, 0.4)'; ctx.fillRect(half, 0, half, H);
   ctx.restore();
 
-  // Logo top-left
-  if (logoImg) {
-    const lh = 28;
-    const lw = (logoImg.width / logoImg.height) * lh;
-    ctx.drawImage(logoImg, 16, 10, lw, lh);
-  }
-
-  // Center label background
+  // Center label — "username won $X"
   const labelText = `${opts.winnerUsername} won $${opts.payout}`;
-  ctx.font = '900 16px Manrope, sans-serif';
-  const lbw = ctx.measureText(labelText).width + 28;
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.beginPath(); ctx.roundRect((W - lbw) / 2, 12, lbw, 28, 8); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-  ctx.fillText(labelText, W / 2, 32);
+  ctx.font = '900 22px Manrope, sans-serif';
+  const lbw = ctx.measureText(labelText).width + 40;
+  const lbh = 38;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.beginPath(); ctx.roundRect((W - lbw) / 2, 12, lbw, lbh, 10); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(labelText, W / 2, 12 + lbh / 2);
 
   // Loser score + name (left)
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ef4444'; ctx.font = '900 48px Manrope, sans-serif';
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
-  ctx.fillText(String(opts.loserScore), half / 2, H - 50);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 12px Manrope, sans-serif';
-  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 24);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#ef4444'; ctx.font = '900 72px Manrope, sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
+  ctx.fillText(String(opts.loserScore), half / 2, H - 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
+  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 28);
   ctx.shadowBlur = 0;
 
   // Winner score + name (right)
-  ctx.fillStyle = '#22c55e'; ctx.font = '900 48px Manrope, sans-serif';
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
-  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 50);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 12px Manrope, sans-serif';
-  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 24);
+  ctx.fillStyle = '#22c55e'; ctx.font = '900 72px Manrope, sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
+  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
+  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 28);
   ctx.shadowBlur = 0;
 
   const link = document.createElement('a');

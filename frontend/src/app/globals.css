@@ -2091,17 +2091,21 @@ a:focus-visible,
     margin-top: 2px;
   }
   .past-card-score {
-    font-size: 20px;
-    bottom: 20px;
+    font-size: 28px;
+    bottom: 18px;
   }
   .past-card-player-name {
-    font-size: 9px;
+    font-size: 10px;
+    bottom: 4px;
   }
   .past-card-center-text {
-    font-size: 10px;
+    font-size: 11px;
   }
   .past-card-center-label {
-    padding: 3px 8px;
+    padding: 4px 8px;
+    left: 6px;
+    right: 6px;
+    top: 6px;
   }
 }
 /* ─── Card flip wrapper ─── */
@@ -2385,7 +2389,7 @@ a:focus-visible,
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 36px;
+  font-size: 48px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
@@ -2404,7 +2408,7 @@ a:focus-visible,
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
@@ -2418,25 +2422,23 @@ a:focus-visible,
 .past-card-center-label {
   position: absolute;
   top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  right: 12px;
   z-index: 3;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 3px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 5px 12px;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 6px 16px;
   border-radius: 8px;
   backdrop-filter: blur(4px);
 }
 .past-card-center-text {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  white-space: nowrap;
 }
 .past-card-center-text a {
   color: #fff;
