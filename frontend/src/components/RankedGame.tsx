@@ -490,56 +490,105 @@ export function RankedGame() {
         )}
 
         {/* Fastest blinker */}
-        {topBlinker && (
-          <div style={{
-            padding: '8px 20px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexWrap: 'wrap',
-          }}>
-            <span className="rainbow-text" style={{
-              fontSize: isMobile ? '16px' : '20px',
-              fontWeight: 900,
-              letterSpacing: '-0.3px',
-            }}>
-              Fastest:{' '}
-            </span>
-            {topBlinker.displayName.startsWith('@') ? (
-              <a
-                href={`https://x.com/${topBlinker.displayName.slice(1)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rainbow-text"
-                style={{
+        {topBlinker && (() => {
+          const normAddr = normalizeAddress(topBlinker.address);
+          const profileImg = topBlinker.profileImageUrl
+            || allTwitterProfiles[normAddr]?.profileImageUrl
+            || null;
+          return (
+            <>
+              <div style={{
+                padding: '8px 20px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexWrap: 'wrap',
+              }}>
+                <span className="rainbow-text" style={{
                   fontSize: isMobile ? '16px' : '20px',
                   fontWeight: 900,
                   letterSpacing: '-0.3px',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-              >
-                {topBlinker.displayName}
-              </a>
-            ) : (
-              <span className="rainbow-text" style={{
-                fontSize: isMobile ? '16px' : '20px',
-                fontWeight: 900,
-                letterSpacing: '-0.3px',
+                }}>
+                  Fastest:{' '}
+                </span>
+                {topBlinker.displayName.startsWith('@') ? (
+                  <a
+                    href={`https://x.com/${topBlinker.displayName.slice(1)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rainbow-text"
+                    style={{
+                      fontSize: isMobile ? '16px' : '20px',
+                      fontWeight: 900,
+                      letterSpacing: '-0.3px',
+                      textDecoration: 'none',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    {topBlinker.displayName}
+                  </a>
+                ) : (
+                  <span className="rainbow-text" style={{
+                    fontSize: isMobile ? '16px' : '20px',
+                    fontWeight: 900,
+                    letterSpacing: '-0.3px',
+                  }}>
+                    {topBlinker.displayName}
+                  </span>
+                )}
+                <span className="rainbow-text" style={{
+                  fontSize: isMobile ? '16px' : '20px',
+                  fontWeight: 900,
+                  letterSpacing: '-0.3px',
+                }}>
+                  {' '}at {topBlinker.rpm} bpm
+                </span>
+              </div>
+
+              {/* Dancing GIF with profile picture overlay */}
+              <div style={{
+                width: '100%',
+                position: 'relative',
+                overflow: 'hidden',
               }}>
-                {topBlinker.displayName}
-              </span>
-            )}
-            <span className="rainbow-text" style={{
-              fontSize: isMobile ? '16px' : '20px',
-              fontWeight: 900,
-              letterSpacing: '-0.3px',
-            }}>
-              {' '}at {topBlinker.rpm} bpm
-            </span>
-          </div>
-        )}
+                <img
+                  src="/fastest-blinker-dance.gif"
+                  alt="Fastest blinker dance"
+                  style={{
+                    width: '100%',
+                    display: 'block',
+                  }}
+                />
+                {profileImg && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '22%',
+                    aspectRatio: '1',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '3px solid rgba(255,255,255,0.8)',
+                    boxShadow: '0 0 20px rgba(192,180,218,0.6)',
+                    animation: 'fastest-blinker-bounce 0.6s ease-in-out infinite alternate',
+                  }}>
+                    <img
+                      src={profileImg}
+                      alt={topBlinker.displayName}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {/* Transaction Log */}
         <div style={{

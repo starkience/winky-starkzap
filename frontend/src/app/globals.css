@@ -1630,6 +1630,11 @@ a:focus-visible,
   0%   { background-position: 0% 50%; }
   100% { background-position: 300% 50%; }
 }
+
+@keyframes fastest-blinker-bounce {
+  0%   { transform: translateX(-50%) translateY(0); }
+  100% { transform: translateX(-50%) translateY(-6px); }
+}
 .app-header-bar > * {
   pointer-events: auto;
 }

@@ -25,6 +25,7 @@ export interface TopBlinker {
   address: string;
   displayName: string;
   rpm: number;
+  profileImageUrl?: string;
 }
 
 const MAX_EVENTS = 20;
@@ -43,6 +44,7 @@ export function useLiveFeed() {
   const [isLoading, setIsLoading] = useState(true);
   const [topBlinker, setTopBlinker] = useState<TopBlinker | null>(null);
   const twitterCacheRef = useRef<Record<string, string | null>>({});
+  const profileImageCacheRef = useRef<Record<string, string | null>>({});
   const pusherRef = useRef<Pusher | null>(null);
 
   // Track blink timestamps per user for RPM calculation
@@ -73,7 +75,8 @@ export function useLiveFeed() {
         ? `@${username}`
         : `${bestAddr.slice(0, 6)}...${bestAddr.slice(-4)}`;
 
-      setTopBlinker({ address: bestAddr, displayName, rpm: bestRpm });
+      const profileImageUrl = profileImageCacheRef.current[norm] ?? undefined;
+      setTopBlinker({ address: bestAddr, displayName, rpm: bestRpm, profileImageUrl });
     } else {
       setTopBlinker(null);
     }
@@ -112,6 +115,7 @@ export function useLiveFeed() {
         for (const addr of normalized) {
           const profile = data.profiles[addr];
           twitterCacheRef.current[addr] = profile?.username ?? null;
+          profileImageCacheRef.current[addr] = profile?.profileImageUrl ?? null;
         }
       }
     } catch {
