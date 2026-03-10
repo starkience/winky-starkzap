@@ -378,23 +378,6 @@ export function RankedGame() {
               </div>
             )}
 
-            {/* Fastest blinker — top-left corner */}
-            {cameraReady && topBlinker && (
-              <div className="fastest-blinker-badge" style={{
-                position: 'absolute', top: '16px', left: '16px',
-                zIndex: 5, pointerEvents: 'none',
-              }}>
-                <span className="rainbow-text" style={{
-                  fontSize: isMobile ? '18px' : '24px',
-                  fontWeight: 900,
-                  textShadow: '0 2px 12px rgba(0,0,0,0.7)',
-                  letterSpacing: '-0.3px',
-                }}>
-                  Fastest blinker: {topBlinker.displayName} — {topBlinker.rpm} bpm
-                </span>
-              </div>
-            )}
-
             {/* Live feed overlay — bottom-left, newest at bottom, fading upward */}
             {cameraReady && (
               <div style={{
@@ -502,6 +485,58 @@ export function RankedGame() {
               fontVariantNumeric: 'tabular-nums', lineHeight: 1,
             }}>
               {totalBlinks.toLocaleString()}
+            </span>
+          </div>
+        )}
+
+        {/* Fastest blinker */}
+        {topBlinker && (
+          <div style={{
+            padding: '8px 20px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            flexWrap: 'wrap',
+          }}>
+            <span className="rainbow-text" style={{
+              fontSize: isMobile ? '16px' : '20px',
+              fontWeight: 900,
+              letterSpacing: '-0.3px',
+            }}>
+              Fastest blinker:
+            </span>
+            {topBlinker.displayName.startsWith('@') ? (
+              <a
+                href={`https://x.com/${topBlinker.displayName.slice(1)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rainbow-text"
+                style={{
+                  fontSize: isMobile ? '16px' : '20px',
+                  fontWeight: 900,
+                  letterSpacing: '-0.3px',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                }}
+              >
+                {topBlinker.displayName}
+              </a>
+            ) : (
+              <span className="rainbow-text" style={{
+                fontSize: isMobile ? '16px' : '20px',
+                fontWeight: 900,
+                letterSpacing: '-0.3px',
+              }}>
+                {topBlinker.displayName}
+              </span>
+            )}
+            <span className="rainbow-text" style={{
+              fontSize: isMobile ? '16px' : '20px',
+              fontWeight: 900,
+              letterSpacing: '-0.3px',
+            }}>
+              — {topBlinker.rpm} bpm
             </span>
           </div>
         )}
