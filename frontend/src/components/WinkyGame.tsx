@@ -128,89 +128,85 @@ async function downloadChallengeCard(opts: { score: number; stake: number; usern
   link.click();
 }
 
-/** Draw a result card PNG (split red/green) and trigger download. */
+/** Draw a result card PNG (same layout as challenge card, single profile pic). */
 async function downloadResultCard(opts: {
-  winnerUsername: string; winnerScore: number; winnerImage?: string;
-  loserUsername: string; loserScore: number; loserImage?: string;
+  score: number;
+  opponentScore: number;
+  opponentUsername: string;
+  username: string;
+  profileImage?: string;
   payout: number;
-  isDownloaderWinner: boolean;
+  isWinner: boolean;
 }) {
   const W = 600, H = 360, R = 24;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const [loserImg, winnerImg, logoImg] = await Promise.all([
-    opts.loserImage ? loadImg(opts.loserImage) : Promise.resolve(null),
-    opts.winnerImage ? loadImg(opts.winnerImage) : Promise.resolve(null),
+  const [profileImg, logoImg] = await Promise.all([
+    opts.profileImage ? loadImg(opts.profileImage) : Promise.resolve(null),
     loadImg('/logo.png', false),
   ]);
 
+  // Background
   ctx.fillStyle = '#0A0A0A';
   ctx.beginPath(); ctx.roundRect(0, 0, W, H, R); ctx.fill(); ctx.clip();
 
-  const half = W / 2;
-
-  // Left half (loser - red)
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, half, H); ctx.clip();
-  if (loserImg) {
-    const scale = Math.max(half / loserImg.width, H / loserImg.height);
-    ctx.drawImage(loserImg, (half - loserImg.width * scale) / 2, (H - loserImg.height * scale) / 2, loserImg.width * scale, loserImg.height * scale);
+  // Profile picture background (dimmed, tinted green for win / red for loss)
+  if (profileImg) {
+    ctx.globalAlpha = 0.35;
+    const scale = Math.max(W / profileImg.width, H / profileImg.height);
+    const sw = profileImg.width * scale, sh = profileImg.height * scale;
+    ctx.drawImage(profileImg, (W - sw) / 2, (H - sh) / 2, sw, sh);
+    ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; ctx.fillRect(0, 0, half, H);
-  ctx.restore();
 
-  // Right half (winner - green)
-  ctx.save(); ctx.beginPath(); ctx.rect(half, 0, half, H); ctx.clip();
-  if (winnerImg) {
-    const scale = Math.max(half / winnerImg.width, H / winnerImg.height);
-    ctx.drawImage(winnerImg, half + (half - winnerImg.width * scale) / 2, (H - winnerImg.height * scale) / 2, winnerImg.width * scale, winnerImg.height * scale);
-  }
-  ctx.fillStyle = 'rgba(34, 197, 94, 0.4)'; ctx.fillRect(half, 0, half, H);
-  ctx.restore();
+  // Color overlay: green for winner, red for loser
+  const tint = opts.isWinner ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+  ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
+
+  // Dark gradient for text readability
+  const grad = ctx.createLinearGradient(0, H * 0.3, 0, H);
+  grad.addColorStop(0, 'rgba(10,10,10,0.3)');
+  grad.addColorStop(1, 'rgba(10,10,10,0.92)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
   // Top-left: WINK logo
   if (logoImg) {
-    const lh = 28;
+    const lh = 32;
     const lw = (logoImg.width / logoImg.height) * lh;
-    ctx.drawImage(logoImg, 16, 14, lw, lh);
+    ctx.drawImage(logoImg, 20, 12, lw, lh);
   }
 
-  // Top-right: cash prize
-  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-  ctx.font = '900 20px Manrope, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
-  ctx.fillText(`$${opts.payout} USDC`, W - 20, 18);
-  ctx.shadowBlur = 0;
+  // Top-right: prize badge
+  ctx.fillStyle = opts.isWinner ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+  const badge = opts.isWinner ? `Won $${opts.payout} USDC` : `Lost $${(opts.payout / 2).toFixed(0)} USDC`;
+  ctx.font = '800 14px Manrope, sans-serif';
+  const bw = ctx.measureText(badge).width + 24;
+  ctx.beginPath(); ctx.roundRect(W - bw - 24, 20, bw, 30, 8); ctx.fill();
+  ctx.fillStyle = opts.isWinner ? '#22c55e' : '#ef4444';
+  ctx.textAlign = 'center'; ctx.fillText(badge, W - bw / 2 - 24, 40);
 
-  // Left half text: loser score + "Blinks in 30s" + username
-  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
-  ctx.fillStyle = '#ef4444'; ctx.font = '900 72px Manrope, sans-serif';
-  ctx.fillText(String(opts.loserScore), half / 2, H - 70);
-  ctx.shadowBlur = 6;
-  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '600 12px Manrope, sans-serif';
-  ctx.fillText('Blinks in 30s', half / 2, H - 46);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
-  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 22);
-  ctx.shadowBlur = 0;
+  // Bottom-left: score, "blinks in 30s", @username
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff'; ctx.font = '900 64px Manrope, sans-serif';
+  ctx.fillText(String(opts.score), 28, H - 90);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 20px Manrope, sans-serif';
+  ctx.fillText('blinks in 30s', 28, H - 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 15px Manrope, sans-serif';
+  ctx.fillText(`@${opts.username}`, 28, H - 28);
 
-  // Right half text: winner score + "Blinks in 30s" + username
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
-  ctx.fillStyle = '#22c55e'; ctx.font = '900 72px Manrope, sans-serif';
-  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 70);
-  ctx.shadowBlur = 6;
-  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '600 12px Manrope, sans-serif';
-  ctx.fillText('Blinks in 30s', half + half / 2, H - 46);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
-  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 22);
-  ctx.shadowBlur = 0;
+  // Bottom-right: result + opponent
+  ctx.textAlign = 'right';
+  const accentColor = opts.isWinner ? '#22c55e' : '#ef4444';
+  ctx.fillStyle = accentColor; ctx.font = '800 18px Manrope, sans-serif';
+  ctx.fillText(opts.isWinner ? 'Victory!' : 'Defeated', W - 28, H - 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 13px Manrope, sans-serif';
+  ctx.fillText(`vs @${opts.opponentUsername} (${opts.opponentScore})`, W - 28, H - 32);
 
-  const downloaderScore = opts.isDownloaderWinner ? opts.winnerScore : opts.loserScore;
-  const suffix = opts.isDownloaderWinner ? 'win' : 'loss';
+  const suffix = opts.isWinner ? 'win' : 'loss';
   const link = document.createElement('a');
-  link.download = `winky-${suffix}-${downloaderScore}.png`;
+  link.download = `winky-${suffix}-${opts.score}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
@@ -1847,14 +1843,13 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
                             className="share-popup-download-btn"
                             style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
                             onClick={() => downloadResultCard({
-                              winnerUsername: isWinner ? (twitterUsername || formatAddress(walletAddress || '')) : challengeTarget.username,
-                              winnerScore: isWinner ? finalScore : challengeTarget.score,
-                              winnerImage: isWinner ? fullSizeTwitterImage(user?.twitter?.profilePictureUrl) : challengeTarget.profileImage,
-                              loserUsername: isWinner ? challengeTarget.username : (twitterUsername || formatAddress(walletAddress || '')),
-                              loserScore: isWinner ? challengeTarget.score : finalScore,
-                              loserImage: isWinner ? challengeTarget.profileImage : fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
+                              score: finalScore,
+                              opponentScore: challengeTarget.score,
+                              opponentUsername: challengeTarget.username,
+                              username: twitterUsername || formatAddress(walletAddress || ''),
+                              profileImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
                               payout: selectedBet * 2,
-                              isDownloaderWinner: isWinner,
+                              isWinner,
                             })}
                           >
                             &#x2B07; Download Card
