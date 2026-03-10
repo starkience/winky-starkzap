@@ -1425,22 +1425,32 @@ a:focus-visible,
   }
 
   .leaderboard-modal {
-    width: 100vw;
+    width: 100%;
     height: 100dvh;
-    max-width: 100vw;
+    max-width: 100%;
     max-height: 100dvh;
     border-radius: 0;
   }
 
   .leaderboard-columns {
-    grid-template-columns: 40px 40px 1fr 1fr 90px;
+    grid-template-columns: 32px 32px 1fr auto auto;
     padding: 10px 12px;
     font-size: 9px;
+    gap: 6px;
   }
 
   .leaderboard-row {
-    grid-template-columns: 40px 40px 1fr 1fr 90px;
+    grid-template-columns: 32px 32px 1fr auto auto;
     padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .leaderboard-col-blinks {
+    min-width: auto;
+  }
+
+  .leaderboard-col-action {
+    min-width: auto;
   }
 
   .leaderboard-generate-btn {
@@ -2646,8 +2656,14 @@ a:focus-visible,
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 .info-icon-wrapper:hover .info-tooltip,
-.info-icon-btn:focus + .info-tooltip {
+.info-icon-btn:focus + .info-tooltip,
+.info-icon-wrapper--open .info-tooltip {
   display: block;
+}
+.info-tooltip-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
 }
 .info-tooltip-title {
   font-size: 13px;

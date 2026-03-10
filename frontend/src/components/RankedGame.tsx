@@ -414,13 +414,13 @@ export function RankedGame() {
         </div>
       )}
 
-      {/* Transaction Log — newest first, max 4, no scroll */}
+      {/* Transaction Log — newest first, max 5, no scroll, fade out */}
       <div style={{ padding: '8px 12px 16px', overflow: 'hidden' }}>
-        {blinkTxLog.slice(0, 4).map((tx, idx) => {
+        {blinkTxLog.slice(0, 5).map((tx, idx) => {
           const isConfirmed = tx.status === 'success';
           const blinkColor = isConfirmed ? '#22c55e' : '#fff';
           const isNewest = idx === 0;
-          const opacity = 1 - idx * 0.2;
+          const opacity = 1 - idx * 0.22;
           return (
             <div key={tx.id} className="ranked-tx-row" style={{ padding: '6px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', opacity, cursor: tx.hash ? 'pointer' : 'default', animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined }}
               onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}>

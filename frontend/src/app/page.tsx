@@ -85,6 +85,7 @@ function HomeContent() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
   const [pvpGamePhase, setPvpGamePhase] = useState('idle');
+  const [showInfo, setShowInfo] = useState(false);
   const hideHeader = mode === 'pvp' && pvpGamePhase !== 'idle';
 
   useEffect(() => {
@@ -123,10 +124,11 @@ function HomeContent() {
         <ModeToggle mode={mode} onChange={handleModeChange} />
         <div className="header-spacer-mobile" />
         {mode === 'pvp' && (
-          <div className="info-icon-wrapper info-icon-wrapper--header">
-            <button className="info-icon-btn" aria-label="How it works">
+          <div className={`info-icon-wrapper info-icon-wrapper--header${showInfo ? ' info-icon-wrapper--open' : ''}`}>
+            <button className="info-icon-btn" aria-label="How it works" onClick={() => setShowInfo(v => !v)}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
             </button>
+            {showInfo && <div className="info-tooltip-backdrop" onClick={() => setShowInfo(false)} />}
             <div className="info-tooltip">
               <p className="info-tooltip-title">How it works</p>
               <ul className="info-tooltip-list">
