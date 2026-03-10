@@ -256,7 +256,6 @@ export function RankedGame() {
     isReady: isDetectorReady,
     blinkCount,
     start: startDetection,
-    stop: stopDetection,
     reset: resetDetection,
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
@@ -287,13 +286,6 @@ export function RankedGame() {
     setCameraReady(false);
     setActive(true);
   }, [isConnected, resetDetection, clearBlinkLog]);
-
-  const handleStop = useCallback(() => {
-    stopDetection();
-    setActive(false);
-    setCameraReady(false);
-    refetchLeaderboard();
-  }, [stopDetection, refetchLeaderboard]);
 
   const handleCopyAddress = useCallback(() => {
     if (walletAddress) {
@@ -463,28 +455,6 @@ export function RankedGame() {
                   </div>
                 )}
 
-                {/* Stop button overlay — top-left */}
-                {cameraReady && (
-                  <button
-                    onClick={handleStop}
-                    style={{
-                      position: 'absolute', top: '16px', left: '16px', zIndex: 5,
-                      padding: '8px 20px',
-                      background: 'rgba(239,68,68,0.15)',
-                      border: '1.5px solid rgba(239,68,68,0.4)',
-                      borderRadius: '10px',
-                      color: '#ef4444',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      fontFamily: "'Manrope', sans-serif",
-                      cursor: 'pointer',
-                      backdropFilter: 'blur(8px)',
-                      transition: 'background 0.15s',
-                    }}
-                  >
-                    Stop
-                  </button>
-                )}
               </div>
             </>
           )}

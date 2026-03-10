@@ -878,8 +878,8 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
   // ─── Sidebar content (shared across all phases) ───
   const sidebarContent = (
     <aside style={{
-      width: isMobile ? '100%' : '320px',
-      minWidth: isMobile ? undefined : '320px',
+      width: isMobile ? '100%' : '360px',
+      minWidth: isMobile ? undefined : '360px',
       display: 'flex',
       flexDirection: 'column',
       borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
