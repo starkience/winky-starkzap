@@ -110,6 +110,18 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ─── Suppress native video controls (play/pause icon flash) ─── */
+video::-webkit-media-controls,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ─── Focus-visible for all interactive elements ─── */
 button:focus-visible,
 a:focus-visible,
@@ -1729,6 +1741,7 @@ a:focus-visible,
   align-items: center;
   gap: 12px;
   padding: 12px 32px;
+  background: linear-gradient(to bottom, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.7) 70%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1875,9 +1888,10 @@ a:focus-visible,
 
 @media (max-width: 768px) {
   .app-header-bar {
-    padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px;
+    padding: max(10px, env(safe-area-inset-top, 10px)) 12px 12px;
     gap: 8px;
     justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0.85) 60%, transparent 100%);
   }
   .mode-toggle {
     flex: 0 1 auto;

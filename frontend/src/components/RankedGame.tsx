@@ -319,21 +319,22 @@ export function RankedGame() {
     <div style={{
       display: 'flex',
       width: '100%',
-      height: isMobile ? 'auto' : '100vh',
-      minHeight: isMobile ? '100dvh' : undefined,
-      overflow: isMobile ? 'auto' : 'hidden',
+      height: '100dvh',
+      overflow: 'hidden',
       background: '#0A0A0A',
       fontFamily: "'Manrope', sans-serif",
       flexDirection: isMobile ? 'column' : 'row',
     }}>
 
       <main style={{
-        flex: 1,
+        flex: isMobile ? 'none' : 1,
+        height: isMobile ? '45dvh' : undefined,
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        minHeight: isMobile ? '50dvh' : 0,
+        minHeight: 0,
         position: 'relative',
+        flexShrink: 0,
       }}>
         <div style={{
           flex: 1,
@@ -350,11 +351,13 @@ export function RankedGame() {
             overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.08)',
             background: '#111',
-            minHeight: isMobile ? '240px' : 0,
+            minHeight: 0,
           }}>
             <video
               ref={(el) => { videoRef.current = el; }}
               autoPlay playsInline muted
+              controls={false}
+              disablePictureInPicture
               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
             />
             <canvas
@@ -436,10 +439,13 @@ export function RankedGame() {
         borderTop: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
         background: 'rgba(17,17,17,0.6)',
         backdropFilter: 'blur(20px)',
-        height: isMobile ? 'auto' : '100%',
-        overflow: isMobile ? 'visible' : 'hidden',
+        flex: isMobile ? 1 : undefined,
+        height: isMobile ? undefined : '100%',
+        overflow: isMobile ? 'auto' : 'hidden',
+        overflowX: 'hidden',
         flexShrink: 0,
-      }}>
+        WebkitOverflowScrolling: 'touch',
+      } as React.CSSProperties}>
 
         {/* Brand + Auth */}
         <div style={{
@@ -597,12 +603,11 @@ export function RankedGame() {
 
         {/* Transaction Log */}
         <div style={{
-          flex: isMobile ? 'none' : 1,
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          minHeight: isMobile ? '200px' : 0,
-          maxHeight: isMobile ? '300px' : undefined,
+          minHeight: isMobile ? '180px' : 0,
           position: 'relative',
         }}>
           {/* Strong fade-out gradient at the top */}

@@ -1314,6 +1314,8 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
               <video
                 ref={(el) => { videoRef.current = el; }}
                 autoPlay playsInline muted
+                controls={false}
+                disablePictureInPicture
                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
               />
               <canvas
