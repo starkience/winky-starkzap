@@ -494,8 +494,8 @@ export function RankedGame() {
               padding: isMobile ? '0 16px 20px' : '0 20px 36px',
             }}
           >
-            {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-              const fadeRatio = 1 - (idx / Math.max(arr.length - 1, 1));
+            {blinkTxLog.map((tx, idx, arr) => {
+              const fadeRatio = idx / Math.max(arr.length - 1, 1);
               const opacity = 0.2 + 0.8 * fadeRatio;
               const isConfirmed = tx.status === 'success';
               const blinkColor = isConfirmed ? '#22c55e' : '#fff';
