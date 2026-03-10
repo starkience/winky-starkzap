@@ -128,20 +128,22 @@ async function downloadChallengeCard(opts: { score: number; stake: number; usern
   link.click();
 }
 
-/** Draw a win card PNG (split red/green like past challenge cards) and trigger download. */
-async function downloadWinCard(opts: {
+/** Draw a result card PNG (split red/green) and trigger download. */
+async function downloadResultCard(opts: {
   winnerUsername: string; winnerScore: number; winnerImage?: string;
   loserUsername: string; loserScore: number; loserImage?: string;
   payout: number;
+  isDownloaderWinner: boolean;
 }) {
   const W = 600, H = 360, R = 24;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const [loserImg, winnerImg] = await Promise.all([
+  const [loserImg, winnerImg, logoImg] = await Promise.all([
     opts.loserImage ? loadImg(opts.loserImage) : Promise.resolve(null),
     opts.winnerImage ? loadImg(opts.winnerImage) : Promise.resolve(null),
+    loadImg('/logo.png', false),
   ]);
 
   ctx.fillStyle = '#0A0A0A';
@@ -167,35 +169,48 @@ async function downloadWinCard(opts: {
   ctx.fillStyle = 'rgba(34, 197, 94, 0.4)'; ctx.fillRect(half, 0, half, H);
   ctx.restore();
 
-  // Center label — "username won $X"
-  const labelText = `${opts.winnerUsername} won $${opts.payout}`;
-  ctx.font = '900 22px Manrope, sans-serif';
-  const lbw = ctx.measureText(labelText).width + 40;
-  const lbh = 38;
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
-  ctx.beginPath(); ctx.roundRect((W - lbw) / 2, 12, lbw, lbh, 10); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(labelText, W / 2, 12 + lbh / 2);
+  // Top-left: WINK logo
+  if (logoImg) {
+    const lh = 28;
+    const lw = (logoImg.width / logoImg.height) * lh;
+    ctx.drawImage(logoImg, 16, 14, lw, lh);
+  }
 
-  // Loser score + name (left)
-  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+  // Top-right: cash prize
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.font = '900 20px Manrope, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
+  ctx.fillText(`$${opts.payout} USDC`, W - 20, 18);
+  ctx.shadowBlur = 0;
+
+  // Left half text: loser score + "Blinks in 30s" + username
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
   ctx.fillStyle = '#ef4444'; ctx.font = '900 72px Manrope, sans-serif';
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
-  ctx.fillText(String(opts.loserScore), half / 2, H - 60);
+  ctx.fillText(String(opts.loserScore), half / 2, H - 70);
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '600 12px Manrope, sans-serif';
+  ctx.fillText('Blinks in 30s', half / 2, H - 46);
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
-  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 28);
+  ctx.fillText(`@${opts.loserUsername}`, half / 2, H - 22);
   ctx.shadowBlur = 0;
 
-  // Winner score + name (right)
+  // Right half text: winner score + "Blinks in 30s" + username
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
   ctx.fillStyle = '#22c55e'; ctx.font = '900 72px Manrope, sans-serif';
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
-  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 60);
+  ctx.fillText(String(opts.winnerScore), half + half / 2, H - 70);
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '600 12px Manrope, sans-serif';
+  ctx.fillText('Blinks in 30s', half + half / 2, H - 46);
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '700 16px Manrope, sans-serif';
-  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 28);
+  ctx.fillText(`@${opts.winnerUsername}`, half + half / 2, H - 22);
   ctx.shadowBlur = 0;
 
+  const downloaderScore = opts.isDownloaderWinner ? opts.winnerScore : opts.loserScore;
+  const suffix = opts.isDownloaderWinner ? 'win' : 'loss';
   const link = document.createElement('a');
-  link.download = `winky-win-${opts.winnerScore}.png`;
+  link.download = `winky-${suffix}-${downloaderScore}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
@@ -1826,34 +1841,37 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
                       flexDirection: isMobile ? 'column' : 'row',
                       alignItems: 'center',
                     }}>
-                      {isWinner && (
+                      {!isDraw && (
                         <>
                           <button
                             className="share-popup-download-btn"
                             style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
-                            onClick={() => downloadWinCard({
-                              winnerUsername: twitterUsername || formatAddress(walletAddress || ''),
-                              winnerScore: finalScore,
-                              winnerImage: fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
-                              loserUsername: challengeTarget.username,
-                              loserScore: challengeTarget.score,
-                              loserImage: challengeTarget.profileImage,
+                            onClick={() => downloadResultCard({
+                              winnerUsername: isWinner ? (twitterUsername || formatAddress(walletAddress || '')) : challengeTarget.username,
+                              winnerScore: isWinner ? finalScore : challengeTarget.score,
+                              winnerImage: isWinner ? fullSizeTwitterImage(user?.twitter?.profilePictureUrl) : challengeTarget.profileImage,
+                              loserUsername: isWinner ? challengeTarget.username : (twitterUsername || formatAddress(walletAddress || '')),
+                              loserScore: isWinner ? challengeTarget.score : finalScore,
+                              loserImage: isWinner ? challengeTarget.profileImage : fullSizeTwitterImage(user?.twitter?.profilePictureUrl),
                               payout: selectedBet * 2,
+                              isDownloaderWinner: isWinner,
                             })}
                           >
                             &#x2B07; Download Card
                           </button>
-                          <a
-                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                              `I just beat @${challengeTarget.username} with ${finalScore} blinks and won $${selectedBet * 2} USDC\n\nPvP blink today: https://winky-starkzap.vercel.app`
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="share-popup-btn"
-                            style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
-                          >
-                            Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                          </a>
+                          {isWinner && (
+                            <a
+                              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                                `I just beat @${challengeTarget.username} with ${finalScore} blinks and won $${selectedBet * 2} USDC\n\nPvP blink today: https://winky-starkzap.vercel.app`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="share-popup-btn"
+                              style={isMobile ? { width: '100%', maxWidth: '300px', justifyContent: 'center' } : undefined}
+                            >
+                              Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                            </a>
+                          )}
                         </>
                       )}
                       <button onClick={handlePlayAgain} className="result-play-again-btn" style={isMobile ? { width: '100%', maxWidth: '300px', margin: 0 } : { margin: 0 }}>
