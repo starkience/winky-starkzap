@@ -314,47 +314,6 @@ export function RankedGame() {
         position: 'relative',
       }}>
 
-        {/* Header bar */}
-        <div style={{
-          padding: isMobile ? '12px 16px' : '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img src="/logo.png" alt="Winky" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
-            {NETWORK === 'sepolia' && (
-              <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
-                Testnet
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {isConnected && walletAddress ? (
-              <>
-                <button onClick={handleCopyAddress} className="sidebar-wallet-btn" style={{ padding: '8px 12px' }}>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} />
-                  <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px' }}>
-                    {copied ? 'Copied!' : formatAddress(walletAddress)}
-                  </span>
-                </button>
-                <button onClick={handleLogout} className="sidebar-disconnect-btn" style={{ padding: '8px 10px' }}>&times;</button>
-              </>
-            ) : (
-              <button
-                onClick={handleLogin}
-                disabled={loginBusy}
-                className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
-                style={{ padding: '10px 20px', fontSize: '13px' }}
-              >
-                {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* Webcam area */}
         <div style={{
           flex: 1,
@@ -375,14 +334,19 @@ export function RankedGame() {
               <p style={{ fontSize: '14px', color: '#555', fontWeight: 500, maxWidth: '400px', lineHeight: 1.6, margin: 0 }}>
                 Every blink is a real transaction on Starknet. Zero gas. Zero cost. Just blink and climb the global leaderboard.
               </p>
-              <button
-                onClick={isConnected ? handlePlay : handleLogin}
-                disabled={loginBusy}
-                className={`sidebar-play-btn${isConnected ? ' sidebar-play-btn--active' : ''}`}
-                style={{ padding: '16px 48px', fontSize: '18px' }}
-              >
-                {isConnected ? 'Start Blinking' : 'Connect to Play'}
-              </button>
+              {isConnected ? (
+                <button
+                  onClick={handlePlay}
+                  className="sidebar-play-btn sidebar-play-btn--active"
+                  style={{ padding: '16px 48px', fontSize: '18px' }}
+                >
+                  Start Blinking
+                </button>
+              ) : (
+                <p style={{ fontSize: '13px', color: '#666', fontWeight: 600, margin: 0 }}>
+                  Connect your wallet to start blinking
+                </p>
+              )}
               {userRankEntry && (
                 <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
                   <div style={{ textAlign: 'center' }}>
@@ -519,7 +483,7 @@ export function RankedGame() {
         </div>
       </main>
 
-      {/* RIGHT: Transaction Log + Leaderboard */}
+      {/* RIGHT SIDEBAR */}
       <aside style={{
         width: isMobile ? '100%' : '360px',
         minWidth: isMobile ? undefined : '360px',
@@ -533,83 +497,133 @@ export function RankedGame() {
         flexShrink: 0,
       }}>
 
-        {/* Transaction Log */}
+        {/* Brand + Auth */}
         <div style={{
-          flex: showGameArea || gamePhase === 'result' ? 1 : 'none',
-          minHeight: showGameArea || gamePhase === 'result' ? '200px' : '0px',
+          padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex',
           flexDirection: 'column',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          overflow: 'hidden',
-          transition: 'min-height 0.3s',
+          gap: isMobile ? '10px' : '16px',
         }}>
-          <div style={{
-            padding: '14px 20px 10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Transactions
-            </span>
-            {isPlaying && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: '#22c55e' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
-                LIVE
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: isMobile ? '160px' : '280px', height: 'auto' }} />
+            {NETWORK === 'sepolia' && (
+              <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>
+                Testnet
+              </span>
             )}
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            {blinkTxLog.length === 0 && (
-              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-                {isPlaying
-                  ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
-                  : 'Transactions will appear here during gameplay'}
-              </div>
-            )}
-            {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-              const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-              const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
-              return (
-                <div key={tx.id} style={{
-                  padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
-                  opacity,
-                }}>
-                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      Blink #{tx.blinkNumber}
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#555', fontWeight: 600 }}>
-                      {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                    </span>
-                  </div>
-                  {VOYAGER_TX_URL && tx.hash && (
-                    <a
-                      href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="tx-voyager-link"
-                      aria-label="View on Voyager"
-                    >
-                      &#x2197;
-                    </a>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+          {isConnected && walletAddress ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleCopyAddress}
+                className="sidebar-wallet-btn"
+                aria-label={copied ? 'Address copied' : 'Copy wallet address'}
+              >
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} aria-hidden="true" />
+                <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px', letterSpacing: '0.3px' }}>
+                  {copied ? 'Copied!' : formatAddress(walletAddress)}
+                </span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="sidebar-disconnect-btn"
+                aria-label="Disconnect wallet"
+              >
+                &times;
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleLogin}
+              disabled={loginBusy}
+              className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
+            >
+              {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+            </button>
+          )}
         </div>
 
+        {/* Transaction Log (visible during gameplay + result) */}
+        {(showGameArea || gamePhase === 'result') && (
+          <div style={{
+            flex: 1,
+            minHeight: '180px',
+            maxHeight: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '12px 20px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+            }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Transactions
+              </span>
+              {isPlaying && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: '#22c55e' }}>
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
+                  LIVE
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              {blinkTxLog.length === 0 && (
+                <div style={{ padding: '20px 16px', textAlign: 'center', color: '#333', fontSize: '11px', fontWeight: 600 }}>
+                  {isPlaying
+                    ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
+                    : 'No transactions this session'}
+                </div>
+              )}
+              {[...blinkTxLog].reverse().map((tx, idx, arr) => {
+                const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
+                const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+                return (
+                  <div key={tx.id} style={{
+                    padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                    opacity,
+                  }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Blink #{tx.blinkNumber}
+                      </span>
+                      <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                        {tx.status === 'pending' ? 'sending\u2026' : tx.status}
+                      </span>
+                    </div>
+                    {VOYAGER_TX_URL && tx.hash && (
+                      <a
+                        href={`${VOYAGER_TX_URL}/${tx.hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tx-voyager-link"
+                        aria-label="View on Voyager"
+                      >
+                        &#x2197;
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Leaderboard */}
-        <div style={{
+        <nav style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           minHeight: 0,
-        }}>
+        }} aria-label="Leaderboard">
           <div style={{
             padding: '14px 20px 10px',
             borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -663,8 +677,8 @@ export function RankedGame() {
                     className="sidebar-leaderboard-row"
                     style={{
                       padding: '10px 16px',
-                      ...(isMe ? { background: 'rgba(192,180,218,0.06)' } : {}),
-                      ...(idx < 3 ? {
+                      ...(isMe ? { background: 'rgba(192,180,218,0.08)' } : {}),
+                      ...(idx < 3 && !isMe ? {
                         background: idx === 0 ? 'rgba(255,215,0,0.06)' : idx === 1 ? 'rgba(192,192,192,0.06)' : 'rgba(205,127,50,0.06)',
                       } : {}),
                     }}
@@ -717,7 +731,7 @@ export function RankedGame() {
               })
             )}
           </div>
-        </div>
+        </nav>
       </aside>
 
       {/* Error banner */}
