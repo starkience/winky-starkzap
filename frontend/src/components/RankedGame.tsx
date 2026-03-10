@@ -416,7 +416,7 @@ export function RankedGame() {
 
       {/* Transaction Log — newest first, max 4, no scroll */}
       <div style={{ padding: '8px 12px 16px', overflow: 'hidden' }}>
-        {blinkTxLog.slice(-4).reverse().map((tx, idx) => {
+        {blinkTxLog.slice(0, 4).map((tx, idx) => {
           const isConfirmed = tx.status === 'success';
           const blinkColor = isConfirmed ? '#22c55e' : '#fff';
           const isNewest = idx === 0;
