@@ -392,7 +392,7 @@ export function RankedGame() {
                   </div>
                 )}
 
-                {/* Blink count HUD */}
+                {/* Blink count HUD — persistent total from on-chain */}
                 {cameraReady && (
                   <div style={{
                     position: 'absolute', top: '16px', left: '16px',
@@ -404,10 +404,10 @@ export function RankedGame() {
                       fontVariantNumeric: 'tabular-nums', color: '#C0B4DA',
                       textShadow: '0 2px 12px rgba(0,0,0,0.6)',
                     }}>
-                      {blinkCount}
+                      {((userRankEntry?.blinks ?? 0) + blinkCount).toLocaleString()}
                     </span>
                     <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1.5px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                      blinks this session
+                      total blinks
                     </span>
                   </div>
                 )}
@@ -499,192 +499,72 @@ export function RankedGame() {
           )}
         </div>
 
-        {/* Transaction Log — always visible */}
+        {/* Transaction Log */}
         <div style={{
-          flex: active ? 1 : 'none',
-          minHeight: active ? '200px' : '0px',
-          maxHeight: active ? '50%' : '0px',
-          display: 'flex',
-          flexDirection: 'column',
-          borderBottom: active ? '1px solid rgba(255,255,255,0.06)' : 'none',
-          overflow: 'hidden',
-          transition: 'max-height 0.3s, min-height 0.3s',
-        }}>
-          {active && (
-            <>
-              <div style={{
-                padding: '10px 20px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexShrink: 0,
-              }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Transactions
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8px', fontWeight: 700, color: '#22c55e' }}>
-                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
-                  LIVE
-                </div>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                {blinkTxLog.length === 0 && (
-                  <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>
-                    {blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record txs'}
-                  </div>
-                )}
-                {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-                  const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-                  const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
-                  return (
-                    <div key={tx.id} style={{
-                      padding: '6px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
-                      opacity, marginLeft: '12px', marginRight: '12px',
-                    }}>
-                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Blink #{tx.blinkNumber}
-                        </span>
-                        <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                          {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                        </span>
-                      </div>
-                      {VOYAGER_TX_URL && tx.hash && (
-                        <a
-                          href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="tx-voyager-link"
-                          aria-label="View on Voyager"
-                        >
-                          &#x2197;
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Leaderboard */}
-        <nav style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           minHeight: 0,
-        }} aria-label="Leaderboard">
+        }}>
           <div style={{
-            padding: '14px 20px 10px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            padding: '10px 20px 8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Leaderboard
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Transactions
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '9px', fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                {leaderboard.length} blinkers
-              </span>
-              <button
-                onClick={() => refetchLeaderboard()}
-                disabled={leaderboardLoading}
-                style={{
-                  background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-                  color: '#A6A4A7', fontSize: '14px', cursor: 'pointer', padding: '2px 6px',
-                  transition: 'background 0.15s', opacity: leaderboardLoading ? 0.4 : 1,
-                }}
-                aria-label="Refresh leaderboard"
-              >
-                &#x21bb;
-              </button>
-            </div>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {leaderboardLoading ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <div className="spinner" style={{ width: '24px', height: '24px' }} />
-                <span style={{ fontSize: '12px', color: '#555', fontWeight: 600 }}>Loading leaderboard...</span>
+            {active && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: '#22c55e' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
+                LIVE
               </div>
-            ) : leaderboard.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-                No blinks recorded yet. Be the first!
-              </div>
-            ) : (
-              leaderboard.slice(0, 50).map((entry, idx) => {
-                const norm = normalizeAddress(entry.address);
-                const isMe = walletAddress && norm === normalizeAddress(walletAddress);
-                const profile = allTwitterProfiles[norm];
-                const displayName = profile ? `@${profile.username}` : entry.username;
-                const avatarUrl = profile?.profileImageUrl;
-
-                return (
-                  <div
-                    key={entry.address}
-                    className="sidebar-leaderboard-row"
-                    style={{
-                      padding: '10px 16px',
-                      ...(isMe ? { background: 'rgba(192,180,218,0.08)' } : {}),
-                      ...(idx < 3 && !isMe ? {
-                        background: idx === 0 ? 'rgba(255,215,0,0.06)' : idx === 1 ? 'rgba(192,192,192,0.06)' : 'rgba(205,127,50,0.06)',
-                      } : {}),
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                      <span style={{
-                        fontSize: '12px', fontWeight: 800,
-                        color: idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : '#555',
-                        width: '24px', textAlign: 'center', flexShrink: 0,
-                      }}>
-                        {entry.rank}
-                      </span>
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #444)', flexShrink: 0 }} />
-                      )}
-                      {profile ? (
-                        <a
-                          href={`https://x.com/${profile.username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: '12px', fontWeight: isMe ? 700 : 600,
-                            color: isMe ? '#C0B4DA' : '#A6A4A7',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            textDecoration: 'none', transition: 'color 0.15s',
-                          }}
-                        >
-                          {displayName}
-                        </a>
-                      ) : (
-                        <span style={{
-                          fontSize: '12px', fontWeight: isMe ? 700 : 600,
-                          color: isMe ? '#C0B4DA' : '#A6A4A7',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {displayName}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>
-                        {entry.blinks.toLocaleString()}
-                      </span>
-                      <span style={{ fontSize: '9px', fontWeight: 600, color: '#555' }}>blinks</span>
-                    </div>
-                  </div>
-                );
-              })
             )}
           </div>
-        </nav>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            {blinkTxLog.length === 0 && (
+              <div style={{ padding: '20px 16px', textAlign: 'center', color: '#333', fontSize: '11px', fontWeight: 600 }}>
+                {active
+                  ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
+                  : 'Start blinking to see transactions'}
+              </div>
+            )}
+            {[...blinkTxLog].reverse().map((tx, idx, arr) => {
+              const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
+              const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+              return (
+                <div key={tx.id} style={{
+                  padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                  opacity,
+                }}>
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Blink #{tx.blinkNumber}
+                    </span>
+                    <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                      {tx.status === 'pending' ? 'sending\u2026' : tx.status}
+                    </span>
+                  </div>
+                  {VOYAGER_TX_URL && tx.hash && (
+                    <a
+                      href={`${VOYAGER_TX_URL}/${tx.hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tx-voyager-link"
+                      aria-label="View on Voyager"
+                    >
+                      &#x2197;
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </aside>
 
       {/* Error banner */}
