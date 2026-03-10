@@ -323,6 +323,7 @@ export function RankedGame() {
       overflow: 'auto', background: '#0A0A0A', fontFamily: "'Manrope', sans-serif",
       WebkitOverflowScrolling: 'touch',
     } as React.CSSProperties}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh + 140px)' }}>
       {/* Spacer for fixed header */}
       <div style={{ height: `${headerH + 8}px`, flexShrink: 0 }} />
 
@@ -436,6 +437,7 @@ export function RankedGame() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   ) : null;
