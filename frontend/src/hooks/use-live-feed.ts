@@ -196,8 +196,8 @@ export function useLiveFeed() {
     // Load initial events from on-chain data
     fetchInitial();
 
-    // Poll every 10s as a fallback for when Pusher isn't configured
-    const pollInterval = setInterval(refreshEvents, 10_000);
+    // Poll every 5s as a fallback for when Pusher isn't configured
+    const pollInterval = setInterval(refreshEvents, 5_000);
 
     // Connect to Pusher for real-time updates
     if (!PUSHER_KEY) {

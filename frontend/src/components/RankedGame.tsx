@@ -242,8 +242,11 @@ export function RankedGame() {
     logout().catch(() => {});
   }, [logout]);
 
+  const onChainTotalRef = useRef(0);
+
   const handleBlink = useCallback((count: number) => {
-    recordBlink(count, twitterUsername || undefined);
+    const actualNumber = onChainTotalRef.current + count;
+    recordBlink(actualNumber, twitterUsername || undefined);
   }, [recordBlink, twitterUsername]);
 
   const {
@@ -288,7 +291,9 @@ export function RankedGame() {
     ? leaderboard.find(e => normalizeAddress(e.address) === normalizeAddress(walletAddress))
     : null;
 
-  const totalBlinks = (userRankEntry?.blinks ?? 0) + blinkCount;
+  const onChainTotal = userRankEntry?.blinks ?? 0;
+  onChainTotalRef.current = onChainTotal;
+  const totalBlinks = onChainTotal + blinkCount;
 
   // Header height to offset webcam
   const headerH = isMobile ? 50 : 56;
@@ -415,10 +420,10 @@ export function RankedGame() {
 
         {/* Brand + Auth */}
         <div style={{
-          padding: isMobile ? '14px 16px 12px' : '16px 20px 12px',
+          padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: isMobile ? '10px' : '12px',
+          gap: isMobile ? '10px' : '16px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: isMobile ? '160px' : '280px', height: 'auto' }} />
@@ -510,7 +515,7 @@ export function RankedGame() {
                   onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}
                 >
                   <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{
+                    <span className={isConfirmed ? 'ranked-tx-blink-label' : undefined} style={{
                       fontSize: '14px', fontWeight: 800, color: blinkColor,
                       display: 'block', marginBottom: '2px',
                       transition: 'color 0.15s',
@@ -518,13 +523,12 @@ export function RankedGame() {
                       Blink #{tx.blinkNumber}
                     </span>
                     {tx.hash ? (
-                      <span style={{
+                      <span className="ranked-tx-hash" style={{
                         fontSize: '11px', fontWeight: 600,
                         color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666',
-                        textDecoration: 'underline',
-                        textDecorationColor: 'rgba(255,255,255,0.08)',
+                        textDecoration: 'none',
                         fontFamily: "'SF Mono', Monaco, monospace",
-                        transition: 'color 0.15s',
+                        transition: 'color 0.15s, text-decoration-color 0.15s',
                       }}>
                         {formatAddress(tx.hash)}
                       </span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -72,6 +72,36 @@ function LandingPage({ onSelect }: { onSelect: (m: AppMode) => void }) {
   );
 }
 
+function WelcomePopup({ mode, onClose }: { mode: AppMode; onClose: () => void }) {
+  return (
+    <div className="welcome-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="welcome-modal">
+        <button className="welcome-close" onClick={onClose} aria-label="Close">&times;</button>
+        {mode === 'ranked' ? (
+          <>
+            <h2 className="welcome-title">Welcome to Ranked</h2>
+            <p className="welcome-text">
+              Every blink you make is a <strong>real transaction on Starknet</strong>. Gas is fully covered by a paymaster &mdash; zero cost to you.<br /><br />
+              Climb the <strong>global leaderboard</strong> by blinking the most. Your total blinks are persistent and accumulate across sessions.<br /><br />
+              Just connect your wallet and start blinking.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="welcome-title">Welcome to PvP</h2>
+            <p className="welcome-text">
+              Challenge anyone to a <strong>30-second blink duel</strong>. Stake USDC &mdash; the winner takes the full pot.<br /><br />
+              Create a challenge or accept an existing one. Your opponent&rsquo;s score stays <strong>hidden</strong> until the duel ends.<br /><br />
+              Blink detection is 100% local &mdash; no data leaves your device.
+            </p>
+          </>
+        )}
+        <button className="welcome-play-btn" onClick={onClose}>Play</button>
+      </div>
+    </div>
+  );
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const challengeParam = searchParams.get('challenge');
@@ -81,6 +111,8 @@ function HomeContent() {
   const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<AppMode>('ranked');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -92,11 +124,33 @@ function HomeContent() {
     }
   }, [initialChallengeId]);
 
-  const handleModeSelect = (m: AppMode) => {
+  const handleModeSelect = useCallback((m: AppMode) => {
     setMode(m);
     sessionStorage.setItem('winky_launched', '1');
     setLaunched(true);
-  };
+    setPreloadedModes(new Set([m]));
+
+    const welcomeKey = `winky_welcome_${m}`;
+    if (!sessionStorage.getItem(welcomeKey)) {
+      setShowWelcome(true);
+      sessionStorage.setItem(welcomeKey, '1');
+    }
+  }, []);
+
+  const handleModeChange = useCallback((m: AppMode) => {
+    setMode(m);
+    setPreloadedModes(prev => new Set(prev).add(m));
+
+    const welcomeKey = `winky_welcome_${m}`;
+    if (!sessionStorage.getItem(welcomeKey)) {
+      setShowWelcome(true);
+      sessionStorage.setItem(welcomeKey, '1');
+    }
+  }, []);
+
+  const handleCloseWelcome = useCallback(() => {
+    setShowWelcome(false);
+  }, []);
 
   if (!mounted) return null;
 
@@ -107,7 +161,7 @@ function HomeContent() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       <div className="app-header-bar">
-        <ModeToggle mode={mode} onChange={setMode} />
+        <ModeToggle mode={mode} onChange={handleModeChange} />
         <button
           className="leaderboard-header-btn"
           onClick={() => setShowLeaderboard(true)}
@@ -116,14 +170,20 @@ function HomeContent() {
         </button>
       </div>
 
-      {mode === 'ranked' ? (
-        <RankedGame />
-      ) : (
-        <WinkyGame initialChallengeId={initialChallengeId} />
-      )}
+      {/* Keep both modes mounted once loaded to eliminate toggle delay */}
+      <div style={mode === 'ranked' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
+        {(mode === 'ranked' || preloadedModes.has('ranked')) && <RankedGame />}
+      </div>
+      <div style={mode === 'pvp' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
+        {(mode === 'pvp' || preloadedModes.has('pvp')) && <WinkyGame initialChallengeId={initialChallengeId} />}
+      </div>
 
       {showLeaderboard && (
         <LeaderboardModal mode={mode} onClose={() => setShowLeaderboard(false)} />
+      )}
+
+      {showWelcome && (
+        <WelcomePopup mode={mode} onClose={handleCloseWelcome} />
       )}
     </div>
   );
