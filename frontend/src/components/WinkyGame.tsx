@@ -1090,8 +1090,8 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
       touchAction: 'manipulation',
     }}>
 
-      {/* ═══ SIDEBAR ═══ */}
-      {sidebarContent}
+      {/* ═══ SIDEBAR — hidden on desktop idle ═══ */}
+      {(isMobile || gamePhase !== 'idle') && sidebarContent}
 
       {/* ═══ MAIN AREA ═══ */}
       <main style={{

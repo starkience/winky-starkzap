@@ -1741,7 +1741,7 @@ a:focus-visible,
   align-items: center;
   gap: 12px;
   padding: 12px 32px;
-  background: linear-gradient(to bottom, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.7) 70%, transparent 100%);
+  background: none;
   pointer-events: none;
 }
 
@@ -1808,6 +1808,15 @@ a:focus-visible,
 }
 .app-header-bar > * {
   pointer-events: auto;
+}
+.header-spacer-mobile {
+  display: none;
+}
+@media (max-width: 768px) {
+  .header-spacer-mobile {
+    display: block;
+    flex: 1;
+  }
 }
 
 .leaderboard-header-btn {
@@ -1893,7 +1902,6 @@ a:focus-visible,
   .app-header-bar {
     padding: max(10px, env(safe-area-inset-top, 10px)) 12px 10px;
     gap: 8px;
-    justify-content: space-between;
     background: rgba(10, 10, 10, 0.98);
   }
   .mode-toggle {

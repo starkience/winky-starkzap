@@ -119,7 +119,7 @@ function HomeContent() {
     <div style={{ position: 'relative', width: '100%', minHeight: '100dvh' }}>
       <div className="app-header-bar">
         <ModeToggle mode={mode} onChange={handleModeChange} />
-        <div style={{ flex: 1 }} />
+        <div className="header-spacer-mobile" />
         {mode === 'pvp' && (
           <div className="info-icon-wrapper info-icon-wrapper--header">
             <button className="info-icon-btn" aria-label="How it works">
