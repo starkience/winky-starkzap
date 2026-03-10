@@ -2049,7 +2049,7 @@ a:focus-visible,
   max-width: 960px;
   margin: 0 auto;
 }
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .blinker-grid {
     grid-template-columns: repeat(2, 1fr);
     max-width: 100%;
@@ -2129,6 +2129,7 @@ a:focus-visible,
 .blinker-card-wrapper {
   position: relative;
   aspect-ratio: 5 / 3;
+  -webkit-perspective: 800px;
   perspective: 800px;
 }
 .blinker-card-wrapper:hover .blinker-card-flipper:not(.blinker-card-flipper--flipped) {
