@@ -415,7 +415,6 @@ export function RankedGame() {
         height: isMobile ? 'auto' : '100%',
         overflow: 'hidden',
         flexShrink: 0,
-        paddingTop: `${headerH}px`,
       }}>
 
         {/* Brand + Auth */}
@@ -499,7 +498,7 @@ export function RankedGame() {
               padding: isMobile ? '0 16px 20px' : '0 20px 36px',
             }}
           >
-            {blinkTxLog.map((tx, idx, arr) => {
+            {[...blinkTxLog].reverse().map((tx, idx, arr) => {
               const fadeRatio = idx / Math.max(arr.length - 1, 1);
               const opacity = 0.2 + 0.8 * fadeRatio;
               const isConfirmed = tx.status === 'success';
