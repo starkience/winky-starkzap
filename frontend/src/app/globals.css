@@ -1520,8 +1520,11 @@ a:focus-visible,
   transition: color 0.2s;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  min-width: 64px;
+  min-width: 72px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mode-toggle-btn:hover {

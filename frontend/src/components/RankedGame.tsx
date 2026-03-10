@@ -9,8 +9,6 @@ import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL } from '@/lib/constants';
 
-const GAME_DURATION = 30;
-
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
   if (!addr.startsWith('0x')) return addr;
@@ -20,8 +18,6 @@ function formatAddress(addr: string | null | undefined): string {
 function normalizeAddress(addr: string): string {
   return addr.replace(/^0x0*/i, '0x').toLowerCase();
 }
-
-type GamePhase = 'idle' | 'ready' | 'countdown' | 'playing' | 'result';
 
 interface StoredTwitterProfile {
   username: string;
@@ -37,25 +33,19 @@ export function RankedGame() {
   const [walletLoading, setWalletLoading] = useState(false);
   const setupAttemptedRef = useRef(false);
 
-  const [gamePhase, setGamePhase] = useState<GamePhase>('idle');
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
-  const [countdownNumber, setCountdownNumber] = useState(3);
-  const [finalScore, setFinalScore] = useState(0);
+  const [active, setActive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const blinkCountRef = useRef(0);
 
   const twitterProfile = user?.twitter ?? null;
   const twitterUsername = twitterProfile?.username ?? null;
 
   const isConnected = ready && authenticated && !!sdkWallet && !loggingOut;
-  const isPlaying = gamePhase === 'playing';
-  const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
   const loginBusy = !ready || walletLoading;
 
   const {
@@ -84,7 +74,6 @@ export function RankedGame() {
       .catch(() => {});
   }, [leaderboardLoading, leaderboard]);
 
-  // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024));
@@ -179,7 +168,7 @@ export function RankedGame() {
     setLoggingOut(true);
     setSdkWallet(null);
     setWalletAddress(null);
-    setGamePhase('idle');
+    setActive(false);
     setupAttemptedRef.current = false;
     try {
       Object.values(STORAGE_KEYS).forEach(k => {
@@ -189,12 +178,12 @@ export function RankedGame() {
     logout().catch(() => {});
   }, [logout]);
 
-  // Blink detection
-  const gamePhaseRef = useRef<GamePhase>('idle');
-  useEffect(() => { gamePhaseRef.current = gamePhase; }, [gamePhase]);
+  // Blink detection — always active when `active` is true (no game phase gating)
+  const activeRef = useRef(false);
+  useEffect(() => { activeRef.current = active; }, [active]);
 
   const handleBlink = useCallback((count: number) => {
-    if (gamePhaseRef.current === 'playing') {
+    if (activeRef.current) {
       recordBlink(count, twitterUsername || undefined);
     }
   }, [recordBlink, twitterUsername]);
@@ -205,80 +194,45 @@ export function RankedGame() {
     isReady: isDetectorReady,
     blinkCount,
     start: startDetection,
+    stop: stopDetection,
     reset: resetDetection,
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
-    enabled: isPlaying,
+    enabled: active,
   });
 
   useEffect(() => { blinkCountRef.current = blinkCount; }, [blinkCount]);
 
+  // Auto-start camera + detection once active + detector ready
   useEffect(() => {
-    if (gamePhase === 'ready' && isDetectorReady && !cameraReady) {
+    if (active && isDetectorReady && !cameraReady) {
       startDetection()
         .then(() => setCameraReady(true))
         .catch((err) => {
           console.error('Failed to start camera:', err);
           setError('Camera access required to play');
-          setGamePhase('idle');
+          setActive(false);
         });
     }
-  }, [gamePhase, isDetectorReady, cameraReady, startDetection]);
+  }, [active, isDetectorReady, cameraReady, startDetection]);
 
-  // Game timer
-  useEffect(() => {
-    if (gamePhase !== 'playing') return;
-    setTimeLeft(GAME_DURATION);
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          const score = blinkCountRef.current;
-          setFinalScore(score);
-          setGamePhase('result');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [gamePhase]);
-
-  // Handlers
-  const handlePlay = useCallback(() => {
+  const handleStart = useCallback(() => {
     if (!isConnected) return;
     resetDetection();
     blinkCountRef.current = 0;
-    setFinalScore(0);
     setError(null);
     clearBlinkLog();
-    setGamePhase('ready');
+    setCameraReady(false);
+    setActive(true);
   }, [isConnected, resetDetection, clearBlinkLog]);
 
-  const handleStart = useCallback(() => {
-    setGamePhase('countdown');
-    setCountdownNumber(3);
-    resetDetection();
-    blinkCountRef.current = 0;
-    setTimeout(() => setCountdownNumber(2), 1000);
-    setTimeout(() => setCountdownNumber(1), 2000);
-    setTimeout(() => setGamePhase('playing'), 3000);
-  }, [resetDetection]);
-
-  const handlePlayAgain = useCallback(() => {
-    resetDetection();
-    blinkCountRef.current = 0;
-    setFinalScore(0);
-    setTimeLeft(GAME_DURATION);
-    clearBlinkLog();
-    setGamePhase('idle');
+  const handleStop = useCallback(() => {
+    stopDetection();
+    setActive(false);
+    setCameraReady(false);
     refetchLeaderboard();
-  }, [resetDetection, clearBlinkLog, refetchLeaderboard]);
+  }, [stopDetection, refetchLeaderboard]);
 
   const handleCopyAddress = useCallback(() => {
     if (walletAddress) {
@@ -288,7 +242,6 @@ export function RankedGame() {
     }
   }, [walletAddress]);
 
-  // Leaderboard display helpers
   const userRankEntry = walletAddress
     ? leaderboard.find(e => normalizeAddress(e.address) === normalizeAddress(walletAddress))
     : null;
@@ -313,8 +266,6 @@ export function RankedGame() {
         minHeight: 0,
         position: 'relative',
       }}>
-
-        {/* Webcam area */}
         <div style={{
           flex: 1,
           display: 'flex',
@@ -325,18 +276,18 @@ export function RankedGame() {
           minHeight: 0,
           position: 'relative',
         }}>
-          {/* IDLE state */}
-          {gamePhase === 'idle' && (
+          {/* IDLE */}
+          {!active && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center' }}>
               <h1 style={{ fontSize: isMobile ? '28px' : '42px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
                 Blink. Earn.<br />Climb the ranks.
               </h1>
               <p style={{ fontSize: '14px', color: '#555', fontWeight: 500, maxWidth: '400px', lineHeight: 1.6, margin: 0 }}>
-                Every blink is a real transaction on Starknet. Zero gas. Zero cost. Just blink and climb the global leaderboard.
+                Every blink is a real transaction on Starknet. Zero gas. Zero cost. No time limit &mdash; just blink and climb the global leaderboard.
               </p>
               {isConnected ? (
                 <button
-                  onClick={handlePlay}
+                  onClick={handleStart}
                   className="sidebar-play-btn sidebar-play-btn--active"
                   style={{ padding: '16px 48px', fontSize: '18px' }}
                 >
@@ -362,52 +313,42 @@ export function RankedGame() {
             </div>
           )}
 
-          {/* GAME: webcam + overlay */}
-          {showGameArea && (
-            <div style={{
-              width: '100%',
-              maxWidth: '640px',
-              aspectRatio: '4 / 3',
-              position: 'relative',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2px solid rgba(255,255,255,0.08)',
-              background: '#111',
-            }}>
-              <video
-                ref={(el) => { videoRef.current = el; }}
-                autoPlay playsInline muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
-              />
-              <canvas
-                ref={(el) => { canvasRef.current = el; }}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
-              />
+          {/* ACTIVE: webcam */}
+          {active && (
+            <>
+              <div style={{
+                width: '100%',
+                maxWidth: '640px',
+                aspectRatio: '4 / 3',
+                position: 'relative',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '2px solid rgba(255,255,255,0.08)',
+                background: '#111',
+              }}>
+                <video
+                  ref={(el) => { videoRef.current = el; }}
+                  autoPlay playsInline muted
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
+                />
+                <canvas
+                  ref={(el) => { canvasRef.current = el; }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
+                />
 
-              {/* Camera loading */}
-              {gamePhase === 'ready' && !cameraReady && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', zIndex: 5 }}>
-                  <div className="spinner" style={{ width: '32px', height: '32px' }} />
-                </div>
-              )}
+                {!cameraReady && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', zIndex: 5 }}>
+                    <div className="spinner" style={{ width: '32px', height: '32px' }} />
+                  </div>
+                )}
 
-              {/* Countdown overlay */}
-              {gamePhase === 'countdown' && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', zIndex: 5 }}>
-                  <span style={{ fontSize: '96px', fontWeight: 900, color: '#C0B4DA', textShadow: '0 0 40px rgba(192,180,218,0.5)', animation: 'pulse 1s ease-in-out infinite' }}>
-                    {countdownNumber}
-                  </span>
-                </div>
-              )}
-
-              {/* Playing HUD */}
-              {gamePhase === 'playing' && (
-                <div style={{
-                  position: 'absolute', top: '16px', left: '16px', right: '16px',
-                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                  zIndex: 5, pointerEvents: 'none',
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* Blink count HUD */}
+                {cameraReady && (
+                  <div style={{
+                    position: 'absolute', top: '16px', left: '16px',
+                    display: 'flex', flexDirection: 'column', gap: '4px',
+                    zIndex: 5, pointerEvents: 'none',
+                  }}>
                     <span style={{
                       fontSize: '48px', fontWeight: 900, lineHeight: 1,
                       fontVariantNumeric: 'tabular-nums', color: '#C0B4DA',
@@ -415,70 +356,33 @@ export function RankedGame() {
                     }}>
                       {blinkCount}
                     </span>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1.5px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>blinks</span>
-                  </div>
-                  <div style={{
-                    padding: '8px 16px',
-                    background: 'rgba(0,0,0,0.5)',
-                    borderRadius: '10px',
-                    backdropFilter: 'blur(8px)',
-                  }}>
-                    <span style={{
-                      fontSize: '28px', fontWeight: 900, fontVariantNumeric: 'tabular-nums',
-                      color: timeLeft <= 5 ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#fff',
-                      transition: 'color 0.3s',
-                    }}>
-                      0:{timeLeft.toString().padStart(2, '0')}
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1.5px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                      blinks this session
                     </span>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
 
-          {/* Ready controls (under webcam) */}
-          {gamePhase === 'ready' && cameraReady && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
-              <button onClick={handleStart} className="game-start-btn">START</button>
-              <span style={{ fontSize: '13px', color: '#555', fontWeight: 600 }}>Press to begin your 30s session</span>
-              <button onClick={handlePlayAgain} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px 12px' }}>
-                Cancel
+              {/* Stop button */}
+              <button
+                onClick={handleStop}
+                style={{
+                  marginTop: '16px',
+                  padding: '10px 32px',
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1.5px solid rgba(239,68,68,0.3)',
+                  borderRadius: '10px',
+                  color: '#ef4444',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  fontFamily: "'Manrope', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+              >
+                Stop Session
               </button>
-            </div>
-          )}
-
-          {/* Result */}
-          {gamePhase === 'result' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#C0B4DA', margin: 0 }}>
-                Session Complete!
-              </h2>
-              <div style={{
-                padding: '32px 48px', background: '#141414', borderRadius: '16px',
-                border: '2px solid rgba(192,180,218,0.2)',
-              }}>
-                <p style={{ fontSize: '10px', color: '#666', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Blinks Recorded</p>
-                <p style={{ fontSize: '64px', fontWeight: 900, color: '#C0B4DA', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{finalScore}</p>
-                <p style={{ fontSize: '12px', color: '#555', fontWeight: 600, margin: '12px 0 0' }}>
-                  Each blink was a real Starknet transaction
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                    `I just blinked ${finalScore} times in 30 seconds on @WinkyStarkzap\n\nEvery blink = a real transaction on Starknet. Zero gas.\n\nTry it: https://winky-starkzap.vercel.app`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="share-popup-btn"
-                >
-                  Share on <svg viewBox="0 0 24 24" className="share-popup-x-icon" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                </a>
-                <button onClick={handlePlayAgain} className="result-play-again-btn" style={{ margin: 0 }}>
-                  Play Again
-                </button>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </main>
@@ -545,76 +449,75 @@ export function RankedGame() {
           )}
         </div>
 
-        {/* Transaction Log (visible during gameplay + result) */}
-        {(showGameArea || gamePhase === 'result') && (
-          <div style={{
-            flex: 1,
-            minHeight: '180px',
-            maxHeight: '50%',
-            display: 'flex',
-            flexDirection: 'column',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '12px 20px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-            }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Transactions
-              </span>
-              {isPlaying && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: '#22c55e' }}>
-                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
+        {/* Transaction Log — always visible */}
+        <div style={{
+          flex: active ? 1 : 'none',
+          minHeight: active ? '200px' : '0px',
+          maxHeight: active ? '50%' : '0px',
+          display: 'flex',
+          flexDirection: 'column',
+          borderBottom: active ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          overflow: 'hidden',
+          transition: 'max-height 0.3s, min-height 0.3s',
+        }}>
+          {active && (
+            <>
+              <div style={{
+                padding: '10px 20px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0,
+              }}>
+                <span style={{ fontSize: '9px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Transactions
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8px', fontWeight: 700, color: '#22c55e' }}>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
                   LIVE
                 </div>
-              )}
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              {blinkTxLog.length === 0 && (
-                <div style={{ padding: '20px 16px', textAlign: 'center', color: '#333', fontSize: '11px', fontWeight: 600 }}>
-                  {isPlaying
-                    ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
-                    : 'No transactions this session'}
-                </div>
-              )}
-              {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-                const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-                const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
-                return (
-                  <div key={tx.id} style={{
-                    padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
-                    opacity,
-                  }}>
-                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Blink #{tx.blinkNumber}
-                      </span>
-                      <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                        {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                      </span>
-                    </div>
-                    {VOYAGER_TX_URL && tx.hash && (
-                      <a
-                        href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="tx-voyager-link"
-                        aria-label="View on Voyager"
-                      >
-                        &#x2197;
-                      </a>
-                    )}
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                {blinkTxLog.length === 0 && (
+                  <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>
+                    {blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record txs'}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                )}
+                {[...blinkTxLog].reverse().map((tx, idx, arr) => {
+                  const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
+                  const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+                  return (
+                    <div key={tx.id} style={{
+                      padding: '6px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
+                      opacity, marginLeft: '12px', marginRight: '12px',
+                    }}>
+                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          Blink #{tx.blinkNumber}
+                        </span>
+                        <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
+                          {tx.status === 'pending' ? 'sending\u2026' : tx.status}
+                        </span>
+                      </div>
+                      {VOYAGER_TX_URL && tx.hash && (
+                        <a
+                          href={`${VOYAGER_TX_URL}/${tx.hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tx-voyager-link"
+                          aria-label="View on Voyager"
+                        >
+                          &#x2197;
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Leaderboard */}
         <nav style={{
