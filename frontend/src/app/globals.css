@@ -1631,9 +1631,40 @@ a:focus-visible,
   100% { background-position: 300% 50%; }
 }
 
-@keyframes fastest-blinker-bounce {
-  0%   { transform: translateX(-50%) translateY(0); }
-  100% { transform: translateX(-50%) translateY(-6px); }
+/*
+ * Frame-by-frame head tracking for the dance GIF.
+ * 23 frames, 1.54s total loop. Coordinates mapped from each frame.
+ * Uses steps(1) so the overlay jumps in sync with each GIF frame.
+ */
+.head-track-overlay {
+  animation: head-track-dance 1.54s steps(23) infinite;
+}
+
+@keyframes head-track-dance {
+  0%      { top: 2%;   left: 38.3%; }
+  4.35%   { top: 1%;   left: 38.1%; }
+  8.7%    { top: 0.5%; left: 37.9%; }
+  13.04%  { top: 0%;   left: 38.1%; }
+  17.39%  { top: -1.5%;left: 38.1%; }
+  21.74%  { top: -3%;  left: 38.1%; }
+  26.09%  { top: -2%;  left: 38.1%; }
+  30.43%  { top: -1.5%;left: 38.3%; }
+  34.78%  { top: -3%;  left: 38.1%; }
+  39.13%  { top: -1.5%;left: 38.3%; }
+  43.48%  { top: -0.5%;left: 38.3%; }
+  47.83%  { top: -1%;  left: 37.9%; }
+  52.17%  { top: -1.5%;left: 37.3%; }
+  56.52%  { top: -3%;  left: 38.1%; }
+  60.87%  { top: -3.5%;left: 38.9%; }
+  65.22%  { top: -4%;  left: 39.5%; }
+  69.57%  { top: -3.5%;left: 38.9%; }
+  73.91%  { top: -3%;  left: 38.5%; }
+  78.26%  { top: -4%;  left: 37.3%; }
+  82.61%  { top: -4%;  left: 37%;   }
+  86.96%  { top: -4%;  left: 36.8%; }
+  91.3%   { top: -3%;  left: 37.3%; }
+  95.65%  { top: -1.5%;left: 37.7%; }
+  100%    { top: 2%;   left: 38.3%; }
 }
 .app-header-bar > * {
   pointer-events: auto;

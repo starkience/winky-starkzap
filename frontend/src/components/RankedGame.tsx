@@ -546,7 +546,7 @@ export function RankedGame() {
                 </span>
               </div>
 
-              {/* Dancing GIF with profile picture overlay */}
+              {/* Dancing GIF with profile picture pinned to head */}
               <div style={{
                 width: '100%',
                 position: 'relative',
@@ -561,18 +561,14 @@ export function RankedGame() {
                   }}
                 />
                 {profileImg && (
-                  <div style={{
+                  <div className="head-track-overlay" style={{
                     position: 'absolute',
-                    top: '8%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '22%',
+                    width: '18%',
                     aspectRatio: '1',
                     borderRadius: '50%',
                     overflow: 'hidden',
-                    border: '3px solid rgba(255,255,255,0.8)',
-                    boxShadow: '0 0 20px rgba(192,180,218,0.6)',
-                    animation: 'fastest-blinker-bounce 0.6s ease-in-out infinite alternate',
+                    border: '2px solid rgba(255,255,255,0.85)',
+                    boxShadow: '0 0 16px rgba(192,180,218,0.5)',
                   }}>
                     <img
                       src={profileImg}
