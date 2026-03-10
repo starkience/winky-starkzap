@@ -202,7 +202,7 @@ async function downloadWinCard(opts: {
 
 // ─── Component ───
 
-export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number }) {
+export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialChallengeId?: number; onGamePhaseChange?: (phase: string) => void }) {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
 
   // Wallet state (Starkzap SDK)
@@ -213,6 +213,7 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
 
   // Game state
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle');
+  useEffect(() => { onGamePhaseChange?.(gamePhase); }, [gamePhase, onGamePhaseChange]);
   const [gameMode, setGameMode] = useState<GameMode>('create');
   const [challengeTarget, setChallengeTarget] = useState<OpenChallenge | null>(null);
   const [selectedBet, setSelectedBet] = useState<number>(5);

@@ -2054,10 +2054,14 @@ a:focus-visible,
     justify-content: center;
   }
   .blinker-card-back-challenge-text,
-  .blinker-card-back-footer,
   .blinker-card-back-bottom .blinker-card-name,
   .blinker-card-back-fund-notice {
     display: none;
+  }
+  .blinker-card-back-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .blinker-card-back-bottom {
     justify-content: center;
@@ -2089,6 +2093,9 @@ a:focus-visible,
   .blinker-card-waiting {
     font-size: 7px;
     margin-top: 2px;
+  }
+  .blinker-card-wrapper:hover .blinker-card-flipper:not(.blinker-card-flipper--flipped) {
+    transform: none;
   }
   .past-card-score {
     font-size: 28px;

@@ -84,6 +84,8 @@ function HomeContent() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
+  const [pvpGamePhase, setPvpGamePhase] = useState('idle');
+  const hideHeader = mode === 'pvp' && pvpGamePhase !== 'idle';
 
   useEffect(() => {
     setMounted(true);
@@ -117,7 +119,7 @@ function HomeContent() {
 
   return (
     <div style={{ position: 'relative', width: '100%', minHeight: '100dvh' }}>
-      <div className="app-header-bar">
+      <div className="app-header-bar" style={hideHeader ? { display: 'none' } : undefined}>
         <ModeToggle mode={mode} onChange={handleModeChange} />
         <div className="header-spacer-mobile" />
         {mode === 'pvp' && (
@@ -150,7 +152,7 @@ function HomeContent() {
         {(mode === 'ranked' || preloadedModes.has('ranked')) && <RankedGame />}
       </div>
       <div style={mode === 'pvp' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
-        {(mode === 'pvp' || preloadedModes.has('pvp')) && <WinkyGame initialChallengeId={initialChallengeId} />}
+        {(mode === 'pvp' || preloadedModes.has('pvp')) && <WinkyGame initialChallengeId={initialChallengeId} onGamePhaseChange={setPvpGamePhase} />}
       </div>
 
       {showLeaderboard && (
