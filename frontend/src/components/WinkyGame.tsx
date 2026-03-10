@@ -106,15 +106,16 @@ async function downloadChallengeCard(opts: { score: number; stake: number; usern
     const lh = 32;
     const lw = (logoImg.width / logoImg.height) * lh;
     ctx.drawImage(logoImg, 20, 12, lw, lh);
-    logoRight = 20 + lw + 6;
+    logoRight = 20 + lw + 8;
   }
   if (szLogoImg) {
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 9px Manrope, sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    ctx.fillText('Powered by', logoRight, 26);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '600 9px Manrope, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const textW = ctx.measureText('Powered by').width;
+    ctx.fillText('Powered by', logoRight, 28);
     const szH = 14;
     const szW = (szLogoImg.width / szLogoImg.height) * szH;
-    ctx.drawImage(szLogoImg, logoRight, 28, szW, szH);
+    ctx.drawImage(szLogoImg, logoRight + textW + 4, 28 - szH / 2, szW, szH);
   }
 
   ctx.fillStyle = 'rgba(192,180,218,0.15)';
@@ -189,15 +190,16 @@ async function downloadResultCard(opts: {
     const lh = 32;
     const lw = (logoImg.width / logoImg.height) * lh;
     ctx.drawImage(logoImg, 20, 12, lw, lh);
-    logoRight = 20 + lw + 6;
+    logoRight = 20 + lw + 8;
   }
   if (szLogoImg) {
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 9px Manrope, sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    ctx.fillText('Powered by', logoRight, 26);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '600 9px Manrope, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const textW = ctx.measureText('Powered by').width;
+    ctx.fillText('Powered by', logoRight, 28);
     const szH = 14;
     const szW = (szLogoImg.width / szLogoImg.height) * szH;
-    ctx.drawImage(szLogoImg, logoRight, 28, szW, szH);
+    ctx.drawImage(szLogoImg, logoRight + textW + 4, 28 - szH / 2, szW, szH);
   }
 
   // Top-right: prize badge
