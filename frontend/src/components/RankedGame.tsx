@@ -62,17 +62,67 @@ export function RankedGame() {
   const { leaderboard, isLoading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard(walletAddress || undefined);
 
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
+  const syncedRef = useRef(false);
 
+  // Sync current user's Privy Twitter profile to Edge Config so others can see it
+  useEffect(() => {
+    if (!walletAddress || !twitterProfile || syncedRef.current) return;
+    syncedRef.current = true;
+
+    const profilePicUrl = (twitterProfile as any).profilePictureUrl || '';
+    const fullSizeUrl = profilePicUrl.replace('_normal', '').replace('_200x200', '').replace('_400x400', '');
+
+    fetch('/api/twitter-profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: walletAddress,
+        username: twitterProfile.username,
+        name: twitterProfile.name || twitterProfile.username,
+        profileImageUrl: fullSizeUrl,
+      }),
+    }).catch(() => {});
+  }, [walletAddress, twitterProfile]);
+
+  // Fetch Twitter profiles for all leaderboard addresses
   useEffect(() => {
     if (leaderboardLoading || leaderboard.length === 0) return;
     const addresses = leaderboard.map((e) => normalizeAddress(e.address)).join(',');
     fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addresses)}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.profiles) setAllTwitterProfiles(data.profiles);
+        if (data.profiles) {
+          setAllTwitterProfiles(data.profiles);
+
+          // Safety net: if current user has Privy Twitter but isn't in Edge Config yet, sync now
+          if (twitterProfile && walletAddress) {
+            const norm = normalizeAddress(walletAddress);
+            if (!data.profiles[norm]) {
+              const profilePicUrl = (twitterProfile as any).profilePictureUrl || '';
+              const fullSizeUrl = profilePicUrl.replace('_normal', '').replace('_200x200', '').replace('_400x400', '');
+              fetch('/api/twitter-profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  address: walletAddress,
+                  username: twitterProfile.username,
+                  name: twitterProfile.name || twitterProfile.username,
+                  profileImageUrl: fullSizeUrl,
+                }),
+              })
+                .then(() => {
+                  // Re-fetch profiles so the avatar appears immediately
+                  return fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addresses)}`);
+                })
+                .then((r) => r.json())
+                .then((d) => { if (d.profiles) setAllTwitterProfiles(d.profiles); })
+                .catch(() => {});
+            }
+          }
+        }
       })
       .catch(() => {});
-  }, [leaderboardLoading, leaderboard]);
+  }, [leaderboardLoading, leaderboard, twitterProfile, walletAddress]);
 
   useEffect(() => {
     const checkMobile = () => {
