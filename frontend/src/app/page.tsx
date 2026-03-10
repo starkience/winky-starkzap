@@ -85,7 +85,6 @@ function HomeContent() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
   const [pvpGamePhase, setPvpGamePhase] = useState('idle');
-  const [showInfo, setShowInfo] = useState(false);
   const hideHeader = mode === 'pvp' && pvpGamePhase !== 'idle';
 
   useEffect(() => {
@@ -133,25 +132,6 @@ function HomeContent() {
           <span>Powered by</span>
           <img src="/starkzap-logo.png" alt="Starkzap" />
         </a>
-        {mode === 'pvp' && (
-          <div className={`info-icon-wrapper info-icon-wrapper--header info-icon-mobile-only${showInfo ? ' info-icon-wrapper--open' : ''}`}>
-            <button className="info-icon-btn" aria-label="How it works" onClick={() => setShowInfo(v => !v)}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
-            </button>
-            {showInfo && <div className="info-tooltip-backdrop" onClick={() => setShowInfo(false)} />}
-            <div className="info-tooltip">
-              <p className="info-tooltip-title">How it works</p>
-              <ul className="info-tooltip-list">
-                <li>Create or accept a 30-second blink challenge</li>
-                <li>Stake USDC &mdash; winner takes the full pot</li>
-                <li>Opponent&rsquo;s score is hidden until the duel ends</li>
-                <li>Blink detection powered by MediaPipe</li>
-                <li>No data leaves your device &mdash; 100% local</li>
-                <li>Fully open source</li>
-              </ul>
-            </div>
-          </div>
-        )}
       </div>
 
       <div style={mode === 'ranked' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
