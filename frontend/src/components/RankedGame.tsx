@@ -503,7 +503,7 @@ export function RankedGame() {
               fontWeight: 900,
               letterSpacing: '-0.3px',
             }}>
-              Fastest blinker:
+              Fastest:{' '}
             </span>
             {topBlinker.displayName.startsWith('@') ? (
               <a
@@ -536,7 +536,7 @@ export function RankedGame() {
               fontWeight: 900,
               letterSpacing: '-0.3px',
             }}>
-              — {topBlinker.rpm} bpm
+              {' '}at {topBlinker.rpm} bpm
             </span>
           </div>
         )}
