@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -44,7 +44,7 @@ function ModeToggle({ mode, onChange }: { mode: AppMode; onChange: (m: AppMode) 
   );
 }
 
-function LandingPage({ mode, onModeChange }: { mode: AppMode; onModeChange: (m: AppMode) => void }) {
+function LandingPage({ onSelect }: { onSelect: (m: AppMode) => void }) {
   return (
     <div className="landing-page">
       <div className="landing-content">
@@ -55,7 +55,18 @@ function LandingPage({ mode, onModeChange }: { mode: AppMode; onModeChange: (m: 
         <p className="landing-sub">
           Every blink is a real transaction on Starknet. Zero gas. Climb the leaderboard or challenge anyone to a PvP blink duel.
         </p>
-        <ModeToggle mode={mode} onChange={onModeChange} />
+        <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+          <button className="landing-mode-btn" onClick={() => onSelect('ranked')}>
+            Ranked
+          </button>
+          <button className="landing-mode-btn landing-mode-btn--alt" onClick={() => onSelect('pvp')}>
+            PvP
+          </button>
+        </div>
+      </div>
+      <div className="powered-by-starknet">
+        <span>Powered by</span>
+        <img src="/starknet-logo.png" alt="Starknet" />
       </div>
     </div>
   );
@@ -70,6 +81,7 @@ function HomeContent() {
   const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<AppMode>('ranked');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardClosing, setLeaderboardClosing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -81,23 +93,28 @@ function HomeContent() {
     }
   }, [initialChallengeId]);
 
-  const handleModeChange = (m: AppMode) => {
+  const handleModeSelect = (m: AppMode) => {
     setMode(m);
-    if (!launched) {
-      sessionStorage.setItem('winky_launched', '1');
-      setLaunched(true);
-    }
+    sessionStorage.setItem('winky_launched', '1');
+    setLaunched(true);
   };
+
+  const handleCloseLeaderboard = useCallback(() => {
+    setLeaderboardClosing(true);
+    setTimeout(() => {
+      setShowLeaderboard(false);
+      setLeaderboardClosing(false);
+    }, 200);
+  }, []);
 
   if (!mounted) return null;
 
   if (!launched) {
-    return <LandingPage mode={mode} onModeChange={handleModeChange} />;
+    return <LandingPage onSelect={handleModeSelect} />;
   }
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
-      {/* Header bar with toggle + leaderboard button */}
       <div className="app-header-bar">
         <ModeToggle mode={mode} onChange={setMode} />
         <button
@@ -115,7 +132,9 @@ function HomeContent() {
       )}
 
       {showLeaderboard && (
-        <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
+        <div className={leaderboardClosing ? 'leaderboard-closing-wrapper' : undefined}>
+          <LeaderboardModal onClose={handleCloseLeaderboard} />
+        </div>
       )}
     </div>
   );

@@ -832,6 +832,16 @@ a:focus-visible,
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes leaderboard-pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.95) translateY(12px); }
+}
+
+@keyframes leaderboard-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 .leaderboard-overlay {
   position: fixed;
   inset: 0;
@@ -841,6 +851,13 @@ a:focus-visible,
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(6px);
+  animation: leaderboard-fade-in 0.2s ease-out;
+}
+.leaderboard-closing-wrapper .leaderboard-overlay {
+  animation: leaderboard-overlay-out 0.2s ease-in forwards;
+}
+.leaderboard-closing-wrapper .leaderboard-modal {
+  animation: leaderboard-pop-out 0.2s ease-in forwards;
   animation: leaderboard-fade-in 0.2s ease-out;
   overflow: hidden;
   overscroll-behavior: none;
@@ -1504,13 +1521,13 @@ a:focus-visible,
 }
 
 .leaderboard-header-btn {
-  padding: 7px 16px;
+  padding: 9px 20px;
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   background: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(12px);
   color: #A6A4A7;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   font-family: 'Manrope', sans-serif;
   cursor: pointer;
@@ -1539,19 +1556,19 @@ a:focus-visible,
 .mode-toggle-btn {
   position: relative;
   z-index: 2;
-  padding: 7px 18px;
+  padding: 9px 22px;
   border: none;
   border-radius: 7px;
   background: transparent;
   color: #666;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   font-family: 'Manrope', sans-serif;
   cursor: pointer;
   transition: color 0.2s;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  min-width: 72px;
+  min-width: 80px;
   text-align: center;
   display: flex;
   align-items: center;
@@ -1598,11 +1615,19 @@ a:focus-visible,
 /* ─── Landing page ─── */
 .landing-page {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100vh;
   background: #0A0A0A;
   font-family: 'Manrope', sans-serif;
+  position: relative;
+}
+.landing-page > .powered-by-starknet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 .landing-content {
   display: flex;
@@ -1650,6 +1675,34 @@ a:focus-visible,
   background: #a89cc7;
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(192, 180, 218, 0.2);
+}
+
+.landing-mode-btn {
+  padding: 16px 40px;
+  background: #C0B4DA;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: 'Manrope', sans-serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.landing-mode-btn:hover {
+  background: #a89cc7;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(192, 180, 218, 0.2);
+}
+.landing-mode-btn--alt {
+  background: transparent;
+  border: 2px solid rgba(192, 180, 218, 0.3);
+  color: #C0B4DA;
+}
+.landing-mode-btn--alt:hover {
+  background: rgba(192, 180, 218, 0.1);
+  border-color: rgba(192, 180, 218, 0.5);
 }
 
 /* ─── Blinker cards (Battle These Blinkers) ─── */

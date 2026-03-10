@@ -52,6 +52,7 @@ export function RankedGame() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const blinkCountRef = useRef(0);
+  const txScrollRef = useRef<HTMLDivElement>(null);
 
   const twitterProfile = user?.twitter ?? null;
   const twitterUsername = twitterProfile?.username ?? null;
@@ -71,26 +72,29 @@ export function RankedGame() {
   });
 
   const { leaderboard, isLoading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard(walletAddress || undefined);
-
   const { events: liveEvents, topBlinker } = useLiveFeed();
 
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
   const syncedRef = useRef(false);
 
-  // Force re-render for "time ago" labels
   const [, setTick] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 5000);
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-scroll tx log to bottom on new entries
+  useEffect(() => {
+    if (txScrollRef.current) {
+      txScrollRef.current.scrollTop = txScrollRef.current.scrollHeight;
+    }
+  }, [blinkTxLog.length]);
+
   useEffect(() => {
     if (!walletAddress || !twitterProfile || syncedRef.current) return;
     syncedRef.current = true;
-
     const profilePicUrl = (twitterProfile as any).profilePictureUrl || '';
     const fullSizeUrl = profilePicUrl.replace('_normal', '').replace('_200x200', '').replace('_400x400', '');
-
     fetch('/api/twitter-profiles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,7 +115,6 @@ export function RankedGame() {
       .then((data) => {
         if (data.profiles) {
           setAllTwitterProfiles(data.profiles);
-
           if (twitterProfile && walletAddress) {
             const norm = normalizeAddress(walletAddress);
             if (!data.profiles[norm]) {
@@ -167,7 +170,6 @@ export function RankedGame() {
 
         let wId = window.localStorage.getItem(STORAGE_KEYS.walletId);
         let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
-
         const baseUrl = API_URL || window.location.origin;
 
         if (!wId || !wPk) {
@@ -299,6 +301,8 @@ export function RankedGame() {
     ? leaderboard.find(e => normalizeAddress(e.address) === normalizeAddress(walletAddress))
     : null;
 
+  const totalBlinks = (userRankEntry?.blinks ?? 0) + blinkCount;
+
   return (
     <div style={{
       display: 'flex',
@@ -329,7 +333,6 @@ export function RankedGame() {
           minHeight: 0,
           position: 'relative',
         }}>
-          {/* IDLE */}
           {!active && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center' }}>
               <h1 style={{ fontSize: isMobile ? '28px' : '42px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
@@ -366,99 +369,82 @@ export function RankedGame() {
             </div>
           )}
 
-          {/* ACTIVE: webcam */}
           {active && (
-            <>
-              <div style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                border: '2px solid rgba(255,255,255,0.08)',
-                background: '#111',
-              }}>
-                <video
-                  ref={(el) => { videoRef.current = el; }}
-                  autoPlay playsInline muted
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
-                />
-                <canvas
-                  ref={(el) => { canvasRef.current = el; }}
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
-                />
+            <div style={{
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              border: '2px solid rgba(255,255,255,0.08)',
+              background: '#111',
+            }}>
+              <video
+                ref={(el) => { videoRef.current = el; }}
+                autoPlay playsInline muted
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
+              />
+              <canvas
+                ref={(el) => { canvasRef.current = el; }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
+              />
 
-                {!cameraReady && (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', zIndex: 5 }}>
-                    <div className="spinner" style={{ width: '32px', height: '32px' }} />
-                  </div>
-                )}
+              {!cameraReady && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', zIndex: 5 }}>
+                  <div className="spinner" style={{ width: '32px', height: '32px' }} />
+                </div>
+              )}
 
-                {/* Blink count HUD — persistent total from on-chain */}
-                {cameraReady && (
-                  <div style={{
-                    position: 'absolute', top: '16px', right: '16px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px',
-                    zIndex: 5, pointerEvents: 'none',
-                  }}>
-                    <span style={{
-                      fontSize: '56px', fontWeight: 900, lineHeight: 1,
-                      fontVariantNumeric: 'tabular-nums', color: '#C0B4DA',
-                      textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+              {cameraReady && (
+                <div style={{
+                  position: 'absolute', bottom: '12px', left: '12px',
+                  zIndex: 5, pointerEvents: 'none',
+                  display: 'flex', flexDirection: 'column', gap: '2px',
+                  maxWidth: '70%',
+                }}>
+                  {topBlinker && (
+                    <div style={{
+                      fontSize: '13px', fontWeight: 800, color: '#22c55e',
+                      textShadow: '0 1px 6px rgba(0,0,0,0.8)',
+                      marginBottom: '4px',
                     }}>
-                      {((userRankEntry?.blinks ?? 0) + blinkCount).toLocaleString()}
-                    </span>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1.5px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                      total blinks
-                    </span>
-                  </div>
-                )}
-
-                {/* Global live feed overlay — bottom-left of webcam */}
-                {cameraReady && (
-                  <div style={{
-                    position: 'absolute', bottom: '12px', left: '12px',
-                    zIndex: 5, pointerEvents: 'none',
-                    display: 'flex', flexDirection: 'column', gap: '2px',
-                    maxWidth: '70%',
-                  }}>
-                    {topBlinker && (
-                      <div style={{
-                        fontSize: '13px', fontWeight: 800, color: '#22c55e',
-                        textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-                        marginBottom: '4px',
+                      Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
+                    </div>
+                  )}
+                  {liveEvents.slice(0, 8).map((ev) => {
+                    const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
+                    return (
+                      <div key={ev.id} style={{
+                        fontSize: '11px', fontWeight: 600,
+                        color: 'rgba(255,255,255,0.7)',
+                        textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                       }}>
-                        Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
+                        <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
+                        {' blinked '}
+                        <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '10px' }}>
+                          {formatAddress(ev.txHash)}
+                        </span>
+                        {' '}
+                        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{formatTimeAgo(ev.timestamp)}</span>
                       </div>
-                    )}
-                    {liveEvents.slice(0, 8).map((ev) => {
-                      const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
-                      return (
-                        <div key={ev.id} style={{
-                          fontSize: '11px', fontWeight: 600,
-                          color: 'rgba(255,255,255,0.7)',
-                          textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
-                          <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
-                          {' blinked '}
-                          <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '10px' }}>
-                            {formatAddress(ev.txHash)}
-                          </span>
-                          {' '}
-                          <span style={{ color: 'rgba(255,255,255,0.5)' }}>{formatTimeAgo(ev.timestamp)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-              </div>
-            </>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Powered by Starknet */}
+        {!active && (
+          <div className="powered-by-starknet">
+            <span>Powered by</span>
+            <img src="/starknet-logo.png" alt="Starknet" />
+          </div>
+        )}
       </main>
 
       {/* RIGHT SIDEBAR */}
@@ -478,7 +464,6 @@ export function RankedGame() {
         {/* Brand + Auth */}
         <div style={{
           padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex',
           flexDirection: 'column',
           gap: isMobile ? '10px' : '16px',
@@ -523,6 +508,26 @@ export function RankedGame() {
           )}
         </div>
 
+        {/* Total blinks counter */}
+        {isConnected && (
+          <div style={{
+            padding: '12px 20px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Total Blinks
+            </span>
+            <span style={{
+              fontSize: '28px', fontWeight: 900, color: '#C0B4DA',
+              fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+            }}>
+              {totalBlinks.toLocaleString()}
+            </span>
+          </div>
+        )}
+
         {/* Transaction Log */}
         <div style={{
           flex: 1,
@@ -530,45 +535,39 @@ export function RankedGame() {
           flexDirection: 'column',
           overflow: 'hidden',
           minHeight: 0,
+          position: 'relative',
         }}>
+          {/* Fade-out gradient at the top */}
           <div style={{
-            padding: '14px 20px 10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: '#A6A4A7', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Transactions
-            </span>
-            {active && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: '#22c55e' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite' }} />
-                LIVE
-              </div>
-            )}
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            {blinkTxLog.length === 0 && (
-              <div style={{ padding: '32px 20px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-                {active
-                  ? (blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record transactions')
-                  : 'Start blinking to see transactions'}
-              </div>
-            )}
+            position: 'absolute', top: 0, left: 0, right: 0, height: '60px',
+            background: 'linear-gradient(to bottom, rgba(17,17,17,0.95) 0%, transparent 100%)',
+            zIndex: 3, pointerEvents: 'none',
+          }} />
+
+          <div
+            ref={txScrollRef}
+            style={{
+              flex: 1, overflowY: 'auto',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              padding: isMobile ? '0 16px 20px' : '0 20px 36px',
+            }}
+          >
             {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-              const opacity = 0.3 + 0.7 * (idx / Math.max(arr.length - 1, 1));
+              const fadeRatio = 1 - (idx / Math.max(arr.length - 1, 1));
+              const opacity = 0.3 + 0.7 * fadeRatio;
+              const isConfirmed = tx.status === 'success';
+              const blinkColor = isConfirmed ? '#22c55e' : '#fff';
+              const hashColor = isConfirmed ? 'rgba(34,197,94,0.6)' : '#888';
+
               return (
                 <div key={tx.id} style={{
-                  padding: '12px 20px',
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  padding: '12px 0',
                   display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
                   opacity,
                 }}>
                   <div style={{ minWidth: 0, overflow: 'hidden' }}>
                     <span style={{
-                      fontSize: '15px', fontWeight: 800, color: '#fff',
+                      fontSize: '15px', fontWeight: 800, color: blinkColor,
                       display: 'block', marginBottom: '3px',
                     }}>
                       Blink #{tx.blinkNumber}
@@ -579,9 +578,9 @@ export function RankedGame() {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
-                          fontSize: '12px', fontWeight: 600, color: '#888',
+                          fontSize: '12px', fontWeight: 600, color: hashColor,
                           textDecoration: 'underline',
-                          textDecorationColor: 'rgba(255,255,255,0.15)',
+                          textDecorationColor: 'rgba(255,255,255,0.1)',
                           fontFamily: "'SF Mono', Monaco, monospace",
                           transition: 'color 0.15s',
                         }}
