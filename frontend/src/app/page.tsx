@@ -123,6 +123,12 @@ function HomeContent() {
       <div className="app-header-bar" style={hideHeader ? { display: 'none' } : undefined}>
         <ModeToggle mode={mode} onChange={handleModeChange} />
         <div className="header-spacer-mobile" />
+        <button
+          className="leaderboard-header-btn"
+          onClick={() => setShowLeaderboard(true)}
+        >
+          Leaderboard
+        </button>
         {mode === 'pvp' && (
           <div className={`info-icon-wrapper info-icon-wrapper--header${showInfo ? ' info-icon-wrapper--open' : ''}`}>
             <button className="info-icon-btn" aria-label="How it works" onClick={() => setShowInfo(v => !v)}>
@@ -142,12 +148,6 @@ function HomeContent() {
             </div>
           </div>
         )}
-        <button
-          className="leaderboard-header-btn"
-          onClick={() => setShowLeaderboard(true)}
-        >
-          Leaderboard
-        </button>
       </div>
 
       <div style={mode === 'ranked' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>

@@ -2721,6 +2721,7 @@ a:focus-visible,
   right: 0;
   left: auto;
   z-index: 600;
+  max-width: min(320px, calc(100vw - 32px));
 }
 @media (max-width: 768px) {
   .info-icon-wrapper--header .info-tooltip {

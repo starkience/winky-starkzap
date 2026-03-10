@@ -142,31 +142,33 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const allItems = await edgeConfigReadAll();
+    if (!allItems) {
+      return NextResponse.json({ challenges: [], completed: [], error: 'Edge Config unavailable' }, { status: 502 });
+    }
+
     const challenges: OpenChallenge[] = [];
     const completed: CompletedChallenge[] = [];
     const now = Date.now();
     const expiredKeys: string[] = [];
 
-    if (allItems) {
-      for (const [key, value] of Object.entries(allItems)) {
-        if (!value || typeof value !== 'object') continue;
+    for (const [key, value] of Object.entries(allItems)) {
+      if (!value || typeof value !== 'object') continue;
 
-        if (key.startsWith('duel_')) {
-          const c = value as OpenChallenge;
-          if (now - c.createdAt > CHALLENGE_TTL_MS) {
-            expiredKeys.push(key);
-          } else {
-            challenges.push(c);
-          }
+      if (key.startsWith('duel_')) {
+        const c = value as OpenChallenge;
+        if (now - c.createdAt > CHALLENGE_TTL_MS) {
+          expiredKeys.push(key);
+        } else {
+          challenges.push(c);
         }
+      }
 
-        if (key.startsWith('done_')) {
-          const c = value as CompletedChallenge;
-          if (now - c.completedAt > COMPLETED_TTL_MS) {
-            expiredKeys.push(key);
-          } else {
-            completed.push(c);
-          }
+      if (key.startsWith('done_')) {
+        const c = value as CompletedChallenge;
+        if (now - c.completedAt > COMPLETED_TTL_MS) {
+          expiredKeys.push(key);
+        } else {
+          completed.push(c);
         }
       }
     }
