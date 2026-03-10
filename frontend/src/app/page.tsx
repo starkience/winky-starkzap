@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -81,7 +81,6 @@ function HomeContent() {
   const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<AppMode>('ranked');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [leaderboardClosing, setLeaderboardClosing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -98,14 +97,6 @@ function HomeContent() {
     sessionStorage.setItem('winky_launched', '1');
     setLaunched(true);
   };
-
-  const handleCloseLeaderboard = useCallback(() => {
-    setLeaderboardClosing(true);
-    setTimeout(() => {
-      setShowLeaderboard(false);
-      setLeaderboardClosing(false);
-    }, 200);
-  }, []);
 
   if (!mounted) return null;
 
@@ -132,9 +123,7 @@ function HomeContent() {
       )}
 
       {showLeaderboard && (
-        <div className={leaderboardClosing ? 'leaderboard-closing-wrapper' : undefined}>
-          <LeaderboardModal onClose={handleCloseLeaderboard} />
-        </div>
+        <LeaderboardModal mode={mode} onClose={() => setShowLeaderboard(false)} />
       )}
     </div>
   );

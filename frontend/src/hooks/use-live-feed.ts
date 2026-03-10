@@ -160,14 +160,49 @@ export function useLiveFeed() {
     }
   }, [resolveTwitterUsernames, recordForRpm]);
 
+  /** Re-fetch recent events to keep the feed fresh (polling fallback). */
+  const refreshEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/recent-blinks');
+      const data = await res.json();
+      if (!data.events || data.events.length === 0) return;
+
+      const addresses = data.events.map((e: any) => e.address);
+      await resolveTwitterUsernames(addresses);
+
+      const fresh: LiveBlinkEvent[] = data.events.map((e: any) => ({
+        id: e.txHash,
+        address: e.address,
+        txHash: e.txHash,
+        timestamp: e.timestamp,
+        userTotal: e.userTotal,
+        twitterUsername: twitterCacheRef.current[normalizeAddress(e.address)] ?? undefined,
+      }));
+
+      setEvents((prev) => {
+        const merged = [...fresh];
+        for (const existing of prev) {
+          if (!merged.find((m) => m.id === existing.id)) {
+            merged.push(existing);
+          }
+        }
+        merged.sort((a, b) => b.timestamp - a.timestamp);
+        return merged.slice(0, MAX_EVENTS);
+      });
+    } catch {}
+  }, [resolveTwitterUsernames]);
+
   useEffect(() => {
     // Load initial events from on-chain data
     fetchInitial();
 
+    // Poll every 10s as a fallback for when Pusher isn't configured
+    const pollInterval = setInterval(refreshEvents, 10_000);
+
     // Connect to Pusher for real-time updates
     if (!PUSHER_KEY) {
       console.warn('[useLiveFeed] No PUSHER_KEY configured, falling back to polling');
-      return;
+      return () => clearInterval(pollInterval);
     }
 
     const pusher = new Pusher(PUSHER_KEY, {
@@ -178,15 +213,12 @@ export function useLiveFeed() {
     const channel = pusher.subscribe('blinks');
 
     channel.bind('new-blink', async (data: any) => {
-      // Use Twitter username from the event if provided, otherwise try to resolve
       let twitterUsername = data.twitterUsername || undefined;
       const norm = normalizeAddress(data.address);
 
       if (twitterUsername) {
-        // Cache the username so RPM notification and future events use it
         twitterCacheRef.current[norm] = twitterUsername;
       } else if (twitterCacheRef.current[norm] === undefined) {
-        // Try to resolve from server
         await resolveTwitterUsernames([data.address]);
         twitterUsername = twitterCacheRef.current[norm] ?? undefined;
       } else {
@@ -202,23 +234,22 @@ export function useLiveFeed() {
         twitterUsername,
       };
 
-      // Track for RPM
       recordForRpm(newEvent.address, newEvent.timestamp);
 
       setEvents((prev) => {
-        // Deduplicate by txHash
         const filtered = prev.filter((e) => e.id !== newEvent.id);
         return [newEvent, ...filtered].slice(0, MAX_EVENTS);
       });
     });
 
     return () => {
+      clearInterval(pollInterval);
       channel.unbind_all();
       pusher.unsubscribe('blinks');
       pusher.disconnect();
       pusherRef.current = null;
     };
-  }, [fetchInitial, resolveTwitterUsernames, recordForRpm]);
+  }, [fetchInitial, refreshEvents, resolveTwitterUsernames, recordForRpm]);
 
   return { events, isLoading, topBlinker };
 }

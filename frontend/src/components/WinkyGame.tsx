@@ -285,25 +285,6 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
   const showGameArea = gamePhase === 'ready' || gamePhase === 'countdown' || gamePhase === 'playing';
   const isBusy = isDuelCreating || isDuelJoining;
 
-  // Sidebar leaderboard built from completed challenges
-  interface LeaderboardRow { address: string; username: string; earned: number; topBlinks: number }
-  const sidebarLeaderboard = (() => {
-    const map = new Map<string, LeaderboardRow>();
-    for (const c of completedChallenges) {
-      if (c.isDraw) continue;
-      const winNorm = c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase();
-      const winner = c.player1.address.replace(/^0x0*/i, '0x').toLowerCase() === winNorm ? c.player1 : c.player2;
-      const existing = map.get(winNorm);
-      if (existing) {
-        existing.earned += c.payout;
-        if (winner.score > existing.topBlinks) existing.topBlinks = winner.score;
-      } else {
-        map.set(winNorm, { address: winNorm, username: winner.username, earned: c.payout, topBlinks: winner.score });
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => b.earned - a.earned).slice(0, 10);
-  })();
-
   // Fetch USDC balance when wallet connects + poll every 15s
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
@@ -1007,52 +988,8 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
         )}
       </div>
 
-      {/* Top 10 Leaderboard */}
-      <nav style={{ flex: isMobile ? 'none' : 1, display: isMobile ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden' }} aria-label="Leaderboard">
-        <div style={{
-          padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#A6A4A7' }}>Leaderboard</span>
-          <span style={{ fontSize: '9px', fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Won / Blinks
-          </span>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {sidebarLeaderboard.length === 0 && (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#333', fontSize: '12px', fontWeight: 600 }}>
-              No winners yet
-            </div>
-          )}
-          {sidebarLeaderboard.map((entry, idx) => {
-            const isMe = walletAddress && entry.address === walletAddress.replace(/^0x0*/i, '0x').toLowerCase();
-            return (
-              <div
-                key={entry.address}
-                className="sidebar-leaderboard-row"
-                style={isMe ? { background: 'rgba(192,180,218,0.06)' } : undefined}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: idx < 3 ? '#facc15' : '#555', width: '18px', textAlign: 'center', flexShrink: 0 }}>
-                    {idx + 1}
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: isMe ? 700 : 600, color: isMe ? '#C0B4DA' : '#A6A4A7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {entry.username}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#22c55e', fontVariantNumeric: 'tabular-nums' }}>
-                    ${entry.earned}
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontVariantNumeric: 'tabular-nums', minWidth: '32px', textAlign: 'right' }}>
-                    {entry.topBlinks}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Empty space where leaderboard used to be — now in popup */}
+      <div style={{ flex: isMobile ? 'none' : 1 }} />
     </aside>
   );
 

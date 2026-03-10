@@ -832,14 +832,13 @@ a:focus-visible,
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes leaderboard-pop-out {
-  from { opacity: 1; transform: scale(1); }
-  to   { opacity: 0; transform: scale(0.95) translateY(12px); }
+/* Ranked transaction row hover */
+.ranked-tx-row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
-
-@keyframes leaderboard-overlay-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+.ranked-tx-row:hover span[style*="color: #22c55e"],
+.ranked-tx-row:hover span[style*="color: rgb(34, 197, 94)"] {
+  color: #4ade80 !important;
 }
 
 .leaderboard-overlay {
@@ -853,21 +852,12 @@ a:focus-visible,
   backdrop-filter: blur(6px);
   animation: leaderboard-fade-in 0.2s ease-out;
 }
-.leaderboard-closing-wrapper .leaderboard-overlay {
-  animation: leaderboard-overlay-out 0.2s ease-in forwards;
-}
-.leaderboard-closing-wrapper .leaderboard-modal {
-  animation: leaderboard-pop-out 0.2s ease-in forwards;
-  animation: leaderboard-fade-in 0.2s ease-out;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
 .leaderboard-modal {
   position: relative;
   width: 90vw;
-  max-width: 1400px;
-  height: 90vh;
+  max-width: 560px;
+  height: 80vh;
+  max-height: 700px;
   display: flex;
   flex-direction: column;
   background: #141414;
@@ -1521,7 +1511,7 @@ a:focus-visible,
 }
 
 .leaderboard-header-btn {
-  padding: 9px 20px;
+  padding: 12px 22px;
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   background: rgba(20, 20, 20, 0.85);

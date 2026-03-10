@@ -44,11 +44,11 @@ export function RankedGame() {
   const [walletLoading, setWalletLoading] = useState(false);
   const setupAttemptedRef = useRef(false);
 
-  const [active, setActive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraStarted, setCameraStarted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const blinkCountRef = useRef(0);
@@ -63,7 +63,6 @@ export function RankedGame() {
   const {
     recordBlink,
     txLog: blinkTxLog,
-    clearLog: clearBlinkLog,
     pendingCount: blinkPendingCount,
   } = useWinkyContract({
     wallet: sdkWallet,
@@ -71,7 +70,7 @@ export function RankedGame() {
     isAuthenticated: ready && authenticated,
   });
 
-  const { leaderboard, isLoading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard(walletAddress || undefined);
+  const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard(walletAddress || undefined);
   const { events: liveEvents, topBlinker } = useLiveFeed();
 
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
@@ -83,7 +82,6 @@ export function RankedGame() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-scroll tx log to bottom on new entries
   useEffect(() => {
     if (txScrollRef.current) {
       txScrollRef.current.scrollTop = txScrollRef.current.scrollHeight;
@@ -233,7 +231,8 @@ export function RankedGame() {
     setLoggingOut(true);
     setSdkWallet(null);
     setWalletAddress(null);
-    setActive(false);
+    setCameraStarted(false);
+    setCameraReady(false);
     setupAttemptedRef.current = false;
     try {
       Object.values(STORAGE_KEYS).forEach(k => {
@@ -243,13 +242,8 @@ export function RankedGame() {
     logout().catch(() => {});
   }, [logout]);
 
-  const activeRef = useRef(false);
-  useEffect(() => { activeRef.current = active; }, [active]);
-
   const handleBlink = useCallback((count: number) => {
-    if (activeRef.current) {
-      recordBlink(count, twitterUsername || undefined);
-    }
+    recordBlink(count, twitterUsername || undefined);
   }, [recordBlink, twitterUsername]);
 
   const {
@@ -262,32 +256,25 @@ export function RankedGame() {
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
-    enabled: active,
+    enabled: isConnected,
   });
 
   useEffect(() => { blinkCountRef.current = blinkCount; }, [blinkCount]);
 
+  // Auto-start camera when connected + detector ready
   useEffect(() => {
-    if (active && isDetectorReady && !cameraReady) {
+    if (isConnected && isDetectorReady && !cameraStarted) {
+      setCameraStarted(true);
+      resetDetection();
       startDetection()
         .then(() => setCameraReady(true))
         .catch((err) => {
           console.error('Failed to start camera:', err);
           setError('Camera access required to play');
-          setActive(false);
+          setCameraStarted(false);
         });
     }
-  }, [active, isDetectorReady, cameraReady, startDetection]);
-
-  const handleStart = useCallback(() => {
-    if (!isConnected) return;
-    resetDetection();
-    blinkCountRef.current = 0;
-    setError(null);
-    clearBlinkLog();
-    setCameraReady(false);
-    setActive(true);
-  }, [isConnected, resetDetection, clearBlinkLog]);
+  }, [isConnected, isDetectorReady, cameraStarted, startDetection, resetDetection]);
 
   const handleCopyAddress = useCallback(() => {
     if (walletAddress) {
@@ -303,6 +290,9 @@ export function RankedGame() {
 
   const totalBlinks = (userRankEntry?.blinks ?? 0) + blinkCount;
 
+  // Header height to offset webcam
+  const headerH = isMobile ? 50 : 56;
+
   return (
     <div style={{
       display: 'flex',
@@ -314,7 +304,6 @@ export function RankedGame() {
       flexDirection: isMobile ? 'column' : 'row',
     }}>
 
-      {/* LEFT: Webcam + Controls */}
       <main style={{
         flex: 1,
         display: 'flex',
@@ -327,124 +316,86 @@ export function RankedGame() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: isMobile ? '20px 16px' : '36px 32px',
+          padding: isMobile ? `${headerH + 8}px 16px 20px` : `${headerH + 12}px 32px 36px`,
           minHeight: 0,
-          position: 'relative',
         }}>
-          {!active && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center' }}>
-              <h1 style={{ fontSize: isMobile ? '28px' : '42px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
-                Blink. Earn.<br />Climb the ranks.
-              </h1>
-              <p style={{ fontSize: '14px', color: '#555', fontWeight: 500, maxWidth: '400px', lineHeight: 1.6, margin: 0 }}>
-                Every blink is a real transaction on Starknet. Zero gas. Zero cost. No time limit &mdash; just blink and climb the global leaderboard.
-              </p>
-              {isConnected ? (
-                <button
-                  onClick={handleStart}
-                  className="sidebar-play-btn sidebar-play-btn--active"
-                  style={{ padding: '16px 48px', fontSize: '18px' }}
-                >
-                  Start Blinking
-                </button>
-              ) : (
-                <p style={{ fontSize: '13px', color: '#666', fontWeight: 600, margin: 0 }}>
-                  Connect your wallet to start blinking
-                </p>
-              )}
-              {userRankEntry && (
-                <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '10px', color: '#555', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Your Rank</p>
-                    <p style={{ fontSize: '32px', fontWeight: 900, color: '#C0B4DA', margin: 0 }}>#{userRankEntry.rank}</p>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '10px', color: '#555', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 4px' }}>Total Blinks</p>
-                    <p style={{ fontSize: '32px', fontWeight: 900, color: '#A6A4A7', margin: 0 }}>{userRankEntry.blinks.toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Webcam — always shown */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '2px solid rgba(255,255,255,0.08)',
+            background: '#111',
+            minHeight: 0,
+          }}>
+            <video
+              ref={(el) => { videoRef.current = el; }}
+              autoPlay playsInline muted
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
+            />
+            <canvas
+              ref={(el) => { canvasRef.current = el; }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
+            />
 
-          {active && (
-            <div style={{
-              width: '100%',
-              height: '100%',
-              position: 'relative',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2px solid rgba(255,255,255,0.08)',
-              background: '#111',
-            }}>
-              <video
-                ref={(el) => { videoRef.current = el; }}
-                autoPlay playsInline muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
-              />
-              <canvas
-                ref={(el) => { canvasRef.current = el; }}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
-              />
-
-              {!cameraReady && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', zIndex: 5 }}>
+            {!cameraReady && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)', zIndex: 5, gap: '16px' }}>
+                {!isConnected ? (
+                  <button
+                    onClick={handleLogin}
+                    disabled={loginBusy}
+                    className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
+                    style={{ padding: '14px 40px', fontSize: '15px' }}
+                  >
+                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+                  </button>
+                ) : (
                   <div className="spinner" style={{ width: '32px', height: '32px' }} />
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {cameraReady && (
-                <div style={{
-                  position: 'absolute', bottom: '12px', left: '12px',
-                  zIndex: 5, pointerEvents: 'none',
-                  display: 'flex', flexDirection: 'column', gap: '2px',
-                  maxWidth: '70%',
-                }}>
-                  {topBlinker && (
-                    <div style={{
-                      fontSize: '13px', fontWeight: 800, color: '#22c55e',
-                      textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-                      marginBottom: '4px',
+            {/* Live feed overlay — bottom-left */}
+            {cameraReady && (
+              <div style={{
+                position: 'absolute', bottom: '12px', left: '12px',
+                zIndex: 5, pointerEvents: 'none',
+                display: 'flex', flexDirection: 'column', gap: '2px',
+                maxWidth: '70%',
+              }}>
+                {topBlinker && (
+                  <div style={{
+                    fontSize: '13px', fontWeight: 800, color: '#22c55e',
+                    textShadow: '0 1px 6px rgba(0,0,0,0.8)',
+                    marginBottom: '4px',
+                  }}>
+                    Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
+                  </div>
+                )}
+                {liveEvents.slice(0, 8).map((ev) => {
+                  const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
+                  return (
+                    <div key={ev.id} style={{
+                      fontSize: '11px', fontWeight: 600,
+                      color: 'rgba(255,255,255,0.7)',
+                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
-                      Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
+                      <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
+                      {' blinked '}
+                      <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '10px' }}>
+                        {formatAddress(ev.txHash)}
+                      </span>
+                      {' '}
+                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>{formatTimeAgo(ev.timestamp)}</span>
                     </div>
-                  )}
-                  {liveEvents.slice(0, 8).map((ev) => {
-                    const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
-                    return (
-                      <div key={ev.id} style={{
-                        fontSize: '11px', fontWeight: 600,
-                        color: 'rgba(255,255,255,0.7)',
-                        textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}>
-                        <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
-                        {' blinked '}
-                        <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '10px' }}>
-                          {formatAddress(ev.txHash)}
-                        </span>
-                        {' '}
-                        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{formatTimeAgo(ev.timestamp)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Powered by Starknet */}
-        {!active && (
-          <div className="powered-by-starknet">
-            <span>Powered by</span>
-            <img src="/starknet-logo.png" alt="Starknet" />
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </main>
 
       {/* RIGHT SIDEBAR */}
@@ -459,14 +410,15 @@ export function RankedGame() {
         height: isMobile ? 'auto' : '100%',
         overflow: 'hidden',
         flexShrink: 0,
+        paddingTop: `${headerH}px`,
       }}>
 
         {/* Brand + Auth */}
         <div style={{
-          padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
+          padding: isMobile ? '14px 16px 12px' : '16px 20px 12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: isMobile ? '10px' : '16px',
+          gap: isMobile ? '10px' : '12px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', width: '100%', maxWidth: isMobile ? '160px' : '280px', height: 'auto' }} />
@@ -479,23 +431,13 @@ export function RankedGame() {
 
           {isConnected && walletAddress ? (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={handleCopyAddress}
-                className="sidebar-wallet-btn"
-                aria-label={copied ? 'Address copied' : 'Copy wallet address'}
-              >
+              <button onClick={handleCopyAddress} className="sidebar-wallet-btn" aria-label={copied ? 'Address copied' : 'Copy wallet address'}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} aria-hidden="true" />
                 <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px', letterSpacing: '0.3px' }}>
                   {copied ? 'Copied!' : formatAddress(walletAddress)}
                 </span>
               </button>
-              <button
-                onClick={handleLogout}
-                className="sidebar-disconnect-btn"
-                aria-label="Disconnect wallet"
-              >
-                &times;
-              </button>
+              <button onClick={handleLogout} className="sidebar-disconnect-btn" aria-label="Disconnect wallet">&times;</button>
             </div>
           ) : (
             <button
@@ -511,9 +453,9 @@ export function RankedGame() {
         {/* Total blinks counter */}
         {isConnected && (
           <div style={{
-            padding: '12px 20px 16px',
+            padding: '8px 20px 12px',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'baseline',
             justifyContent: 'space-between',
           }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -537,10 +479,10 @@ export function RankedGame() {
           minHeight: 0,
           position: 'relative',
         }}>
-          {/* Fade-out gradient at the top */}
+          {/* Strong fade-out gradient at the top */}
           <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: '60px',
-            background: 'linear-gradient(to bottom, rgba(17,17,17,0.95) 0%, transparent 100%)',
+            position: 'absolute', top: 0, left: 0, right: 0, height: '80px',
+            background: 'linear-gradient(to bottom, rgba(17,17,17,1) 0%, rgba(17,17,17,0.8) 40%, transparent 100%)',
             zIndex: 3, pointerEvents: 'none',
           }} />
 
@@ -554,47 +496,46 @@ export function RankedGame() {
           >
             {[...blinkTxLog].reverse().map((tx, idx, arr) => {
               const fadeRatio = 1 - (idx / Math.max(arr.length - 1, 1));
-              const opacity = 0.3 + 0.7 * fadeRatio;
+              const opacity = 0.2 + 0.8 * fadeRatio;
               const isConfirmed = tx.status === 'success';
               const blinkColor = isConfirmed ? '#22c55e' : '#fff';
-              const hashColor = isConfirmed ? 'rgba(34,197,94,0.6)' : '#888';
 
               return (
-                <div key={tx.id} style={{
-                  padding: '12px 0',
+                <div key={tx.id} className="ranked-tx-row" style={{
+                  padding: '8px 0',
                   display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
                   opacity,
-                }}>
+                  cursor: tx.hash ? 'pointer' : 'default',
+                }}
+                  onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}
+                >
                   <div style={{ minWidth: 0, overflow: 'hidden' }}>
                     <span style={{
-                      fontSize: '15px', fontWeight: 800, color: blinkColor,
-                      display: 'block', marginBottom: '3px',
+                      fontSize: '14px', fontWeight: 800, color: blinkColor,
+                      display: 'block', marginBottom: '2px',
+                      transition: 'color 0.15s',
                     }}>
                       Blink #{tx.blinkNumber}
                     </span>
                     {tx.hash ? (
-                      <a
-                        href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: '12px', fontWeight: 600, color: hashColor,
-                          textDecoration: 'underline',
-                          textDecorationColor: 'rgba(255,255,255,0.1)',
-                          fontFamily: "'SF Mono', Monaco, monospace",
-                          transition: 'color 0.15s',
-                        }}
-                      >
+                      <span style={{
+                        fontSize: '11px', fontWeight: 600,
+                        color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666',
+                        textDecoration: 'underline',
+                        textDecorationColor: 'rgba(255,255,255,0.08)',
+                        fontFamily: "'SF Mono', Monaco, monospace",
+                        transition: 'color 0.15s',
+                      }}>
                         {formatAddress(tx.hash)}
-                      </a>
+                      </span>
                     ) : (
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>
                         {tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}
                       </span>
                     )}
                   </div>
                   <span style={{
-                    fontSize: '12px', fontWeight: 600, color: '#555',
+                    fontSize: '11px', fontWeight: 600, color: '#444',
                     whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px',
                   }}>
                     {formatTimeAgo(tx.timestamp)}
@@ -606,7 +547,6 @@ export function RankedGame() {
         </div>
       </aside>
 
-      {/* Error banner */}
       {error && (
         <div
           role="alert"
