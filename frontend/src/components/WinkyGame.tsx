@@ -1000,32 +1000,14 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
     return (
       <>
         <div style={{
-          display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100dvh',
+          display: 'flex', flexDirection: 'column', width: '100%', height: '100dvh',
           overflow: 'auto', background: '#0A0A0A', fontFamily: "'Manrope', sans-serif",
           WebkitOverflowScrolling: 'touch', touchAction: 'manipulation',
         } as React.CSSProperties}>
           <div style={{ height: '58px', flexShrink: 0 }} />
           <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '140px', height: 'auto' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {NETWORK === 'sepolia' && <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>Testnet</span>}
-              <div className="info-icon-wrapper info-icon-wrapper--mobile">
-                <button className="info-icon-btn" aria-label="How it works">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
-                </button>
-                <div className="info-tooltip" style={{ width: 'calc(100vw - 32px)', right: 0, left: 'auto', position: 'fixed' as const, top: 'auto', marginTop: '8px' }}>
-                  <p className="info-tooltip-title">How it works</p>
-                  <ul className="info-tooltip-list">
-                    <li>Create or accept a 30-second blink challenge</li>
-                    <li>Stake USDC — winner takes the full pot</li>
-                    <li>Opponent's score is hidden until the duel ends</li>
-                    <li>Blink detection powered by <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker" target="_blank" rel="noopener noreferrer">MediaPipe</a></li>
-                    <li>No data leaves your device — 100% local</li>
-                    <li>Fully open source: <a href="https://github.com/starkience/winky-starkzap" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            {NETWORK === 'sepolia' && <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>Testnet</span>}
           </div>
           <div style={{ padding: '10px 12px 12px' }}>
             {isConnected && walletAddress ? (
