@@ -1130,14 +1130,6 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           } as React.CSSProperties}>
-            {!isMobile && (
-              <div style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
-                  Bet. Blink.<br />Winner takes it all.
-                </h1>
-              </div>
-            )}
-
             {/* Header row: info + search */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
