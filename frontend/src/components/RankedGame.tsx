@@ -378,6 +378,23 @@ export function RankedGame() {
               </div>
             )}
 
+            {/* Fastest blinker — top-left corner */}
+            {cameraReady && topBlinker && (
+              <div className="fastest-blinker-badge" style={{
+                position: 'absolute', top: '16px', left: '16px',
+                zIndex: 5, pointerEvents: 'none',
+              }}>
+                <span className="rainbow-text" style={{
+                  fontSize: isMobile ? '18px' : '24px',
+                  fontWeight: 900,
+                  textShadow: '0 2px 12px rgba(0,0,0,0.7)',
+                  letterSpacing: '-0.3px',
+                }}>
+                  Fastest blinker: {topBlinker.displayName} — {topBlinker.rpm} bpm
+                </span>
+              </div>
+            )}
+
             {/* Live feed overlay — bottom-left, newest at bottom, fading upward */}
             {cameraReady && (
               <div style={{
@@ -387,15 +404,6 @@ export function RankedGame() {
                 gap: '2px', maxWidth: '70%',
                 maxHeight: '40%', overflow: 'hidden',
               }}>
-                {topBlinker && (
-                  <div style={{
-                    fontSize: '13px', fontWeight: 800, color: '#22c55e',
-                    textShadow: '0 1px 6px rgba(0,0,0,0.8)',
-                    marginBottom: '4px',
-                  }}>
-                    Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
-                  </div>
-                )}
                 {[...liveEvents.slice(0, 8)].reverse().map((ev, idx, arr) => {
                   const fadeRatio = idx / Math.max(arr.length - 1, 1);
                   const opacity = 0.15 + 0.85 * fadeRatio;

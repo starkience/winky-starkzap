@@ -1613,6 +1613,23 @@ a:focus-visible,
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+.rainbow-text {
+  background: linear-gradient(
+    90deg,
+    #ff0000, #ff8800, #ffdd00, #00ff00, #00ccff, #8800ff, #ff00cc, #ff0000
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbow-shift 3s linear infinite;
+}
+
+@keyframes rainbow-shift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
 .app-header-bar > * {
   pointer-events: auto;
 }
