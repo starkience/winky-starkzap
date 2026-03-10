@@ -1811,7 +1811,7 @@ a:focus-visible,
 }
 
 .leaderboard-header-btn {
-  padding: 12px 22px;
+  padding: 9px 22px;
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   background: rgba(20, 20, 20, 0.85);
@@ -1824,6 +1824,9 @@ a:focus-visible,
   transition: color 0.2s, border-color 0.2s, background 0.2s;
   letter-spacing: 0.5px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .leaderboard-header-btn:hover {
   color: #fff;
@@ -1888,36 +1891,41 @@ a:focus-visible,
 
 @media (max-width: 768px) {
   .app-header-bar {
-    padding: max(10px, env(safe-area-inset-top, 10px)) 12px 12px;
+    padding: max(10px, env(safe-area-inset-top, 10px)) 12px 10px;
     gap: 8px;
     justify-content: space-between;
-    background: linear-gradient(to bottom, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0.85) 60%, transparent 100%);
+    background: rgba(10, 10, 10, 0.98);
   }
   .mode-toggle {
     flex: 0 1 auto;
+    height: 40px;
   }
   .mode-toggle-btn {
-    padding: 8px 16px;
+    padding: 0 16px;
     font-size: 12px;
     min-width: 60px;
-    min-height: 36px;
+    height: 100%;
   }
   .leaderboard-header-btn {
-    padding: 8px 14px;
+    padding: 0 14px;
     font-size: 12px;
-    min-height: 36px;
+    height: 40px;
   }
 }
 
 @media (max-width: 380px) {
+  .mode-toggle {
+    height: 36px;
+  }
   .mode-toggle-btn {
-    padding: 7px 12px;
+    padding: 0 12px;
     font-size: 11px;
     min-width: 50px;
   }
   .leaderboard-header-btn {
-    padding: 7px 10px;
+    padding: 0 10px;
     font-size: 10px;
+    height: 36px;
   }
 }
 
@@ -2025,42 +2033,52 @@ a:focus-visible,
 }
 @media (max-width: 600px) {
   .blinker-grid {
-    grid-template-columns: 1fr;
-    max-width: 400px;
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+    gap: 8px;
   }
   .blinker-card-wrapper {
-    aspect-ratio: 5 / 3.5;
+    aspect-ratio: 3 / 4;
   }
   .blinker-card-back-content {
-    padding: 14px 16px;
+    padding: 10px 10px;
   }
   .blinker-card-back-enter-btn {
-    padding: 14px 36px;
-    font-size: 15px;
-    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+    min-height: 36px;
   }
   .blinker-card-content {
-    padding: 14px 16px;
+    padding: 10px 10px;
   }
   .blinker-card-stat {
-    font-size: 16px;
-  }
-  .blinker-card-stake {
-    font-size: 14px;
-  }
-  .blinker-card-name {
-    font-size: 13px;
-    padding: 2px 0;
-  }
-  .past-card-score {
-    font-size: 28px;
-  }
-  .past-card-center-text {
     font-size: 12px;
   }
+  .blinker-card-stake {
+    font-size: 11px;
+  }
+  .blinker-card-name {
+    font-size: 10px;
+    padding: 1px 0;
+  }
+  .blinker-card-share-btn {
+    width: 26px;
+    height: 26px;
+    top: 4px;
+    right: 4px;
+  }
+  .past-card-score {
+    font-size: 20px;
+    bottom: 20px;
+  }
+  .past-card-player-name {
+    font-size: 9px;
+  }
+  .past-card-center-text {
+    font-size: 10px;
+  }
   .past-card-center-label {
-    padding: 4px 10px;
+    padding: 3px 8px;
   }
 }
 /* ─── Card flip wrapper ─── */
@@ -2563,7 +2581,7 @@ a:focus-visible,
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
-  padding: 5px;
+  padding: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2630,6 +2648,17 @@ a:focus-visible,
 }
 .info-tooltip-list a:hover {
   color: #fff;
+}
+
+@media (max-width: 600px) {
+  .info-icon-wrapper--mobile .info-tooltip {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: calc(100vw - 32px);
+    z-index: 200;
+  }
 }
 
 /* ─── Idle screen sections ─── */

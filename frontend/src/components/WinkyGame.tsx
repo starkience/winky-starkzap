@@ -871,9 +871,11 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
       overflow: isMobile ? 'visible' : 'hidden',
       flexShrink: 0,
     }}>
+      {/* Spacer for fixed header on mobile */}
+      {isMobile && <div style={{ height: '54px', flexShrink: 0 }} />}
       {/* Brand */}
       <div style={{
-        padding: isMobile ? '14px 16px 12px' : '20px 20px 16px',
+        padding: isMobile ? '8px 16px 12px' : '20px 20px 16px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         display: 'flex',
         flexDirection: 'column',
@@ -1024,31 +1026,33 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
         {gamePhase === 'idle' && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            gap: isMobile ? '20px' : '24px',
+            gap: isMobile ? '16px' : '24px',
             padding: isMobile ? '16px 12px 24px' : '36px 32px',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
-          }}>
-            <div style={{ textAlign: 'center', padding: isMobile ? '8px 0' : undefined }}>
-              <h1 style={{ fontSize: isMobile ? '22px' : '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
-                Bet. Blink.<br />Winner takes it all.
-              </h1>
-            </div>
+          } as React.CSSProperties}>
+            {!isMobile && (
+              <div style={{ textAlign: 'center' }}>
+                <h1 style={{ fontSize: '36px', fontWeight: 900, color: '#A6A4A7', margin: 0, lineHeight: 1.2 }}>
+                  Bet. Blink.<br />Winner takes it all.
+                </h1>
+              </div>
+            )}
 
-            {/* Header row: title + info + search */}
+            {/* Header row: info + search */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               gap: isMobile ? '10px' : '16px', flexWrap: 'wrap',
               maxWidth: '960px', width: '100%', margin: '0 auto',
               padding: isMobile ? '0 4px' : undefined,
             }}>
-              <p className="idle-section-title" style={{ margin: 0, fontSize: isMobile ? '12px' : undefined }}>Battle these blinkers</p>
+              <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? '1 1 auto' : undefined, justifyContent: 'flex-end' }}>
-                <div className="info-icon-wrapper">
-                  <button className="info-icon-btn" aria-label="How it works" style={{ minWidth: '36px', minHeight: '36px' }}>
+                <div className={`info-icon-wrapper${isMobile ? ' info-icon-wrapper--mobile' : ''}`}>
+                  <button className="info-icon-btn" aria-label="How it works">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
                   </button>
-                  <div className="info-tooltip" style={isMobile ? { width: '260px', right: '-8px' } : undefined}>
+                  <div className="info-tooltip" style={isMobile ? { width: 'calc(100vw - 32px)', right: 0, left: 'auto', position: 'fixed', top: 'auto', marginTop: '8px' } : undefined}>
                     <p className="info-tooltip-title">How it works</p>
                     <ul className="info-tooltip-list">
                       <li>Create or accept a 30-second blink challenge</li>
@@ -1068,7 +1072,7 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                   className="challenge-input"
                   spellCheck={false}
                   autoComplete="off"
-                  style={{ maxWidth: isMobile ? '160px' : '220px', padding: isMobile ? '10px 14px' : '9px 14px', fontSize: isMobile ? '14px' : '12px', minHeight: '36px' }}
+                  style={{ maxWidth: isMobile ? '160px' : '220px' }}
                 />
               </div>
             </div>
