@@ -1880,8 +1880,31 @@ a:focus-visible,
 }
 @media (max-width: 768px) {
   .header-powered-by {
-    order: -1;
+    display: none;
   }
+}
+
+/* Inline "Powered by Starkzap" between logo and address on mobile */
+.powered-by-starkzap-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  opacity: 0.5;
+  padding: 0 12px;
+}
+.powered-by-starkzap-inline span {
+  font-size: 10px;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.powered-by-starkzap-inline img {
+  height: 18px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 3px;
 }
 
 /* Info icon: desktop hidden, mobile visible */

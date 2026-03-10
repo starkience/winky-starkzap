@@ -1026,6 +1026,10 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
             <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '140px', height: 'auto' }} />
             {NETWORK === 'sepolia' && <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>Testnet</span>}
           </div>
+          <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer" className="powered-by-starkzap-inline">
+            <span>Powered by</span>
+            <img src="/starkzap-logo.png" alt="Starkzap" />
+          </a>
           <div style={{ padding: '10px 12px 12px' }}>
             {isConnected && walletAddress ? (
               <div style={{ display: 'flex', gap: '8px' }}>
