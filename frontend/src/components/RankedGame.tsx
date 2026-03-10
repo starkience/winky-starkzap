@@ -325,7 +325,7 @@ export function RankedGame() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: isMobile ? '16px' : '24px',
+          padding: isMobile ? '20px 16px' : '36px 32px',
           minHeight: 0,
           position: 'relative',
         }}>
