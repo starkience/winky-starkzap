@@ -1130,6 +1130,7 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           } as React.CSSProperties}>
+            {!isMobile && <div style={{ height: '48px', flexShrink: 0 }} />}
             {/* Header row: info + search */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
