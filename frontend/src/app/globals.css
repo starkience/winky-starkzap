@@ -1853,6 +1853,42 @@ a:focus-visible,
   background: rgba(192, 180, 218, 0.1);
 }
 
+/* ─── Header: Powered by Starkzap ─── */
+.header-powered-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.header-powered-by:hover {
+  opacity: 0.9;
+}
+.header-powered-by span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.header-powered-by img {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* Info icon: desktop hidden, mobile visible */
+.info-icon-mobile-only {
+  display: none;
+}
+@media (max-width: 768px) {
+  .info-icon-mobile-only {
+    display: flex;
+  }
+}
+
 /* ─── Mode toggle (Ranked / PvP) ─── */
 .mode-toggle {
   position: relative;

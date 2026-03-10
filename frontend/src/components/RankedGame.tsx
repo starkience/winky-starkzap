@@ -438,6 +438,7 @@ export function RankedGame() {
           );
         })}
       </div>
+      <div className="powered-by-starknet"><span>Powered by</span><img src="/starknet-logo.png" alt="Starknet" /></div>
       </div>
     </div>
   ) : null;
@@ -547,6 +548,7 @@ export function RankedGame() {
               </div>
             )}
           </div>
+          <div className="powered-by-starknet"><span>Powered by</span><img src="/starknet-logo.png" alt="Starknet" /></div>
         </div>
       </main>
 
