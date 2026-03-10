@@ -160,32 +160,51 @@ export function useLiveFeed() {
     }
   }, [resolveTwitterUsernames, recordForRpm]);
 
-  /** Re-fetch recent events to keep the feed fresh (polling fallback). */
+  /** Re-fetch recent events from both on-chain data and the server buffer. */
   const refreshEvents = useCallback(async () => {
     try {
-      const res = await fetch('/api/recent-blinks');
-      const data = await res.json();
-      if (!data.events || data.events.length === 0) return;
+      const [onChainRes, bufferRes] = await Promise.allSettled([
+        fetch('/api/recent-blinks'),
+        fetch('/api/blink-event'),
+      ]);
 
-      const addresses = data.events.map((e: any) => e.address);
+      const allRaw: any[] = [];
+
+      if (onChainRes.status === 'fulfilled' && onChainRes.value.ok) {
+        const data = await onChainRes.value.json();
+        if (data.events) allRaw.push(...data.events);
+      }
+
+      if (bufferRes.status === 'fulfilled' && bufferRes.value.ok) {
+        const data = await bufferRes.value.json();
+        if (data.events) allRaw.push(...data.events);
+      }
+
+      if (allRaw.length === 0) return;
+
+      const addresses = allRaw.map((e: any) => e.address);
       await resolveTwitterUsernames(addresses);
 
-      const fresh: LiveBlinkEvent[] = data.events.map((e: any) => ({
+      const fresh: LiveBlinkEvent[] = allRaw.map((e: any) => ({
         id: e.txHash,
         address: e.address,
         txHash: e.txHash,
         timestamp: e.timestamp,
         userTotal: e.userTotal,
-        twitterUsername: twitterCacheRef.current[normalizeAddress(e.address)] ?? undefined,
+        twitterUsername: e.twitterUsername || (twitterCacheRef.current[normalizeAddress(e.address)] ?? undefined),
       }));
 
       setEvents((prev) => {
-        const merged = [...fresh];
-        for (const existing of prev) {
-          if (!merged.find((m) => m.id === existing.id)) {
-            merged.push(existing);
+        const seen = new Set<string>();
+        const merged: LiveBlinkEvent[] = [];
+
+        for (const ev of [...fresh, ...prev]) {
+          if (!seen.has(ev.id)) {
+            seen.add(ev.id);
+            merged.push(ev);
           }
         }
+
         merged.sort((a, b) => b.timestamp - a.timestamp);
         return merged.slice(0, MAX_EVENTS);
       });
@@ -196,8 +215,8 @@ export function useLiveFeed() {
     // Load initial events from on-chain data
     fetchInitial();
 
-    // Poll every 5s as a fallback for when Pusher isn't configured
-    const pollInterval = setInterval(refreshEvents, 5_000);
+    // Poll every 3s for near real-time updates
+    const pollInterval = setInterval(refreshEvents, 3_000);
 
     // Connect to Pusher for real-time updates
     if (!PUSHER_KEY) {
@@ -251,5 +270,20 @@ export function useLiveFeed() {
     };
   }, [fetchInitial, refreshEvents, resolveTwitterUsernames, recordForRpm]);
 
-  return { events, isLoading, topBlinker };
+  /** Inject a local event immediately (e.g. from the current user's blink). */
+  const addEvent = useCallback((event: LiveBlinkEvent) => {
+    recordForRpm(event.address, event.timestamp);
+
+    const norm = normalizeAddress(event.address);
+    if (event.twitterUsername) {
+      twitterCacheRef.current[norm] = event.twitterUsername;
+    }
+
+    setEvents((prev) => {
+      const filtered = prev.filter((e) => e.id !== event.id);
+      return [event, ...filtered].slice(0, MAX_EVENTS);
+    });
+  }, [recordForRpm]);
+
+  return { events, isLoading, topBlinker, addEvent };
 }

@@ -71,7 +71,7 @@ export function RankedGame() {
   });
 
   const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard(walletAddress || undefined);
-  const { events: liveEvents, topBlinker } = useLiveFeed();
+  const { events: liveEvents, topBlinker, addEvent: addLiveEvent } = useLiveFeed();
 
   const [allTwitterProfiles, setAllTwitterProfiles] = useState<Record<string, StoredTwitterProfile>>({});
   const syncedRef = useRef(false);
@@ -87,6 +87,23 @@ export function RankedGame() {
       txScrollRef.current.scrollTop = txScrollRef.current.scrollHeight;
     }
   }, [blinkTxLog.length]);
+
+  const injectedTxRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const tx of blinkTxLog) {
+      if (tx.status === 'success' && tx.hash && walletAddress && !injectedTxRef.current.has(tx.id)) {
+        injectedTxRef.current.add(tx.id);
+        addLiveEvent({
+          id: tx.hash,
+          address: walletAddress,
+          txHash: tx.hash,
+          timestamp: tx.timestamp,
+          userTotal: tx.blinkNumber,
+          twitterUsername: twitterUsername || undefined,
+        });
+      }
+    }
+  }, [blinkTxLog, walletAddress, twitterUsername, addLiveEvent]);
 
   useEffect(() => {
     if (!walletAddress || !twitterProfile || syncedRef.current) return;
