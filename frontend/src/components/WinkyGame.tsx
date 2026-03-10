@@ -39,6 +39,16 @@ interface CompletedChallenge {
   completedAt: number;
 }
 
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
   if (!addr.startsWith('0x')) return addr;
@@ -1515,40 +1525,34 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                       LIVE
                     </div>
                   </div>
-                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 12px 12px' }}>
                     {blinkTxLog.length === 0 && (
                       <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>
                         {blinkPendingCount > 0 ? 'Sending\u2026' : 'Blink to record txs'}
                       </div>
                     )}
                     {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-                      const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-                      const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+                      const fadeRatio = idx / Math.max(arr.length - 1, 1);
+                      const opacity = 0.2 + 0.8 * fadeRatio;
+                      const isConfirmed = tx.status === 'success';
+                      const blinkColor = isConfirmed ? '#22c55e' : '#fff';
+                      const isNewest = idx === arr.length - 1;
                       return (
-                        <div key={tx.id} style={{
-                          padding: '6px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
-                          opacity,
-                        }}>
+                        <div key={tx.id} className="ranked-tx-row" style={{
+                          padding: '8px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
+                          opacity, cursor: tx.hash ? 'pointer' : 'default',
+                          animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined,
+                        }}
+                          onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}>
                           <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              Blink #{tx.blinkNumber}
-                            </span>
-                            <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                              {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                            </span>
+                            <span className={isConfirmed ? 'ranked-tx-blink-label' : undefined} style={{ fontSize: '14px', fontWeight: 800, color: blinkColor, display: 'block', marginBottom: '2px', transition: 'color 0.15s' }}>Blink #{tx.blinkNumber}</span>
+                            {tx.hash ? (
+                              <span className="ranked-tx-hash" style={{ fontSize: '11px', fontWeight: 600, color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666', textDecoration: 'none', fontFamily: "'SF Mono', Monaco, monospace", transition: 'color 0.15s, text-decoration-color 0.15s' }}>{formatAddress(tx.hash)}</span>
+                            ) : (
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>{tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}</span>
+                            )}
                           </div>
-                          {VOYAGER_TX_URL && tx.hash && (
-                            <a
-                              href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="tx-voyager-link"
-                              aria-label="View on Voyager"
-                            >
-                              &#x2197;
-                            </a>
-                          )}
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#444', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px' }}>{formatTimeAgo(tx.timestamp)}</span>
                         </div>
                       );
                     })}
@@ -1608,38 +1612,32 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
                     Transactions
                   </span>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 12px 12px' }}>
                   {blinkTxLog.length === 0 && (
                     <div style={{ padding: '12px', textAlign: 'center', color: '#333', fontSize: '10px' }}>No transactions</div>
                   )}
                   {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-                    const opacity = 0.25 + 0.75 * (idx / Math.max(arr.length - 1, 1));
-                    const statusColor = tx.status === 'success' ? '#22c55e' : tx.status === 'pending' ? '#f59e0b' : tx.status === 'skipped' ? '#555' : '#ef4444';
+                    const fadeRatio = idx / Math.max(arr.length - 1, 1);
+                    const opacity = 0.2 + 0.8 * fadeRatio;
+                    const isConfirmed = tx.status === 'success';
+                    const blinkColor = isConfirmed ? '#22c55e' : '#fff';
+                    const isNewest = idx === arr.length - 1;
                     return (
-                      <div key={tx.id} style={{
-                        padding: '6px 8px', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px',
-                        opacity,
-                      }}>
+                      <div key={tx.id} className="ranked-tx-row" style={{
+                        padding: '8px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
+                        opacity, cursor: tx.hash ? 'pointer' : 'default',
+                        animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined,
+                      }}
+                        onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}>
                         <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: statusColor, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            Blink #{tx.blinkNumber}
-                          </span>
-                          <span style={{ fontSize: '9px', color: '#555', fontWeight: 600 }}>
-                            {tx.status === 'pending' ? 'sending\u2026' : tx.status}
-                          </span>
+                          <span className={isConfirmed ? 'ranked-tx-blink-label' : undefined} style={{ fontSize: '14px', fontWeight: 800, color: blinkColor, display: 'block', marginBottom: '2px', transition: 'color 0.15s' }}>Blink #{tx.blinkNumber}</span>
+                          {tx.hash ? (
+                            <span className="ranked-tx-hash" style={{ fontSize: '11px', fontWeight: 600, color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666', textDecoration: 'none', fontFamily: "'SF Mono', Monaco, monospace", transition: 'color 0.15s, text-decoration-color 0.15s' }}>{formatAddress(tx.hash)}</span>
+                          ) : (
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>{tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}</span>
+                          )}
                         </div>
-                        {VOYAGER_TX_URL && tx.hash && (
-                          <a
-                            href={`${VOYAGER_TX_URL}/${tx.hash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="tx-voyager-link"
-                            aria-label="View on Voyager"
-                          >
-                            &#x2197;
-                          </a>
-                        )}
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#444', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px' }}>{formatTimeAgo(tx.timestamp)}</span>
                       </div>
                     );
                   })}
