@@ -378,13 +378,14 @@ export function RankedGame() {
               </div>
             )}
 
-            {/* Live feed overlay — bottom-left */}
+            {/* Live feed overlay — bottom-left, newest at bottom, fading upward */}
             {cameraReady && (
               <div style={{
                 position: 'absolute', bottom: '12px', left: '12px',
                 zIndex: 5, pointerEvents: 'none',
-                display: 'flex', flexDirection: 'column', gap: '2px',
-                maxWidth: '70%',
+                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                gap: '2px', maxWidth: '70%',
+                maxHeight: '40%', overflow: 'hidden',
               }}>
                 {topBlinker && (
                   <div style={{
@@ -395,7 +396,10 @@ export function RankedGame() {
                     Fastest blinker: {topBlinker.displayName} at {topBlinker.rpm} bpm
                   </div>
                 )}
-                {liveEvents.slice(0, 8).map((ev) => {
+                {[...liveEvents.slice(0, 8)].reverse().map((ev, idx, arr) => {
+                  const fadeRatio = idx / Math.max(arr.length - 1, 1);
+                  const opacity = 0.15 + 0.85 * fadeRatio;
+                  const isNewest = idx === arr.length - 1;
                   const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
                   return (
                     <div key={ev.id} style={{
@@ -403,6 +407,9 @@ export function RankedGame() {
                       color: 'rgba(255,255,255,0.7)',
                       textShadow: '0 1px 4px rgba(0,0,0,0.8)',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      opacity,
+                      animation: isNewest ? 'live-feed-slide-in 0.3s ease-out' : undefined,
+                      transition: 'opacity 0.3s ease',
                     }}>
                       <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
                       {' blinked '}
