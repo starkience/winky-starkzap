@@ -318,9 +318,11 @@ export function WinkyGame({ initialChallengeId, onGamePhaseChange }: { initialCh
   const fetchOpenChallenges = useCallback(async () => {
     try {
       const res = await fetch('/api/challenge');
+      if (!res.ok) return;
       const data = await res.json();
-      if (data.challenges) setOpenChallenges(data.challenges);
-      if (data.completed) setCompletedChallenges(data.completed);
+      if (data.error) return;
+      if (Array.isArray(data.challenges)) setOpenChallenges(data.challenges);
+      if (Array.isArray(data.completed)) setCompletedChallenges(data.completed);
     } catch {}
   }, []);
 
