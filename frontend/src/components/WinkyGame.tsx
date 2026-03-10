@@ -995,7 +995,107 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
     </aside>
   );
 
-  // ─── Render ───
+  // ─── Mobile idle early return (unified layout with Ranked) ───
+  if (isMobile && gamePhase === 'idle') {
+    return (
+      <>
+        <div style={{
+          display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100dvh',
+          overflow: 'auto', background: '#0A0A0A', fontFamily: "'Manrope', sans-serif",
+          WebkitOverflowScrolling: 'touch', touchAction: 'manipulation',
+        } as React.CSSProperties}>
+          <div style={{ height: '58px', flexShrink: 0 }} />
+          <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '140px', height: 'auto' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {NETWORK === 'sepolia' && <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>Testnet</span>}
+              <div className="info-icon-wrapper info-icon-wrapper--mobile">
+                <button className="info-icon-btn" aria-label="How it works">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                </button>
+                <div className="info-tooltip" style={{ width: 'calc(100vw - 32px)', right: 0, left: 'auto', position: 'fixed' as const, top: 'auto', marginTop: '8px' }}>
+                  <p className="info-tooltip-title">How it works</p>
+                  <ul className="info-tooltip-list">
+                    <li>Create or accept a 30-second blink challenge</li>
+                    <li>Stake USDC — winner takes the full pot</li>
+                    <li>Opponent's score is hidden until the duel ends</li>
+                    <li>Blink detection powered by <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker" target="_blank" rel="noopener noreferrer">MediaPipe</a></li>
+                    <li>No data leaves your device — 100% local</li>
+                    <li>Fully open source: <a href="https://github.com/starkience/winky-starkzap" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: '10px 12px 12px' }}>
+            {isConnected && walletAddress ? (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={handleCopyAddress} className="sidebar-wallet-btn" aria-label={copied ? 'Address copied' : 'Copy wallet address'}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} aria-hidden="true" />
+                  <span style={{ fontFamily: "'SF Mono', Monaco, monospace", fontSize: '12px', letterSpacing: '0.3px' }}>{copied ? 'Copied!' : formatAddress(walletAddress)}</span>
+                </button>
+                <button onClick={() => { setShowWithdraw(true); setWithdrawError(null); setWithdrawTxHash(null); }} className="sidebar-withdraw-btn">Withdraw</button>
+                <button onClick={handleLogout} className="sidebar-disconnect-btn" aria-label="Disconnect wallet">&times;</button>
+              </div>
+            ) : (
+              <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}>
+                {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+              </button>
+            )}
+          </div>
+          <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {isConnected && usdcBalance !== null && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#A6A4A7', fontVariantNumeric: 'tabular-nums' }}>Balance: ${usdcBalance.toFixed(2)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {BET_AMOUNTS.map(amount => (
+                <button key={amount} onClick={() => setSelectedBet(amount)} disabled={isBusy || showGameArea}
+                  className={`sidebar-bet-btn${selectedBet === amount ? ' sidebar-bet-btn--active' : ''}`}>${amount}</button>
+              ))}
+            </div>
+            <button onClick={isConnected ? handlePlay : handleLogin} disabled={loginBusy || showGameArea || isBusy}
+              className={`sidebar-play-btn${isConnected && !showGameArea && !isBusy ? ' sidebar-play-btn--active' : ''}`}>
+              {isBusy ? 'Depositing\u2026' : showGameArea ? 'In Game\u2026' : isConnected ? `Create Challenge ($${selectedBet})` : 'Connect to Play'}
+            </button>
+            {needsFunding && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.18)', borderRadius: '10px' }}>
+                <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>&#9888;</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#facc15', lineHeight: 1.5 }}>Send USDC to your address to place bets</span>
+                <button onClick={() => setNeedsFunding(false)} style={{ background: 'none', border: 'none', color: '#facc15', cursor: 'pointer', fontSize: '14px', fontWeight: 800, lineHeight: 1, marginLeft: 'auto', flexShrink: 0, opacity: 0.5 }} aria-label="Dismiss">&times;</button>
+              </div>
+            )}
+            {duelTx && <a href={duelTx.voyagerUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10px', fontWeight: 600, color: '#C0B4DA', textDecoration: 'none', textAlign: 'center' }}>Duel #{duelTx.duelId} created &#8599;</a>}
+          </div>
+          <div style={{ padding: '0 12px 8px' }}>
+            <input type="text" value={blinkerSearch} onChange={(e) => setBlinkerSearch(e.target.value)} placeholder="Search @username" className="challenge-input" spellCheck={false} autoComplete="off" style={{ width: '100%', maxWidth: '100%' }} />
+          </div>
+          <div style={{ padding: '4px 16px 8px' }}>
+            <p className="idle-section-title" style={{ margin: 0 }}>Battle these blinkers</p>
+          </div>
+          <div style={{ padding: '0 12px 24px' }}>
+            {/* Cards rendered by desktop idle below will be duplicated — using separate mobile block */}
+            {(() => {
+              const normalizedUser = walletAddress?.replace(/^0x0*/i, '0x').toLowerCase();
+              const searchFiltered = openChallenges.filter(c => !blinkerSearch || c.username.toLowerCase().includes(blinkerSearch.replace(/^@/, '').toLowerCase()));
+              if (openChallenges.length === 0) return <div style={{ textAlign: 'center', padding: '48px 20px' }}><p style={{ fontSize: '15px', fontWeight: 700, color: '#444', margin: 0 }}>No open challenges yet</p><p style={{ fontSize: '13px', fontWeight: 500, color: '#333', margin: '8px 0 0' }}>Place a bet and be the first to post a challenge!</p></div>;
+              return (<>
+                <div className="blinker-grid">{searchFiltered.map(c => { const isOwn = normalizedUser && c.playerAddress.replace(/^0x0*/i, '0x').toLowerCase() === normalizedUser; const isFlipped = flippedCardId === c.id; const canAfford = usdcBalance !== null && usdcBalance >= c.stake; return (<div key={c.id} className={`blinker-card-wrapper${isOwn ? ' blinker-card--own' : ''}`}><div className={`blinker-card-flipper${isFlipped ? ' blinker-card-flipper--flipped' : ''}`}><div className="blinker-card blinker-card-front" onClick={() => { if (!isOwn && isConnected) setFlippedCardId(isFlipped ? null : c.id); }} style={isOwn ? { cursor: 'default' } : undefined}>{c.profileImage ? <img src={c.profileImage} alt="" className="blinker-card-bg" /> : <div className="blinker-card-bg blinker-card-bg--placeholder" />}{!isFlipped && (<><div className="blinker-card-overlay" /><button className="blinker-card-share-btn" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${window.location.origin}/?challenge=${c.duelId}`).then(() => { setCopiedLinkId(c.id); setTimeout(() => setCopiedLinkId(prev => prev === c.id ? null : prev), 1500); }); }} aria-label="Copy challenge link">{copiedLinkId === c.id ? <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> : <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>}</button><div className="blinker-card-content">{isOwn ? <span className="blinker-card-stat">Blinked {c.score} times</span> : <span className="blinker-card-stat">Blinked <span className="blinker-card-score-blur">{c.score}</span> times</span>}<span className="blinker-card-stake">${c.stake} USDC at stake</span><span className="blinker-card-name">{c.username}</span>{isOwn && <span style={{ fontSize: '10px', fontWeight: 700, color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>Waiting for challenger&hellip;</span>}</div></>)}</div><div className="blinker-card blinker-card-back" onClick={() => setFlippedCardId(null)}>{c.profileImage ? <img src={c.profileImage} alt="" className="blinker-card-back-bg" /> : <div className="blinker-card-back-bg blinker-card-bg--placeholder" />}<div className="blinker-card-back-overlay" /><div className="blinker-card-back-content"><div className="blinker-card-back-challenge-text"><span className="blinker-card-stat">Beat the score</span><span className="blinker-card-stake">Win ${c.stake * 2} USDC</span></div><div className="blinker-card-back-footer">{!canAfford && <div className="blinker-card-back-fund-notice" onClick={(e) => e.stopPropagation()}><span>Add funds to your wallet to match this bet</span></div>}<div className="blinker-card-back-bottom"><a href={`https://x.com/${c.username}`} target="_blank" rel="noopener noreferrer" className="blinker-card-name" onClick={(e) => e.stopPropagation()}>@{c.username}</a><button className="blinker-card-back-enter-btn" onClick={(e) => { e.stopPropagation(); setFlippedCardId(null); handleAcceptChallenge(c); }}>Enter</button></div></div></div></div></div></div>); })}{blinkerSearch && searchFiltered.length === 0 && <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0' }}><p style={{ fontSize: '13px', fontWeight: 600, color: '#444', margin: 0 }}>No challenges found for &ldquo;{blinkerSearch}&rdquo;</p></div>}</div>
+                {completedChallenges.length > 0 && (<><p className="idle-section-title" style={{ margin: '20px 0 12px' }}>Past Challenges</p><div className="blinker-grid">{completedChallenges.slice(0, 9).map(c => { const p1Won = !c.isDraw && c.winnerAddress.replace(/^0x0*/i, '0x').toLowerCase() === c.player1.address.replace(/^0x0*/i, '0x').toLowerCase(); const winner = p1Won ? c.player1 : c.player2; const loser = p1Won ? c.player2 : c.player1; const left = c.isDraw ? c.player1 : loser; const right = c.isDraw ? c.player2 : winner; return (<div key={c.duelId} className="past-card"><div className={`past-card-half${c.isDraw ? '' : ' past-card-half--lost'}`}>{left.profileImage ? <img src={left.profileImage} alt="" className="past-card-img" /> : <div className="past-card-img past-card-img--placeholder" />}<div className="past-card-half-overlay" /><span className={`past-card-score${c.isDraw ? '' : ' past-card-score--lost'}`}>{left.score}</span><a href={`https://x.com/${left.username}`} target="_blank" rel="noopener noreferrer" className="past-card-player-name" onClick={(e) => e.stopPropagation()}>@{left.username}</a></div><div className={`past-card-half${c.isDraw ? '' : ' past-card-half--won'}`}>{right.profileImage ? <img src={right.profileImage} alt="" className="past-card-img" /> : <div className="past-card-img past-card-img--placeholder" />}<div className="past-card-half-overlay" /><span className={`past-card-score${c.isDraw ? '' : ' past-card-score--won'}`}>{right.score}</span><a href={`https://x.com/${right.username}`} target="_blank" rel="noopener noreferrer" className="past-card-player-name" onClick={(e) => e.stopPropagation()}>@{right.username}</a></div><div className="past-card-center-label"><span className="past-card-center-text">{c.isDraw ? `Draw \u2014 $${c.payout / 2} returned` : (<><a href={`https://x.com/${winner.username}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>@{winner.username}</a>{` won $${c.payout}`}</>)}</span></div></div>); })}</div></>)}
+              </>);
+            })()}
+          </div>
+          <div className="powered-by-starknet"><span>Powered by</span><img src="/starknet-logo.png" alt="Starknet" /></div>
+        </div>
+        {showWithdraw && <div className="withdraw-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowWithdraw(false); }}><div className="withdraw-modal"><button className="withdraw-close" onClick={() => setShowWithdraw(false)} aria-label="Close">&times;</button><h2 className="withdraw-title">Withdraw USDC</h2><input type="text" className="withdraw-input" placeholder="Destination address (0x...)" value={withdrawRecipient} onChange={(e) => setWithdrawRecipient(e.target.value)} spellCheck={false} autoComplete="off" /><input type="number" className="withdraw-input" placeholder="Amount (USDC)" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} min="0" step="0.01" />{withdrawError && <p className="withdraw-error">{withdrawError}</p>}{withdrawTxHash && <a href={`${VOYAGER_TX_URL}/${withdrawTxHash}`} target="_blank" rel="noopener noreferrer" className="withdraw-success">Withdrawal sent &#8599;</a>}<button className="withdraw-btn" disabled={withdrawing || !withdrawRecipient || !withdrawAmount} onClick={handleWithdraw}>{withdrawing ? 'Sending...' : 'Withdraw'}</button></div></div>}
+        {challengePopup && <div className="challenge-popup-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setChallengePopup(null); setChallengePopupDismissed(true); } }}><div className="challenge-popup"><button className="challenge-popup-close" onClick={() => { setChallengePopup(null); setChallengePopupDismissed(true); }}>&times;</button><h3 style={{ color: '#A6A4A7', fontSize: '15px', fontWeight: 800, margin: 0, textAlign: 'center' }}>Challenge from @{challengePopup.username}</h3><div className="challenge-popup-card">{challengePopup.profileImage ? <img src={challengePopup.profileImage} alt="" className="challenge-popup-card-bg" /> : <div className="challenge-popup-card-bg challenge-popup-card-bg--placeholder" />}<div className="challenge-popup-card-overlay" /><div className="challenge-popup-card-content"><span className="blinker-card-stat">Blinked <span className="blinker-card-score-blur">{challengePopup.score}</span> times</span><span className="blinker-card-stake">${challengePopup.stake} USDC at stake</span><a href={`https://x.com/${challengePopup.username}`} target="_blank" rel="noopener noreferrer" className="blinker-card-name" onClick={(e) => e.stopPropagation()}>@{challengePopup.username}</a></div></div><button className="challenge-popup-enter-btn" onClick={() => { setChallengePopup(null); setChallengePopupDismissed(true); if (isConnected) handleAcceptChallenge(challengePopup); else handleLogin(); }}>{isConnected ? 'Enter Challenge' : 'Connect & Enter'}</button></div></div>}
+        {error && <div role="alert" style={{ position: 'fixed', bottom: 'max(20px, env(safe-area-inset-bottom, 20px))', left: '50%', transform: 'translateX(-50%)', padding: '14px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '12px', color: '#ef4444', fontSize: '13px', fontWeight: 600, zIndex: 100, fontFamily: "'Manrope', sans-serif", maxWidth: 'calc(100vw - 32px)', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(12px)' }}><span style={{ flex: 1 }}>{error}</span><button onClick={() => setError(null)} aria-label="Dismiss error" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px', fontWeight: 800, lineHeight: 1, minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>&times;</button></div>}
+      </>
+    );
+  }
+
+  // ─── Desktop + non-idle mobile render ───
   return (
     <div style={{
       display: 'flex',
@@ -1008,8 +1108,8 @@ export function WinkyGame({ initialChallengeId }: { initialChallengeId?: number 
       touchAction: 'manipulation',
     }}>
 
-      {/* ═══ SIDEBAR (on mobile renders first/top) ═══ */}
-      {isMobile && sidebarContent}
+      {/* ═══ SIDEBAR ═══ */}
+      {sidebarContent}
 
       {/* ═══ MAIN AREA ═══ */}
       <main style={{

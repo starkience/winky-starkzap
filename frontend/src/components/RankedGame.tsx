@@ -375,7 +375,7 @@ export function RankedGame() {
           )}
           {cameraReady && (
             <div style={{ position: 'absolute', bottom: '8px', left: '8px', zIndex: 5, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px', maxWidth: '85%', maxHeight: '50%', overflow: 'hidden' }}>
-              {[...liveEvents.slice(0, 8)].reverse().map((ev, idx, arr) => {
+              {[...liveEvents.slice(0, 3)].reverse().map((ev, idx, arr) => {
                 const fadeRatio = idx / Math.max(arr.length - 1, 1);
                 const opacity = 0.15 + 0.85 * fadeRatio;
                 const isNewest = idx === arr.length - 1;
@@ -414,32 +414,28 @@ export function RankedGame() {
         </div>
       )}
 
-      {/* Transaction Log */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '200px', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '48px', background: 'linear-gradient(to bottom, rgba(10,10,10,1) 0%, rgba(10,10,10,0.8) 40%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
-        <div ref={txScrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 12px 16px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-          {[...blinkTxLog].reverse().map((tx, idx, arr) => {
-            const fadeRatio = idx / Math.max(arr.length - 1, 1);
-            const opacity = 0.2 + 0.8 * fadeRatio;
-            const isConfirmed = tx.status === 'success';
-            const blinkColor = isConfirmed ? '#22c55e' : '#fff';
-            const isNewest = idx === arr.length - 1;
-            return (
-              <div key={tx.id} className="ranked-tx-row" style={{ padding: '8px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', opacity, cursor: tx.hash ? 'pointer' : 'default', animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined }}
-                onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}>
-                <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                  <span className={isConfirmed ? 'ranked-tx-blink-label' : undefined} style={{ fontSize: '14px', fontWeight: 800, color: blinkColor, display: 'block', marginBottom: '2px', transition: 'color 0.15s' }}>Blink #{tx.blinkNumber}</span>
-                  {tx.hash ? (
-                    <span className="ranked-tx-hash" style={{ fontSize: '11px', fontWeight: 600, color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666', textDecoration: 'none', fontFamily: "'SF Mono', Monaco, monospace", transition: 'color 0.15s, text-decoration-color 0.15s' }}>{formatAddress(tx.hash)}</span>
-                  ) : (
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>{tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}</span>
-                  )}
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#444', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px' }}>{formatTimeAgo(tx.timestamp)}</span>
+      {/* Transaction Log — newest first, max 4, no scroll */}
+      <div style={{ padding: '8px 12px 16px', overflow: 'hidden' }}>
+        {blinkTxLog.slice(-4).reverse().map((tx, idx) => {
+          const isConfirmed = tx.status === 'success';
+          const blinkColor = isConfirmed ? '#22c55e' : '#fff';
+          const isNewest = idx === 0;
+          const opacity = 1 - idx * 0.2;
+          return (
+            <div key={tx.id} className="ranked-tx-row" style={{ padding: '6px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', opacity, cursor: tx.hash ? 'pointer' : 'default', animation: isNewest ? 'tx-slide-in 0.25s ease-out' : undefined }}
+              onClick={() => { if (tx.hash) window.open(`${VOYAGER_TX_URL}/${tx.hash}`, '_blank'); }}>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <span className={isConfirmed ? 'ranked-tx-blink-label' : undefined} style={{ fontSize: '14px', fontWeight: 800, color: blinkColor, display: 'block', marginBottom: '2px', transition: 'color 0.15s' }}>Blink #{tx.blinkNumber}</span>
+                {tx.hash ? (
+                  <span className="ranked-tx-hash" style={{ fontSize: '11px', fontWeight: 600, color: isConfirmed ? 'rgba(34,197,94,0.5)' : '#666', textDecoration: 'none', fontFamily: "'SF Mono', Monaco, monospace", transition: 'color 0.15s, text-decoration-color 0.15s' }}>{formatAddress(tx.hash)}</span>
+                ) : (
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', fontStyle: 'italic' }}>{tx.status === 'pending' ? 'sending\u2026' : tx.status === 'error' ? 'failed' : tx.status}</span>
+                )}
               </div>
-            );
-          })}
-        </div>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#444', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: '2px' }}>{formatTimeAgo(tx.timestamp)}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   ) : null;
