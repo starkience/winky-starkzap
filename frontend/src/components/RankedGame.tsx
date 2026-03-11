@@ -380,19 +380,9 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
             style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }} />
           <canvas ref={(el) => { canvasRef.current = el; }}
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }} />
-          {!cameraReady && (
+          {!cameraReady && isConnected && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)', zIndex: 5, gap: '20px', padding: '20px' }}>
-              {!isConnected ? (
-                <>
-                  <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
-                    style={{ padding: '16px 44px', fontSize: '16px', minHeight: '48px' }}>
-                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
-                  </button>
-                  <span style={{ fontSize: '13px', color: '#555', fontWeight: 500, textAlign: 'center' }}>Connect to start blinking on Starknet</span>
-                </>
-              ) : (
-                <div className="spinner" style={{ width: '32px', height: '32px' }} />
-              )}
+              <div className="spinner" style={{ width: '32px', height: '32px' }} />
             </div>
           )}
           {cameraReady && (
