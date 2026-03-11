@@ -37,7 +37,7 @@ interface StoredTwitterProfile {
   profileImageUrl: string;
 }
 
-export function RankedGame() {
+export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderboard?: () => void; onToggleInfo?: () => void }) {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
 
   const [sdkWallet, setSdkWallet] = useState<WalletInterface | null>(null);
@@ -329,8 +329,6 @@ export function RankedGame() {
       WebkitOverflowScrolling: 'touch',
     } as React.CSSProperties}>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh + 140px)' }}>
-      {/* Spacer for fixed header */}
-      <div style={{ height: `${headerH + 8}px`, flexShrink: 0 }} />
 
       {/* Logo + Auth */}
       <div style={{ padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -338,6 +336,17 @@ export function RankedGame() {
           <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '120px', height: 'auto' }} />
           {NETWORK === 'sepolia' && (
             <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px', marginLeft: '8px' }}>Testnet</span>
+          )}
+          <div style={{ flex: 1 }} />
+          {onToggleInfo && (
+            <button className="info-icon-btn" aria-label="How it works" onClick={onToggleInfo} style={{ flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+            </button>
+          )}
+          {onShowLeaderboard && (
+            <button className="leaderboard-header-btn" onClick={onShowLeaderboard} style={{ flexShrink: 0, marginLeft: '6px' }}>
+              Leaderboard
+            </button>
           )}
         </div>
         <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer" className="powered-by-starkzap-inline">

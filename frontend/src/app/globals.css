@@ -1740,12 +1740,12 @@ a:focus-visible,
   color: #ef4444;
 }
 
-/* ─── App header bar ─── */
+/* ─── App header bar (desktop only) ─── */
 .app-header-bar {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  right: 360px;
   z-index: 500;
   display: flex;
   align-items: center;
@@ -1868,10 +1868,11 @@ a:focus-visible,
 .challenge-bar {
   position: relative;
   flex: 1;
+  max-width: 50%;
   height: 38px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(22, 101, 52, 0.35);
+  border-radius: 6px;
+  border: 1.5px solid #22c55e;
   overflow: hidden;
 }
 .challenge-bar-fill {
@@ -1879,8 +1880,8 @@ a:focus-visible,
   top: 0;
   left: 0;
   bottom: 0;
-  background: #22c55e;
-  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.3);
+  border-radius: 4px;
   transition: width 1s linear, background 0.5s;
 }
 .challenge-bar-countdown {
@@ -1922,6 +1923,7 @@ a:focus-visible,
 /* Mobile: placed inside RankedGame below webcam */
 .challenge-bar-mobile .challenge-bar {
   height: 28px;
+  max-width: none;
 }
 .challenge-bar-mobile .challenge-bar-countdown {
   font-size: 11px;
@@ -1937,7 +1939,7 @@ a:focus-visible,
 .info-popup-card {
   position: fixed;
   top: 60px;
-  right: 16px;
+  left: 32px;
   z-index: 601;
   width: 320px;
   max-width: calc(100vw - 32px);
@@ -2099,18 +2101,7 @@ a:focus-visible,
 
 @media (max-width: 768px) {
   .app-header-bar {
-    padding: max(10px, env(safe-area-inset-top, 10px)) 12px 10px;
-    gap: 8px;
-    background: rgba(10, 10, 10, 0.98);
-    justify-content: flex-end;
-  }
-  .header-spacer {
     display: none;
-  }
-  .leaderboard-header-btn {
-    padding: 0 14px;
-    font-size: 12px;
-    height: 40px;
   }
 }
 
