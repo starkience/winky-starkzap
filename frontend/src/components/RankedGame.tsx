@@ -9,6 +9,7 @@ import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { useLiveFeed } from '@/hooks/use-live-feed';
 import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, CHALLENGE_CONFIG } from '@/lib/constants';
+import { ChallengeHealthBar } from '@/components/ChallengeHealthBar';
 
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
@@ -333,10 +334,10 @@ export function RankedGame() {
 
       {/* Logo + Auth */}
       <div style={{ padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '140px', height: 'auto' }} />
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <img src="/logo.png" alt="Winky" style={{ objectFit: 'contain', maxWidth: '120px', height: 'auto' }} />
           {NETWORK === 'sepolia' && (
-            <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px' }}>Testnet</span>
+            <span style={{ fontSize: '9px', color: '#f59e0b', padding: '3px 8px', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', fontWeight: 700, background: 'rgba(245,158,11,0.08)', letterSpacing: '0.5px', marginLeft: '8px' }}>Testnet</span>
           )}
         </div>
         <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer" className="powered-by-starkzap-inline">
@@ -406,6 +407,11 @@ export function RankedGame() {
         </div>
       </div>
 
+      {/* Challenge countdown bar — same width as webcam */}
+      <div style={{ padding: '8px 12px 0' }}>
+        <ChallengeHealthBar className="challenge-bar-mobile" />
+      </div>
+
       {/* Total blinks + Fastest blinker (text only, no GIF) */}
       {isConnected && (
         <div style={{ padding: '12px 16px 8px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -449,7 +455,12 @@ export function RankedGame() {
           );
         })}
       </div>
-      <div className="powered-by-starknet"><span>Powered by</span><img src="/starknet-logo.png" alt="Starknet" /></div>
+      <div className="powered-by-footer">
+        <span>Powered by</span>
+        <img src="/starknet-logo.png" alt="Starknet" />
+        <span>and</span>
+        <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer"><img src="/starkzap-logo.png" alt="Starkzap" /></a>
+      </div>
       </div>
     </div>
   ) : null;
@@ -559,7 +570,13 @@ export function RankedGame() {
               </div>
             )}
           </div>
-          <div className="powered-by-starknet"><span>Powered by</span><img src="/starknet-logo.png" alt="Starknet" /></div>
+          <div className="powered-by-footer">
+            <span>Powered by</span>
+            <img src="/starknet-logo.png" alt="Starknet" />
+            <span>and</span>
+            <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer"><img src="/starkzap-logo.png" alt="Starkzap" /></a>
+            <span className="footer-privacy-text">No data leaves your device. Webcam processing is 100% local.</span>
+          </div>
         </div>
       </main>
 

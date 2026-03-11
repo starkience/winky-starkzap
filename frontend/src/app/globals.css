@@ -1819,8 +1819,8 @@ a:focus-visible,
 .app-header-bar > * {
   pointer-events: auto;
 }
-.header-spacer-mobile {
-  display: none;
+.header-spacer {
+  flex: 1;
 }
 @media (max-width: 768px) {
   .header-spacer-mobile {
@@ -1853,21 +1853,6 @@ a:focus-visible,
   background: rgba(192, 180, 218, 0.1);
 }
 
-/* ─── Header: Ranked label ─── */
-.header-ranked-label {
-  font-size: 14px;
-  font-weight: 900;
-  color: #A6A4A7;
-  letter-spacing: 0.5px;
-  padding: 9px 22px;
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: rgba(192, 180, 218, 0.12);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
-}
-
 /* ─── Challenge health bar ─── */
 .challenge-bar-wrapper {
   display: flex;
@@ -1876,56 +1861,71 @@ a:focus-visible,
   min-width: 0;
 }
 .challenge-bar {
-  width: 120px;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 5px;
+  position: relative;
+  flex: 1;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  flex-shrink: 0;
 }
 .challenge-bar-fill {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
   background: #22c55e;
-  border-radius: 5px;
+  border-radius: 8px;
   transition: width 1s linear, background 0.5s;
 }
-.challenge-bar-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #888;
-  white-space: nowrap;
+.challenge-bar-countdown {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  font-family: 'SF Mono', Monaco, monospace;
+  z-index: 1;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
-.challenge-bar-prize {
-  font-size: 11px;
+.challenge-bar-prize-btn {
+  padding: 9px 16px;
+  font-size: 12px;
   font-weight: 800;
-  color: #C0B4DA;
+  color: #fff;
+  background: #22c55e;
+  border-radius: 10px;
   white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+  letter-spacing: 0.2px;
 }
 .challenge-bar-desktop-only {
   display: flex;
   align-items: center;
-}
-.challenge-bar-mobile-only {
-  display: none;
+  flex: 1;
+  min-width: 0;
 }
 @media (max-width: 768px) {
   .challenge-bar-desktop-only {
     display: none;
   }
-  .challenge-bar-mobile-only {
-    position: fixed;
-    top: 58px;
-    left: 0;
-    right: 0;
-    z-index: 499;
-    padding: 6px 12px;
-    background: rgba(10, 10, 10, 0.95);
-    pointer-events: auto;
-  }
-  .challenge-bar-mobile-only .challenge-bar {
-    flex: 1;
-    width: auto;
-  }
+}
+/* Mobile: placed inside RankedGame below webcam */
+.challenge-bar-mobile .challenge-bar {
+  height: 28px;
+}
+.challenge-bar-mobile .challenge-bar-countdown {
+  font-size: 11px;
+  right: 8px;
+}
+.challenge-bar-mobile .challenge-bar-prize-btn {
+  padding: 6px 10px;
+  font-size: 10px;
 }
 
 /* ─── Info popup card ─── */
@@ -1963,18 +1963,14 @@ a:focus-visible,
   }
 }
 
-/* ─── Header privacy text (desktop only) ─── */
-.header-privacy-text {
+/* ─── Footer privacy text (desktop, next to Powered by) ─── */
+.footer-privacy-text {
   font-size: 10px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: 8px;
   white-space: nowrap;
   letter-spacing: 0.2px;
-}
-@media (max-width: 768px) {
-  .header-privacy-text {
-    display: none;
-  }
 }
 
 /* ─── Header: Powered by Starkzap ─── */
@@ -2101,44 +2097,19 @@ a:focus-visible,
     padding: max(10px, env(safe-area-inset-top, 10px)) 12px 10px;
     gap: 8px;
     background: rgba(10, 10, 10, 0.98);
+    justify-content: flex-end;
   }
-  .header-ranked-label {
-    font-size: 12px;
-    padding: 7px 14px;
-  }
-  .mode-toggle {
-    flex: 0 1 auto;
-    height: 40px;
-  }
-  .mode-toggle-btn {
-    padding: 0 16px;
-    font-size: 12px;
-    min-width: 60px;
-    height: 100%;
-  }
-  .info-icon-btn {
-    order: 4;
+  .header-spacer {
+    display: none;
   }
   .leaderboard-header-btn {
-    order: 5;
     padding: 0 14px;
     font-size: 12px;
     height: 40px;
   }
-  .header-powered-by {
-    display: none;
-  }
 }
 
 @media (max-width: 380px) {
-  .mode-toggle {
-    height: 36px;
-  }
-  .mode-toggle-btn {
-    padding: 0 12px;
-    font-size: 11px;
-    min-width: 50px;
-  }
   .leaderboard-header-btn {
     padding: 0 10px;
     font-size: 10px;
@@ -2666,8 +2637,8 @@ a:focus-visible,
   color: #1d9bf0;
 }
 
-/* ─── Powered by Starknet footer ─── */
-.powered-by-starknet {
+/* ─── Powered by Starknet + Starkzap footer ─── */
+.powered-by-footer {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2677,19 +2648,24 @@ a:focus-visible,
   opacity: 0.4;
   transition: opacity 0.2s;
 }
-.powered-by-starknet:hover {
+.powered-by-footer:hover {
   opacity: 0.7;
 }
-.powered-by-starknet span {
+.powered-by-footer span {
   font-size: 11px;
   font-weight: 600;
   color: #888;
   letter-spacing: 0.3px;
 }
-.powered-by-starknet img {
+.powered-by-footer img {
   height: 16px;
   width: auto;
   object-fit: contain;
+}
+.powered-by-footer a {
+  display: flex;
+  align-items: center;
+  line-height: 0;
 }
 
 /* ─── Animated dots ─── */
