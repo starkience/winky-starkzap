@@ -349,7 +349,7 @@ export function LeaderboardModal({ userAddress, twitterProfile, onClose, mode = 
                   return matchByAddress || matchByTwitterWallet;
                 });
 
-                const showPinned = currentUserEntry && currentUserEntry.rank > 3;
+                const showPinned = !!currentUserEntry;
 
                 return (
                   <>

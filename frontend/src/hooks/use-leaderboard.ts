@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
+import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL, CHALLENGE_CONFIG } from '@/lib/constants';
 
 export interface LeaderboardEntry {
   address: string;
@@ -73,7 +73,9 @@ async function fetchBlinkEvents(
   let totalEvents = 0;
   let page = 0;
 
-  const startBlock = EVENT_START_BLOCK[NETWORK] ?? 0;
+  const challengeBlock = CHALLENGE_CONFIG.START_BLOCK;
+  const startBlock = challengeBlock > 0 ? challengeBlock : (EVENT_START_BLOCK[NETWORK] ?? 0);
+  const countEvents = challengeBlock > 0;
 
   do {
     page++;
@@ -95,11 +97,16 @@ async function fetchBlinkEvents(
 
     for (const event of response.events) {
       const userAddress = event.keys[1];
-      const userTotal = Number(BigInt(event.data[1]));
 
-      const current = userBlinks.get(userAddress) ?? 0;
-      if (userTotal > current) {
-        userBlinks.set(userAddress, userTotal);
+      if (countEvents) {
+        const current = userBlinks.get(userAddress) ?? 0;
+        userBlinks.set(userAddress, current + 1);
+      } else {
+        const userTotal = Number(BigInt(event.data[1]));
+        const current = userBlinks.get(userAddress) ?? 0;
+        if (userTotal > current) {
+          userBlinks.set(userAddress, userTotal);
+        }
       }
     }
 

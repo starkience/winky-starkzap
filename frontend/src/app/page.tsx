@@ -3,11 +3,8 @@
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-
-const WinkyGame = dynamic(
-  () => import('@/components/WinkyGame').then(m => ({ default: m.WinkyGame })),
-  { ssr: false, loading: () => null },
-);
+import { usePrivy } from '@privy-io/react-auth';
+import { CHALLENGE_CONFIG, STORAGE_KEYS } from '@/lib/constants';
 
 const RankedGame = dynamic(
   () => import('@/components/RankedGame').then(m => ({ default: m.RankedGame })),
@@ -19,56 +16,98 @@ const LeaderboardModal = dynamic(
   { ssr: false, loading: () => null },
 );
 
-type AppMode = 'ranked' | 'pvp';
+function ChallengeHealthBar() {
+  const [now, setNow] = useState(Date.now());
 
-function ModeToggle({ mode, onChange }: { mode: AppMode; onChange: (m: AppMode) => void }) {
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const startTime = CHALLENGE_CONFIG.START_TIME;
+  const endTime = startTime + CHALLENGE_CONFIG.DURATION_MS;
+  const isActive = startTime > 0 && now >= startTime && now < endTime;
+  const isUpcoming = startTime > 0 && now < startTime;
+  const isEnded = startTime > 0 && now >= endTime;
+
+  if (startTime === 0) {
+    return (
+      <div className="challenge-bar-wrapper">
+        <div className="challenge-bar">
+          <div className="challenge-bar-fill" style={{ width: '100%' }} />
+        </div>
+        <span className="challenge-bar-label">12h Challenge</span>
+        <span className="challenge-bar-prize">{CHALLENGE_CONFIG.PRIZE_DESCRIPTION}</span>
+      </div>
+    );
+  }
+
+  let fraction = 1;
+  let timeLabel = '';
+
+  if (isActive) {
+    const remaining = endTime - now;
+    fraction = remaining / CHALLENGE_CONFIG.DURATION_MS;
+    const h = Math.floor(remaining / 3_600_000);
+    const m = Math.floor((remaining % 3_600_000) / 60_000);
+    const s = Math.floor((remaining % 60_000) / 1000);
+    timeLabel = `${h}h ${m}m ${s}s left`;
+  } else if (isUpcoming) {
+    timeLabel = 'Starting soon...';
+  } else if (isEnded) {
+    fraction = 0;
+    timeLabel = 'Challenge ended';
+  }
+
+  const barColor = fraction > 0.5 ? '#22c55e' : fraction > 0.2 ? '#f59e0b' : '#ef4444';
+
   return (
-    <div className="mode-toggle">
-      <button
-        className={`mode-toggle-btn${mode === 'ranked' ? ' mode-toggle-btn--active' : ''}`}
-        onClick={() => onChange('ranked')}
-      >
-        Ranked
-      </button>
-      <button
-        className={`mode-toggle-btn${mode === 'pvp' ? ' mode-toggle-btn--active' : ''}`}
-        onClick={() => onChange('pvp')}
-      >
-        PvP
-      </button>
-      <div
-        className="mode-toggle-slider"
-        style={{ transform: mode === 'pvp' ? 'translateX(100%)' : 'translateX(0)' }}
-      />
+    <div className="challenge-bar-wrapper">
+      <div className="challenge-bar">
+        <div className="challenge-bar-fill" style={{ width: `${fraction * 100}%`, background: barColor }} />
+      </div>
+      <span className="challenge-bar-label">{timeLabel}</span>
+      <span className="challenge-bar-prize">{CHALLENGE_CONFIG.PRIZE_DESCRIPTION}</span>
     </div>
   );
 }
 
-function WelcomePopup({ mode, onClose }: { mode: AppMode; onClose: () => void }) {
+function InfoPopup({ show, onClose }: { show: boolean; onClose: () => void }) {
+  if (!show) return null;
+  return (
+    <>
+      <div className="info-tooltip-backdrop" onClick={onClose} />
+      <div className="info-popup-card">
+        <button className="info-popup-close" onClick={onClose} aria-label="Close">&times;</button>
+        <p className="info-tooltip-title">How it works</p>
+        <ul className="info-tooltip-list">
+          <li>Every blink is a real transaction on Starknet</li>
+          <li>Gas is fully covered &mdash; zero cost to you</li>
+          <li>12-hour ranked challenge &mdash; top 3 share {CHALLENGE_CONFIG.PRIZE}</li>
+          <li>Blink detection powered by <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker" target="_blank" rel="noopener noreferrer">MediaPipe</a></li>
+          <li>No data leaves your device &mdash; webcam processing is 100% local</li>
+          <li>Fully open source: <a href="https://github.com/starkience/winky-starkzap" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </div>
+    </>
+  );
+}
+
+function WelcomePopup({ onClose }: { onClose: () => void }) {
   return (
     <div className="welcome-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="welcome-modal">
         <button className="welcome-close" onClick={onClose} aria-label="Close">&times;</button>
-        {mode === 'ranked' ? (
-          <>
-            <h2 className="welcome-title">Welcome to Ranked</h2>
-            <p className="welcome-text">
-              Every blink you make is a <strong>real transaction on Starknet</strong>. Gas is fully covered by a paymaster &mdash; zero cost to you.<br /><br />
-              Climb the <strong>global leaderboard</strong> by blinking the most. Your total blinks are persistent and accumulate across sessions.<br /><br />
-              Just connect your wallet and start blinking.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="welcome-title">Welcome to PvP</h2>
-            <p className="welcome-text">
-              Challenge anyone to a <strong>30-second blink duel</strong>. Stake USDC &mdash; the winner takes the full pot.<br /><br />
-              Create a challenge or accept an existing one. Your opponent&rsquo;s score stays <strong>hidden</strong> until the duel ends.<br /><br />
-              Blink detection is 100% local &mdash; no data leaves your device.
-            </p>
-          </>
-        )}
-        <button className="welcome-play-btn" onClick={onClose}>Play</button>
+        <h2 className="welcome-title">Blink to Earn</h2>
+        <p className="welcome-text rainbow-text" style={{ fontSize: '16px', fontWeight: 900, textAlign: 'center', margin: '0 0 12px' }}>
+          {CHALLENGE_CONFIG.PRIZE} prize pool distributed among the top 3!
+        </p>
+        <p className="welcome-text">
+          This is a <strong>12-hour blink competition</strong>. Every blink you make is a <strong>real transaction on Starknet</strong>. Gas is fully covered &mdash; zero cost to you.<br /><br />
+          Climb the <strong>global leaderboard</strong> by blinking the most. Your blinks accumulate across sessions.<br /><br />
+          No data leaves your device &mdash; webcam processing is 100% local.
+        </p>
+        <button className="welcome-play-btn" onClick={onClose}>Let&apos;s Go</button>
       </div>
     </div>
   );
@@ -76,35 +115,21 @@ function WelcomePopup({ mode, onClose }: { mode: AppMode; onClose: () => void })
 
 function HomeContent() {
   const searchParams = useSearchParams();
-  const challengeParam = searchParams.get('challenge');
-  const initialChallengeId = challengeParam ? Number(challengeParam) : undefined;
+  void searchParams;
+
+  const { user } = usePrivy();
+  const walletAddress = user?.wallet?.address
+    ?? (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.walletAddress) : null)
+    ?? undefined;
 
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<AppMode>(initialChallengeId !== undefined ? 'pvp' : 'ranked');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [preloadedModes, setPreloadedModes] = useState<Set<AppMode>>(new Set());
-  const [pvpGamePhase, setPvpGamePhase] = useState('idle');
-  const hideHeader = mode === 'pvp' && pvpGamePhase !== 'idle';
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-
-    const initialMode: AppMode = initialChallengeId !== undefined ? 'pvp' : 'ranked';
-    setPreloadedModes(new Set([initialMode]));
-
-    const welcomeKey = `winky_welcome_${initialMode}`;
-    if (!sessionStorage.getItem(welcomeKey)) {
-      setShowWelcome(true);
-      sessionStorage.setItem(welcomeKey, '1');
-    }
-  }, [initialChallengeId]);
-
-  const handleModeChange = useCallback((m: AppMode) => {
-    setMode(m);
-    setPreloadedModes(prev => new Set(prev).add(m));
-
-    const welcomeKey = `winky_welcome_${m}`;
+    const welcomeKey = 'winky_welcome_v2';
     if (!sessionStorage.getItem(welcomeKey)) {
       setShowWelcome(true);
       sessionStorage.setItem(welcomeKey, '1');
@@ -119,8 +144,12 @@ function HomeContent() {
 
   return (
     <div style={{ position: 'relative', width: '100%', minHeight: '100dvh' }}>
-      <div className="app-header-bar" style={hideHeader ? { display: 'none' } : undefined}>
-        <ModeToggle mode={mode} onChange={handleModeChange} />
+      <div className="app-header-bar">
+        <span className="header-ranked-label">Ranked</span>
+        <div className="header-spacer-mobile" />
+        <div className="challenge-bar-desktop-only">
+          <ChallengeHealthBar />
+        </div>
         <div className="header-spacer-mobile" />
         <button
           className="leaderboard-header-btn"
@@ -128,25 +157,31 @@ function HomeContent() {
         >
           Leaderboard
         </button>
+        <button className="info-icon-btn" aria-label="How it works" onClick={() => setShowInfo(v => !v)}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+        </button>
         <a href="https://starkzap.io/" target="_blank" rel="noopener noreferrer" className="header-powered-by">
           <span>Powered by</span>
           <img src="/starkzap-logo.png" alt="Starkzap" />
         </a>
+        <span className="header-privacy-text">No data leaves your device. Webcam processing is 100% local.</span>
       </div>
 
-      <div style={mode === 'ranked' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
-        {(mode === 'ranked' || preloadedModes.has('ranked')) && <RankedGame />}
+      {/* Challenge bar for mobile (below header) */}
+      <div className="challenge-bar-mobile-only">
+        <ChallengeHealthBar />
       </div>
-      <div style={mode === 'pvp' ? undefined : { position: 'fixed', top: '-200vh', left: '-200vw', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }}>
-        {(mode === 'pvp' || preloadedModes.has('pvp')) && <WinkyGame initialChallengeId={initialChallengeId} onGamePhaseChange={setPvpGamePhase} />}
-      </div>
+
+      <InfoPopup show={showInfo} onClose={() => setShowInfo(false)} />
+
+      <RankedGame />
 
       {showLeaderboard && (
-        <LeaderboardModal mode={mode} onClose={() => setShowLeaderboard(false)} />
+        <LeaderboardModal mode="ranked" userAddress={walletAddress} onClose={() => setShowLeaderboard(false)} />
       )}
 
       {showWelcome && (
-        <WelcomePopup mode={mode} onClose={handleCloseWelcome} />
+        <WelcomePopup onClose={handleCloseWelcome} />
       )}
     </div>
   );

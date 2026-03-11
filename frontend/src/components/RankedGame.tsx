@@ -8,7 +8,7 @@ import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { useLiveFeed } from '@/hooks/use-live-feed';
-import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL } from '@/lib/constants';
+import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, CHALLENGE_CONFIG } from '@/lib/constants';
 
 function formatAddress(addr: string | null | undefined): string {
   if (!addr) return '';
@@ -261,10 +261,14 @@ export function RankedGame() {
 
   const onChainTotalRef = useRef(0);
 
+  const challengeEnded = CHALLENGE_CONFIG.START_TIME > 0 &&
+    Date.now() >= CHALLENGE_CONFIG.START_TIME + CHALLENGE_CONFIG.DURATION_MS;
+
   const handleBlink = useCallback((count: number) => {
+    if (challengeEnded) return;
     const actualNumber = onChainTotalRef.current + count;
     recordBlink(actualNumber, twitterUsername || undefined);
-  }, [recordBlink, twitterUsername]);
+  }, [recordBlink, twitterUsername, challengeEnded]);
 
   const {
     videoRef,
@@ -276,7 +280,7 @@ export function RankedGame() {
   } = useBlinkDetection(handleBlink, {
     earThreshold: GAME_CONFIG.EAR_THRESHOLD,
     debounceMs: GAME_CONFIG.BLINK_DEBOUNCE_MS,
-    enabled: isConnected,
+    enabled: isConnected && !challengeEnded,
   });
 
   useEffect(() => { blinkCountRef.current = blinkCount; }, [blinkCount]);
@@ -339,6 +343,9 @@ export function RankedGame() {
           <span>Powered by</span>
           <img src="/starkzap-logo.png" alt="Starkzap" />
         </a>
+        <p style={{ fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.3)', margin: 0, padding: '0 0 2px', lineHeight: 1.3 }}>
+          No data leaves your device. Webcam processing is 100% local.
+        </p>
         {isConnected && walletAddress ? (
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={handleCopyAddress} className="sidebar-wallet-btn" aria-label={copied ? 'Address copied' : 'Copy wallet address'}>
@@ -351,7 +358,7 @@ export function RankedGame() {
           </div>
         ) : (
           <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}>
-            {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+            {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
           </button>
         )}
       </div>
@@ -369,7 +376,7 @@ export function RankedGame() {
                 <>
                   <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
                     style={{ padding: '16px 44px', fontSize: '16px', minHeight: '48px' }}>
-                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
                   </button>
                   <span style={{ fontSize: '13px', color: '#555', fontWeight: 500, textAlign: 'center' }}>Connect to start blinking on Starknet</span>
                 </>
@@ -518,7 +525,7 @@ export function RankedGame() {
                     className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
                     style={{ padding: '16px 44px', fontSize: '15px', minHeight: '48px' }}
                   >
-                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
                   </button>
                 ) : (
                   <div className="spinner" style={{ width: '32px', height: '32px' }} />
@@ -579,7 +586,7 @@ export function RankedGame() {
             </div>
           ) : (
             <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}>
-              {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect Wallet'}
+              {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
             </button>
           )}
         </div>

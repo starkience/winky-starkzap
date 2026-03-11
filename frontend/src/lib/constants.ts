@@ -74,6 +74,15 @@ export const GAME_CONFIG = {
   TX_TIMEOUT_MS: 30000,
 } as const;
 
+// 12-hour challenge configuration
+export const CHALLENGE_CONFIG = {
+  START_TIME: 0 as number,       // Unix ms — set to 0 = not started yet
+  DURATION_MS: 12 * 60 * 60 * 1000,
+  PRIZE: '$100',
+  PRIZE_DESCRIPTION: '$100 split among top 3',
+  START_BLOCK: 7_609_346,         // Block to start counting blinks from (0 = use default)
+} as const;
+
 // localStorage keys for wallet state
 export const STORAGE_KEYS = {
   userId: 'winky_privy_user_id',

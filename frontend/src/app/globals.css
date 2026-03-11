@@ -1853,6 +1853,130 @@ a:focus-visible,
   background: rgba(192, 180, 218, 0.1);
 }
 
+/* ─── Header: Ranked label ─── */
+.header-ranked-label {
+  font-size: 14px;
+  font-weight: 900;
+  color: #A6A4A7;
+  letter-spacing: 0.5px;
+  padding: 9px 22px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(192, 180, 218, 0.12);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+/* ─── Challenge health bar ─── */
+.challenge-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.challenge-bar {
+  width: 120px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.challenge-bar-fill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: 5px;
+  transition: width 1s linear, background 0.5s;
+}
+.challenge-bar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  white-space: nowrap;
+}
+.challenge-bar-prize {
+  font-size: 11px;
+  font-weight: 800;
+  color: #C0B4DA;
+  white-space: nowrap;
+}
+.challenge-bar-desktop-only {
+  display: flex;
+  align-items: center;
+}
+.challenge-bar-mobile-only {
+  display: none;
+}
+@media (max-width: 768px) {
+  .challenge-bar-desktop-only {
+    display: none;
+  }
+  .challenge-bar-mobile-only {
+    position: fixed;
+    top: 58px;
+    left: 0;
+    right: 0;
+    z-index: 499;
+    padding: 6px 12px;
+    background: rgba(10, 10, 10, 0.95);
+    pointer-events: auto;
+  }
+  .challenge-bar-mobile-only .challenge-bar {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* ─── Info popup card ─── */
+.info-popup-card {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 601;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: #141414;
+  border: 1.5px solid rgba(192, 180, 218, 0.2);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.info-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+@media (max-width: 768px) {
+  .info-popup-card {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    top: 70px;
+  }
+}
+
+/* ─── Header privacy text (desktop only) ─── */
+.header-privacy-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+@media (max-width: 768px) {
+  .header-privacy-text {
+    display: none;
+  }
+}
+
 /* ─── Header: Powered by Starkzap ─── */
 .header-powered-by {
   display: flex;
@@ -1978,6 +2102,10 @@ a:focus-visible,
     gap: 8px;
     background: rgba(10, 10, 10, 0.98);
   }
+  .header-ranked-label {
+    font-size: 12px;
+    padding: 7px 14px;
+  }
   .mode-toggle {
     flex: 0 1 auto;
     height: 40px;
@@ -1988,10 +2116,17 @@ a:focus-visible,
     min-width: 60px;
     height: 100%;
   }
+  .info-icon-btn {
+    order: 4;
+  }
   .leaderboard-header-btn {
+    order: 5;
     padding: 0 14px;
     font-size: 12px;
     height: 40px;
+  }
+  .header-powered-by {
+    display: none;
   }
 }
 
