@@ -1823,6 +1823,11 @@ a:focus-visible,
   flex: 1;
 }
 @media (max-width: 768px) {
+  .header-spacer {
+    display: none;
+  }
+}
+@media (max-width: 768px) {
   .header-spacer-mobile {
     display: block;
     flex: 1;
@@ -1896,17 +1901,16 @@ a:focus-visible,
   padding: 9px 16px;
   font-size: 12px;
   font-weight: 800;
-  color: #fff;
-  background: #22c55e;
-  border-radius: 10px;
+  color: #22c55e;
+  background: rgba(22, 101, 52, 0.35);
+  border: 1.5px solid #22c55e;
+  border-radius: 6px;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: default;
   letter-spacing: 0.2px;
 }
 .challenge-bar-desktop-only {
-  display: flex;
-  align-items: center;
   flex: 1;
   min-width: 0;
 }
@@ -1924,8 +1928,9 @@ a:focus-visible,
   right: 8px;
 }
 .challenge-bar-mobile .challenge-bar-prize-btn {
-  padding: 6px 10px;
+  padding: 5px 8px;
   font-size: 10px;
+  border-radius: 4px;
 }
 
 /* ─── Info popup card ─── */
