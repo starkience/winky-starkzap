@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@cartridge/controller": "^0.13.9",
     "@mediapipe/tasks-vision": "^0.10.0",
     "@privy-io/node": "^0.10.1",
     "@privy-io/react-auth": "^1.88.4",

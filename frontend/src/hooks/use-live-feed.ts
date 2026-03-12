@@ -72,8 +72,7 @@ export function useLiveFeed() {
       const norm = normalizeAddress(bestAddr);
       const username = twitterCacheRef.current[norm];
       const displayName = username
-        ? `@${username}`
-        : `${bestAddr.slice(0, 6)}...${bestAddr.slice(-4)}`;
+        || `${bestAddr.slice(0, 6)}...${bestAddr.slice(-4)}`;
 
       const profileImageUrl = profileImageCacheRef.current[norm] ?? undefined;
       setTopBlinker({ address: bestAddr, displayName, rpm: bestRpm, profileImageUrl });

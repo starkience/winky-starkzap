@@ -75,7 +75,9 @@ async function fetchBlinkEvents(
 
   const challengeBlock = CHALLENGE_CONFIG.START_BLOCK;
   const startBlock = challengeBlock > 0 ? challengeBlock : (EVENT_START_BLOCK[NETWORK] ?? 0);
-  const countEvents = challengeBlock > 0;
+
+  const challengeStartSec = Math.floor(CHALLENGE_CONFIG.START_TIME / 1000);
+  const challengeEndSec = Math.floor(CHALLENGE_CONFIG.END_TIME / 1000);
 
   do {
     page++;
@@ -96,18 +98,12 @@ async function fetchBlinkEvents(
     const response = await provider.getEvents(params);
 
     for (const event of response.events) {
-      const userAddress = event.keys[1];
+      const eventTimestamp = Number(BigInt(event.data[0]));
+      if (eventTimestamp < challengeStartSec || eventTimestamp >= challengeEndSec) continue;
 
-      if (countEvents) {
-        const current = userBlinks.get(userAddress) ?? 0;
-        userBlinks.set(userAddress, current + 1);
-      } else {
-        const userTotal = Number(BigInt(event.data[1]));
-        const current = userBlinks.get(userAddress) ?? 0;
-        if (userTotal > current) {
-          userBlinks.set(userAddress, userTotal);
-        }
-      }
+      const userAddress = event.keys[1];
+      const current = userBlinks.get(userAddress) ?? 0;
+      userBlinks.set(userAddress, current + 1);
     }
 
     totalEvents += response.events.length;

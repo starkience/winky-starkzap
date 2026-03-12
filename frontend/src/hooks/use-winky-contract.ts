@@ -3,21 +3,16 @@
 /**
  * Hook to interact with the WinkyBlink contract via the Starkzap SDK.
  *
- * 1 blink = 1 transaction via PrivySigner + AVNU paymaster (auto-signed, zero gas).
- * The SDK handles signing (via backend) and paymaster submission.
+ * 1 blink = 1 transaction via Cartridge Controller session keys (auto-signed, zero gas).
+ * The Controller handles nonce management internally, enabling concurrent transactions.
  */
 
 import { useCallback, useState, useRef } from 'react';
 import { RpcProvider, hash } from 'starknet';
-import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL } from '@/lib/constants';
+import { WINKY_CONTRACT_ADDRESS, NETWORK, RPC_URL, CHALLENGE_CONFIG } from '@/lib/constants';
 import type { WalletInterface } from 'starkzap';
 
 const BLINK_EVENT_KEY = hash.getSelectorFromName('Blink');
-const EVENT_START_BLOCK: Record<string, number> = {
-  mainnet: 6_976_636,
-  sepolia: 0,
-  devnet: 0,
-};
 
 function getReadProvider(): RpcProvider {
   return new RpcProvider({ nodeUrl: RPC_URL });
@@ -121,6 +116,19 @@ export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: Use
 
   const recordBlink = useCallback(async (blinkNumber: number, twitterUsername?: string): Promise<BlinkTransaction> => {
     const txId = `blink-${blinkNumber}-${Date.now()}`;
+    const now = Date.now();
+
+    if (now >= CHALLENGE_CONFIG.END_TIME) {
+      const tx: BlinkTransaction = {
+        id: txId,
+        status: 'skipped',
+        error: 'Challenge ended',
+        blinkNumber,
+        timestamp: now,
+      };
+      addToLog(tx);
+      return tx;
+    }
 
     if (!isAuthenticated || !wallet) {
       const tx: BlinkTransaction = {
@@ -128,7 +136,7 @@ export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: Use
         status: 'error',
         error: 'Not logged in or wallet not connected',
         blinkNumber,
-        timestamp: Date.now(),
+        timestamp: now,
       };
       addToLog(tx);
       return tx;
@@ -165,7 +173,11 @@ export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: Use
     if (!walletAddress) return 0;
     try {
       const provider = getReadProvider();
-      const startBlock = EVENT_START_BLOCK[NETWORK] ?? 0;
+      const startBlock = CHALLENGE_CONFIG.START_BLOCK > 0
+        ? CHALLENGE_CONFIG.START_BLOCK
+        : 0;
+      const challengeStartSec = Math.floor(CHALLENGE_CONFIG.START_TIME / 1000);
+      const challengeEndSec = Math.floor(CHALLENGE_CONFIG.END_TIME / 1000);
       let total = 0;
       let continuationToken: string | undefined = undefined;
 
@@ -185,8 +197,9 @@ export function useWinkyContract({ wallet, walletAddress, isAuthenticated }: Use
         const response = await provider.getEvents(params);
 
         for (const event of response.events) {
-          const userTotal = Number(BigInt(event.data[1]));
-          if (userTotal > total) total = userTotal;
+          const eventTimestamp = Number(BigInt(event.data[0]));
+          if (eventTimestamp < challengeStartSec || eventTimestamp >= challengeEndSec) continue;
+          total++;
         }
 
         continuationToken = response.continuation_token;

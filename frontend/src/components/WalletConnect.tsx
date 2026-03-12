@@ -3,21 +3,21 @@
 /**
  * WalletConnect Component
  *
- * Provides wallet connection UI using Privy social login.
+ * Provides wallet connection UI using Cartridge Controller.
  */
 
 import { useState, useEffect } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useCartridgeWallet } from '@/context/CartridgeWalletContext';
 
 export function WalletConnect() {
-  const { login, logout, ready, authenticated, user } = usePrivy();
+  const { connect, disconnect, wallet, address, username, loading } = useCartridgeWallet();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !ready) {
+  if (!mounted) {
     return (
       <div className="main">
         <div className="connect-screen">
@@ -27,15 +27,16 @@ export function WalletConnect() {
     );
   }
 
-  if (authenticated && user) {
+  if (wallet && address) {
+    const displayName = username || `${address.slice(0, 6)}...${address.slice(-4)}`;
     return (
       <div className="main">
         <div className="connect-screen">
           <div className="wallet-connected">
             <div className="wallet-address">
-              {user.email?.address || user.id}
+              {displayName}
             </div>
-            <button onClick={() => logout()} className="disconnect-btn">
+            <button onClick={disconnect} className="disconnect-btn">
               Logout
             </button>
           </div>
@@ -61,14 +62,15 @@ export function WalletConnect() {
 
         <div className="wallet-connectors">
           <button
-            onClick={() => login()}
+            onClick={connect}
+            disabled={loading}
             className="connect-btn"
             style={{
               background: '#C0B4DA',
               border: 'none',
             }}
           >
-            Sign Up with Privy
+            {loading ? <><span>Connecting</span><span className="dots-anim" /></> : 'Connect'}
           </button>
 
           <div style={{
@@ -78,7 +80,7 @@ export function WalletConnect() {
             marginTop: '12px',
             opacity: 0.7,
           }}>
-            Email or Google &mdash; no wallet needed
+            Passkey or social login &mdash; no wallet needed
           </div>
         </div>
 

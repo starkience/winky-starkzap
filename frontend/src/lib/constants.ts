@@ -74,13 +74,14 @@ export const GAME_CONFIG = {
   TX_TIMEOUT_MS: 30000,
 } as const;
 
-// 12-hour challenge configuration
+// 10-hour challenge configuration — March 12 2026, 06:30–16:30 UTC
 export const CHALLENGE_CONFIG = {
-  START_TIME: 0 as number,       // Unix ms — set to 0 = not started yet
-  DURATION_MS: 12 * 60 * 60 * 1000,
+  START_TIME: new Date('2026-03-12T06:30:00Z').getTime(),
+  END_TIME: new Date('2026-03-12T16:30:00Z').getTime(),
+  DURATION_MS: 10 * 60 * 60 * 1000,
   PRIZE: '$100',
   PRIZE_DESCRIPTION: '$100 split among top 3',
-  START_BLOCK: 7_609_346,         // Block to start counting blinks from (0 = use default)
+  START_BLOCK: 7_627_844,         // Current block at ~01:30 UTC Mar 12 — timestamp filter handles precise cutoff
 } as const;
 
 // localStorage keys for wallet state
@@ -89,4 +90,11 @@ export const STORAGE_KEYS = {
   walletId: 'winky_wallet_id',
   walletAddress: 'winky_wallet_address',
   publicKey: 'winky_public_key',
+  controllerAddress: 'winky_controller_address',
+  controllerUsername: 'winky_controller_username',
 } as const;
+
+// Cartridge Controller session policies
+export const CONTROLLER_POLICIES = [
+  { target: WINKY_CONTRACT_ADDRESS, method: 'record_blink' },
+] as const;

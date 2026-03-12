@@ -1,16 +1,17 @@
 'use client';
 
 /**
- * Privy + React Query Providers
+ * App Providers
  *
- * Uses Privy for social login (Twitter only).
- * All wallet operations happen via the Express backend API.
+ * Privy is kept in the tree (inactive in the UI) for potential future use.
+ * The active wallet flow uses the Cartridge Controller via CartridgeWalletProvider.
  */
 
 import { ReactNode, useState } from 'react';
 import { PrivyProvider } from '@privy-io/react-auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
+import { CartridgeWalletProvider } from '@/context/CartridgeWalletContext';
 import 'react-toastify/dist/ReactToastify.css';
 
 interface ProvidersProps {
@@ -39,14 +40,16 @@ export function Providers({ children }: ProvidersProps) {
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <ToastContainer
-          position="bottom-right"
-          theme="dark"
-          autoClose={5000}
-        />
-      </QueryClientProvider>
+      <CartridgeWalletProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <ToastContainer
+            position="bottom-right"
+            theme="dark"
+            autoClose={5000}
+          />
+        </QueryClientProvider>
+      </CartridgeWalletProvider>
     </PrivyProvider>
   );
 }

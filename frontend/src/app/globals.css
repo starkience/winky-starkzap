@@ -115,11 +115,22 @@ video::-webkit-media-controls,
 video::-webkit-media-controls-panel,
 video::-webkit-media-controls-play-button,
 video::-webkit-media-controls-start-playback-button,
-video::-webkit-media-controls-overlay-play-button {
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-fullscreen-button,
+video::-internal-media-controls-overlay-cast-button {
   display: none !important;
-  -webkit-appearance: none;
-  opacity: 0;
-  pointer-events: none;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* ─── Focus-visible for all interactive elements ─── */
@@ -1107,7 +1118,7 @@ a:focus-visible,
 
 .leaderboard-columns {
   display: grid;
-  grid-template-columns: 50px 48px 1fr auto auto;
+  grid-template-columns: 60px 1fr 100px;
   padding: 12px 32px;
   font-size: 11px;
   font-weight: 600;
@@ -1128,7 +1139,6 @@ a:focus-visible,
 
 .leaderboard-col-blinks {
   text-align: right;
-  min-width: 80px;
 }
 
 .leaderboard-col-rank {
@@ -1213,7 +1223,7 @@ a:focus-visible,
 
 .leaderboard-row {
   display: grid;
-  grid-template-columns: 50px 48px 1fr auto auto;
+  grid-template-columns: 60px 1fr 100px;
   align-items: center;
   padding: 16px 32px;
   transition: background 0.15s;
@@ -1352,9 +1362,9 @@ a:focus-visible,
   font-size: 15px;
   font-weight: 600;
   color: #A6A4A7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .leaderboard-username--link {
@@ -1373,7 +1383,6 @@ a:focus-visible,
   align-items: baseline;
   justify-content: flex-end;
   gap: 5px;
-  min-width: 80px;
   text-align: right;
 }
 
@@ -1433,20 +1442,16 @@ a:focus-visible,
   }
 
   .leaderboard-columns {
-    grid-template-columns: 32px 32px 1fr auto auto;
+    grid-template-columns: 40px 1fr 80px;
     padding: 10px 12px;
     font-size: 9px;
     gap: 6px;
   }
 
   .leaderboard-row {
-    grid-template-columns: 32px 32px 1fr auto auto;
+    grid-template-columns: 40px 1fr 80px;
     padding: 10px 12px;
     gap: 6px;
-  }
-
-  .leaderboard-col-blinks {
-    min-width: auto;
   }
 
   .leaderboard-col-action {

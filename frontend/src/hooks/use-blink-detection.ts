@@ -55,7 +55,8 @@ const RIGHT_IRIS = [473, 474, 475, 476, 477];
 // Detection parameters
 const EAR_THRESHOLD = 0.21; // Below this = eye closed
 const BLINK_DEBOUNCE_MS = 200; // Min time between blinks
-const CONSECUTIVE_FRAMES = 2; // Frames eye must be closed
+const CONSECUTIVE_FRAMES_DESKTOP = 2; // Frames eye must be closed (desktop)
+const CONSECUTIVE_FRAMES_MOBILE = 1; // More responsive on mobile (single frame)
 
 interface BlinkDetectionConfig {
   earThreshold?: number;
@@ -278,10 +279,13 @@ export function useBlinkDetection(
   onBlink: (count: number) => void,
   config: BlinkDetectionConfig = {}
 ): BlinkDetectionResult {
+  const isMobileDevice = typeof window !== 'undefined'
+    && (window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024));
+
   const {
     earThreshold = EAR_THRESHOLD,
     debounceMs = BLINK_DEBOUNCE_MS,
-    consecutiveFrames = CONSECUTIVE_FRAMES,
+    consecutiveFrames = isMobileDevice ? CONSECUTIVE_FRAMES_MOBILE : CONSECUTIVE_FRAMES_DESKTOP,
     enabled = true,
   } = config;
 
@@ -308,6 +312,7 @@ export function useBlinkDetection(
   const lastFpsTimeRef = useRef(Date.now());
   const blinkCountRef = useRef(0);
   const blinkFlashRef = useRef(0); // timestamp of last blink for flash effect
+  const lastEarUpdateRef = useRef(0); // throttle EAR state updates
   
   // Keep latest onBlink in a ref so the animation loop always calls the current version
   const onBlinkRef = useRef(onBlink);
@@ -413,7 +418,10 @@ export function useBlinkDetection(
       const rightEAR = calculateEAR(landmarks, RIGHT_EYE);
       const avgEAR = (leftEAR + rightEAR) / 2;
 
-      setCurrentEAR(avgEAR);
+      if (now - lastEarUpdateRef.current >= 250) {
+        setCurrentEAR(avgEAR);
+        lastEarUpdateRef.current = now;
+      }
 
       // Blink detection logic
       const eyesClosed = avgEAR < earThreshold;

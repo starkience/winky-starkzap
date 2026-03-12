@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { usePrivy } from '@privy-io/react-auth';
+import { useCartridgeWallet } from '@/context/CartridgeWalletContext';
 import { CHALLENGE_CONFIG, STORAGE_KEYS } from '@/lib/constants';
 import { ChallengeHealthBar } from '@/components/ChallengeHealthBar';
 
@@ -62,9 +62,9 @@ function HomeContent() {
   const searchParams = useSearchParams();
   void searchParams;
 
-  const { user } = usePrivy();
-  const walletAddress = user?.wallet?.address
-    ?? (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.walletAddress) : null)
+  const { address: controllerAddress, username: controllerUsername } = useCartridgeWallet();
+  const walletAddress = controllerAddress
+    ?? (typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.controllerAddress) : null)
     ?? undefined;
 
   const [mounted, setMounted] = useState(false);
@@ -114,7 +114,7 @@ function HomeContent() {
       />
 
       {showLeaderboard && (
-        <LeaderboardModal mode="ranked" userAddress={walletAddress} onClose={() => setShowLeaderboard(false)} />
+        <LeaderboardModal mode="ranked" userAddress={walletAddress} controllerUsername={controllerUsername} onClose={() => setShowLeaderboard(false)} />
       )}
 
       {showWelcome && (

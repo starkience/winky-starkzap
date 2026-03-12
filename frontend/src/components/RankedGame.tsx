@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { StarkSDK, OnboardStrategy } from 'starkzap';
-import type { WalletInterface } from 'starkzap';
 import { useBlinkDetection } from '@/hooks/use-blink-detection';
 import { useWinkyContract } from '@/hooks/use-winky-contract';
 import { useLeaderboard } from '@/hooks/use-leaderboard';
 import { useLiveFeed } from '@/hooks/use-live-feed';
-import { GAME_CONFIG, NETWORK, API_URL, STORAGE_KEYS, VOYAGER_TX_URL, CHALLENGE_CONFIG } from '@/lib/constants';
+import { useCartridgeWallet } from '@/context/CartridgeWalletContext';
+import { GAME_CONFIG, NETWORK, STORAGE_KEYS, VOYAGER_TX_URL, CHALLENGE_CONFIG } from '@/lib/constants';
 import { ChallengeHealthBar } from '@/components/ChallengeHealthBar';
 
 function formatAddress(addr: string | null | undefined): string {
@@ -38,28 +36,32 @@ interface StoredTwitterProfile {
 }
 
 export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderboard?: () => void; onToggleInfo?: () => void }) {
-  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
+  const {
+    wallet: controllerWallet,
+    address: controllerAddress,
+    username: controllerUsername,
+    loading: controllerLoading,
+    error: controllerError,
+    connect: controllerConnect,
+    disconnect: controllerDisconnect,
+  } = useCartridgeWallet();
 
-  const [sdkWallet, setSdkWallet] = useState<WalletInterface | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [walletLoading, setWalletLoading] = useState(false);
-  const setupAttemptedRef = useRef(false);
+  const walletAddress = controllerAddress;
+  const sdkWallet = controllerWallet;
 
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const blinkCountRef = useRef(0);
   const txScrollRef = useRef<HTMLDivElement>(null);
 
-  const twitterProfile = user?.twitter ?? null;
-  const twitterUsername = twitterProfile?.username ?? null;
+  const displayUsername = controllerUsername ?? null;
 
-  const isConnected = ready && authenticated && !!sdkWallet && !loggingOut;
-  const loginBusy = !ready || walletLoading;
+  const isConnected = !!sdkWallet && !!walletAddress;
+  const loginBusy = controllerLoading;
 
   const {
     recordBlink,
@@ -68,7 +70,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
   } = useWinkyContract({
     wallet: sdkWallet,
     walletAddress,
-    isAuthenticated: ready && authenticated,
+    isAuthenticated: isConnected,
   });
 
   const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard(walletAddress || undefined);
@@ -100,28 +102,33 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
           txHash: tx.hash,
           timestamp: tx.timestamp,
           userTotal: tx.blinkNumber,
-          twitterUsername: twitterUsername || undefined,
+          twitterUsername: displayUsername || undefined,
         });
       }
     }
-  }, [blinkTxLog, walletAddress, twitterUsername, addLiveEvent]);
+  }, [blinkTxLog, walletAddress, displayUsername, addLiveEvent]);
 
   useEffect(() => {
-    if (!walletAddress || !twitterProfile || syncedRef.current) return;
+    if (!walletAddress || !displayUsername || syncedRef.current) return;
     syncedRef.current = true;
-    const profilePicUrl = (twitterProfile as any).profilePictureUrl || '';
-    const fullSizeUrl = profilePicUrl.replace('_normal', '').replace('_200x200', '').replace('_400x400', '');
+
+    const norm = normalizeAddress(walletAddress);
+    setAllTwitterProfiles(prev => ({
+      ...prev,
+      [norm]: { username: displayUsername, name: displayUsername, profileImageUrl: '' },
+    }));
+
     fetch('/api/twitter-profiles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         address: walletAddress,
-        username: twitterProfile.username,
-        name: twitterProfile.name || twitterProfile.username,
-        profileImageUrl: fullSizeUrl,
+        username: displayUsername,
+        name: displayUsername,
+        profileImageUrl: '',
       }),
     }).catch(() => {});
-  }, [walletAddress, twitterProfile]);
+  }, [walletAddress, displayUsername]);
 
   useEffect(() => {
     if (leaderboardLoading || leaderboard.length === 0) return;
@@ -131,19 +138,17 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
       .then((data) => {
         if (data.profiles) {
           setAllTwitterProfiles(data.profiles);
-          if (twitterProfile && walletAddress) {
+          if (displayUsername && walletAddress) {
             const norm = normalizeAddress(walletAddress);
             if (!data.profiles[norm]) {
-              const profilePicUrl = (twitterProfile as any).profilePictureUrl || '';
-              const fullSizeUrl = profilePicUrl.replace('_normal', '').replace('_200x200', '').replace('_400x400', '');
               fetch('/api/twitter-profiles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   address: walletAddress,
-                  username: twitterProfile.username,
-                  name: twitterProfile.name || twitterProfile.username,
-                  profileImageUrl: fullSizeUrl,
+                  username: displayUsername,
+                  name: displayUsername,
+                  profileImageUrl: '',
                 }),
               })
                 .then(() => fetch(`/api/twitter-profiles?addresses=${encodeURIComponent(addresses)}`))
@@ -155,7 +160,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
         }
       })
       .catch(() => {});
-  }, [leaderboardLoading, leaderboard, twitterProfile, walletAddress]);
+  }, [leaderboardLoading, leaderboard, displayUsername, walletAddress]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -167,109 +172,34 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
   }, []);
 
   useEffect(() => {
-    if (!ready || !authenticated || !user?.id) return;
-    if (loggingOut) setLoggingOut(false);
-    if (sdkWallet) return;
-    if (setupAttemptedRef.current || walletLoading) return;
-    setupAttemptedRef.current = true;
-
-    const setupWallet = async () => {
-      setWalletLoading(true);
-      try {
-        const storedUser = window.localStorage.getItem(STORAGE_KEYS.userId);
-        if (storedUser && storedUser !== user.id) {
-          window.localStorage.removeItem(STORAGE_KEYS.walletId);
-          window.localStorage.removeItem(STORAGE_KEYS.walletAddress);
-          window.localStorage.removeItem(STORAGE_KEYS.publicKey);
-        }
-        window.localStorage.setItem(STORAGE_KEYS.userId, user.id);
-
-        let wId = window.localStorage.getItem(STORAGE_KEYS.walletId);
-        let wPk = window.localStorage.getItem(STORAGE_KEYS.publicKey);
-        const baseUrl = API_URL || window.location.origin;
-
-        if (!wId || !wPk) {
-          const token = await getAccessToken();
-          const resp = await fetch(`${baseUrl}/api/wallet/starknet`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({ privyUserId: user.id }),
-          });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(data?.error || 'Create wallet failed');
-          const w = data.wallet || {};
-          wId = w.id || null;
-          wPk = w.publicKey || w.public_key || null;
-          if (wId) window.localStorage.setItem(STORAGE_KEYS.walletId, wId);
-          if (wPk) window.localStorage.setItem(STORAGE_KEYS.publicKey, wPk);
-        }
-
-        if (!wId || !wPk) throw new Error('Failed to get wallet credentials');
-
-        const sdk = new StarkSDK({
-          network: NETWORK === 'mainnet' ? 'mainnet' : 'sepolia',
-          paymaster: { nodeUrl: `${baseUrl}/api/paymaster` },
-        });
-
-        const { wallet } = await sdk.onboard({
-          strategy: OnboardStrategy.Privy,
-          deploy: 'if_needed',
-          feeMode: 'sponsored',
-          privy: {
-            resolve: async () => ({
-              walletId: wId!,
-              publicKey: wPk!,
-              serverUrl: `${baseUrl}/api/wallet/sign`,
-            }),
-          },
-        });
-
-        const addr = wallet.address;
-        setSdkWallet(wallet);
-        setWalletAddress(addr);
-        if (addr) window.localStorage.setItem(STORAGE_KEYS.walletAddress, addr);
-      } catch (err: any) {
-        console.error('[setupWallet] Error:', err.message);
-        setError(err.message || 'Wallet setup failed');
-      } finally {
-        setWalletLoading(false);
-      }
-    };
-    setupWallet();
-  }, [ready, authenticated, user?.id, sdkWallet, walletLoading]);
+    if (controllerError) setError(controllerError);
+  }, [controllerError]);
 
   const handleLogin = useCallback(() => {
-    login({ loginMethods: ['twitter'] });
-  }, [login]);
+    controllerConnect();
+  }, [controllerConnect]);
 
   const handleLogout = useCallback(() => {
-    setLoggingOut(true);
-    setSdkWallet(null);
-    setWalletAddress(null);
     setCameraStarted(false);
     setCameraReady(false);
-    setupAttemptedRef.current = false;
-    try {
-      Object.values(STORAGE_KEYS).forEach(k => {
-        try { window.localStorage.removeItem(k); } catch {}
-      });
-    } catch {}
-    logout().catch(() => {});
-  }, [logout]);
+    controllerDisconnect();
+  }, [controllerDisconnect]);
 
   const onChainTotalRef = useRef(0);
 
-  const challengeEnded = CHALLENGE_CONFIG.START_TIME > 0 &&
-    Date.now() >= CHALLENGE_CONFIG.START_TIME + CHALLENGE_CONFIG.DURATION_MS;
+  const [nowMs, setNowMs] = useState(Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const challengeEnded = nowMs >= CHALLENGE_CONFIG.END_TIME;
 
   const handleBlink = useCallback((count: number) => {
     if (challengeEnded) return;
     const actualNumber = onChainTotalRef.current + count;
-    recordBlink(actualNumber, twitterUsername || undefined);
-  }, [recordBlink, twitterUsername, challengeEnded]);
+    recordBlink(actualNumber, displayUsername || undefined);
+  }, [recordBlink, displayUsername, challengeEnded]);
 
   const {
     videoRef,
@@ -367,8 +297,8 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
             <button onClick={handleLogout} className="sidebar-disconnect-btn" aria-label="Disconnect wallet">&times;</button>
           </div>
         ) : (
-          <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}>
-            {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
+          <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${loginBusy ? ' sidebar-connect-btn--loading' : ''}`}>
+            {loginBusy ? <span>Connecting<span className="dots-anim" /></span> : 'Connect'}
           </button>
         )}
       </div>
@@ -377,7 +307,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
       <div style={{ padding: '0 12px', flexShrink: 0 }}>
         <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.08)', background: '#111', height: '44dvh' }}>
           <video ref={(el) => { videoRef.current = el; }} autoPlay playsInline muted controls={false} disablePictureInPicture
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }} />
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block', opacity: cameraReady ? 1 : 0, pointerEvents: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties} />
           <canvas ref={(el) => { canvasRef.current = el; }}
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }} />
           {!cameraReady && isConnected && (
@@ -391,7 +321,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
                 const fadeRatio = idx / Math.max(arr.length - 1, 1);
                 const opacity = 0.15 + 0.85 * fadeRatio;
                 const isNewest = idx === arr.length - 1;
-                const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
+                const displayName = ev.twitterUsername || formatAddress(ev.address);
                 return (
                   <div key={ev.id} style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity, animation: isNewest ? 'live-feed-slide-in 0.3s ease-out' : undefined, transition: 'opacity 0.3s ease' }}>
                     <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
@@ -421,12 +351,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
       {topBlinker && (
         <div style={{ padding: '4px 16px 8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <span className="rainbow-text" style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-0.3px' }}>Fastest:{' '}</span>
-          {topBlinker.displayName.startsWith('@') ? (
-            <a href={`https://x.com/${topBlinker.displayName.slice(1)}`} target="_blank" rel="noopener noreferrer" className="rainbow-text"
-              style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-0.3px', textDecoration: 'none', cursor: 'pointer', pointerEvents: 'auto' }}>{topBlinker.displayName}</a>
-          ) : (
-            <span className="rainbow-text" style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-0.3px' }}>{topBlinker.displayName}</span>
-          )}
+          <span className="rainbow-text" style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-0.3px' }}>{topBlinker.displayName}</span>
           <span className="rainbow-text" style={{ fontSize: '14px', fontWeight: 900, letterSpacing: '-0.3px' }}>{' '}at {topBlinker.rpm} bpm</span>
         </div>
       )}
@@ -519,7 +444,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
               autoPlay playsInline muted
               controls={false}
               disablePictureInPicture
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block', opacity: cameraReady ? 1 : 0, pointerEvents: 'none' }}
             />
             <canvas
               ref={(el) => { canvasRef.current = el; }}
@@ -532,10 +457,10 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
                   <button
                     onClick={handleLogin}
                     disabled={loginBusy}
-                    className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}
+                    className={`sidebar-connect-btn${loginBusy ? ' sidebar-connect-btn--loading' : ''}`}
                     style={{ padding: '16px 44px', fontSize: '15px', minHeight: '48px' }}
                   >
-                    {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
+                    {loginBusy ? <span>Connecting<span className="dots-anim" /></span> : 'Connect'}
                   </button>
                 ) : (
                   <div className="spinner" style={{ width: '32px', height: '32px' }} />
@@ -556,7 +481,7 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
                   const fadeRatio = idx / Math.max(arr.length - 1, 1);
                   const opacity = 0.15 + 0.85 * fadeRatio;
                   const isNewest = idx === arr.length - 1;
-                  const displayName = ev.twitterUsername ? `@${ev.twitterUsername}` : formatAddress(ev.address);
+                  const displayName = ev.twitterUsername || formatAddress(ev.address);
                   return (
                     <div key={ev.id} style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity, animation: isNewest ? 'live-feed-slide-in 0.3s ease-out' : undefined, transition: 'opacity 0.3s ease' }}>
                       <span style={{ color: '#C0B4DA', fontWeight: 700 }}>{displayName}</span>
@@ -601,8 +526,8 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
               <button onClick={handleLogout} className="sidebar-disconnect-btn" aria-label="Disconnect wallet">&times;</button>
             </div>
           ) : (
-            <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${walletLoading ? ' sidebar-connect-btn--loading' : ''}`}>
-              {walletLoading ? <span>Setting Up<span className="dots-anim" /></span> : !ready ? <span>Loading<span className="dots-anim" /></span> : 'Connect'}
+            <button onClick={handleLogin} disabled={loginBusy} className={`sidebar-connect-btn${loginBusy ? ' sidebar-connect-btn--loading' : ''}`}>
+              {loginBusy ? <span>Connecting<span className="dots-anim" /></span> : 'Connect'}
             </button>
           )}
         </div>
@@ -612,32 +537,13 @@ export function RankedGame({ onShowLeaderboard, onToggleInfo }: { onShowLeaderbo
             <span style={{ fontSize: '28px', fontWeight: 900, color: '#C0B4DA', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{totalBlinks.toLocaleString()}</span>
           </div>
         )}
-        {topBlinker && (() => {
-          const normAddr = normalizeAddress(topBlinker.address);
-          const profileImg = topBlinker.profileImageUrl || allTwitterProfiles[normAddr]?.profileImageUrl || null;
-          return (
-            <>
-              <div style={{ padding: '8px 20px 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>Fastest:{' '}</span>
-                {topBlinker.displayName.startsWith('@') ? (
-                  <a href={`https://x.com/${topBlinker.displayName.slice(1)}`} target="_blank" rel="noopener noreferrer" className="rainbow-text"
-                    style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px', textDecoration: 'none', cursor: 'pointer', pointerEvents: 'auto' }}>{topBlinker.displayName}</a>
-                ) : (
-                  <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>{topBlinker.displayName}</span>
-                )}
-                <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>{' '}at {topBlinker.rpm} bpm</span>
-              </div>
-              <div style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
-                <img src="/fastest-blinker-dance.gif" alt="Fastest blinker dance" style={{ width: '100%', display: 'block' }} />
-                {profileImg && (
-                  <div className="head-track-overlay" style={{ position: 'absolute', width: '18%', aspectRatio: '1', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.85)', boxShadow: '0 0 16px rgba(192,180,218,0.5)' }}>
-                    <img src={profileImg} alt={topBlinker.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-              </div>
-            </>
-          );
-        })()}
+        {topBlinker && (
+          <div style={{ padding: '8px 20px 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>Fastest:{' '}</span>
+            <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>{topBlinker.displayName}</span>
+            <span className="rainbow-text" style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '-0.3px' }}>{' '}at {topBlinker.rpm} bpm</span>
+          </div>
+        )}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to bottom, rgba(17,17,17,1) 0%, rgba(17,17,17,0.8) 40%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
           <div ref={txScrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 20px 36px' }}>
